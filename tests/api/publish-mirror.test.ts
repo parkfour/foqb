@@ -63,6 +63,24 @@ describe("scripts/publish-mirror.sh", () => {
     expect(git(mirror, "log", "-1", "--format=%an <%ae>", "main")).toBe("Dev <dev@example.com>");
   });
 
+  it("publishes version tags on the matching mirror commit, once that commit is published", () => {
+    commit({ "app.ts": "v1" }, "wip");
+    publish();
+    commit({ "app.ts": "v2" }, "feat: two");
+    git(source, "tag", "v0.1.0", "HEAD~1");
+    git(source, "tag", "v0.2.0");
+
+    // Tags-only: v0.2.0's commit isn't on the mirror yet, so only v0.1.0 goes.
+    execFileSync("sh", [script, "--tags-only", mirror], { cwd: source, encoding: "utf8" });
+    expect(git(mirror, "tag", "-l")).toBe("v0.1.0");
+    expect(git(mirror, "rev-parse", "v0.1.0")).toBe(git(mirror, "rev-parse", "main"));
+
+    publish();
+    expect(git(mirror, "tag", "-l").split("\n")).toEqual(["v0.1.0", "v0.2.0"]);
+    expect(git(mirror, "show", "v0.2.0:app.ts")).toBe("v2");
+    expect(git(mirror, "rev-parse", "v0.2.0")).toBe(git(mirror, "rev-parse", "main"));
+  });
+
   it("does nothing when there's nothing new", () => {
     commit({ "app.ts": "v1" }, "wip");
     publish();

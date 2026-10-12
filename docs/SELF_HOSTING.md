@@ -271,8 +271,16 @@ to Supabase directly, so Supabase isn't reachable from outside.
 ```bash
 docker/setup.sh https://books.example.com   # writes docker/.env with fresh secrets
 # edit docker/.env: Plaid keys, operator details (§4)
-cd docker && docker compose up -d --build
+cd docker && docker compose up -d
 ```
+
+`.env` points at the released images on GitHub's container registry
+(`ghcr.io/parkfour/foqb` and `ghcr.io/parkfour/foqb-migrate`). Pin a
+version (`:0.3.0`) instead of `:latest` if you want to choose when to
+upgrade. To build from your own checkout, empty `FOQB_APP_IMAGE` and
+`FOQB_MIGRATE_IMAGE` and run `docker compose up -d --build`. Each version
+tag on the GitHub repository publishes new images (the `release-images`
+CI job).
 
 Point your reverse proxy (with TLS) at port 8090. The app takes the public
 hostname from `X-Forwarded-Host`, which Apache's `ProxyPass` sets

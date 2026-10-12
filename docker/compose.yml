@@ -62,6 +62,7 @@ services:
 
   migrate:
     image: ${FOQB_MIGRATE_IMAGE:-foqb-migrate:latest}
+    pull_policy: missing
     build:
       context: ..
       target: migrate
@@ -95,6 +96,7 @@ services:
 
   app:
     image: ${FOQB_APP_IMAGE:-foqb-app:latest}
+    pull_policy: missing
     build:
       context: ..
       target: app

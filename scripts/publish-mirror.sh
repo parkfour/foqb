@@ -10,11 +10,19 @@
 # stopped. The mirror is never force-pushed; a push to it from anywhere
 # else makes this fail rather than overwrite it.
 #
-# usage: scripts/publish-mirror.sh <mirror URL> [branch]
+# Version tags (v*) are published too, on the mirror commit made from the
+# tagged commit, once that commit has been published.
+#
+# usage: scripts/publish-mirror.sh [--tags-only] <mirror URL> [branch]
 # MIRROR_AUTHOR_NAME / MIRROR_AUTHOR_EMAIL, if set, replace every author.
 set -eu
 
-url=${1:?usage: publish-mirror.sh <mirror URL> [branch]}
+tags_only=
+if [ "${1:-}" = "--tags-only" ]; then
+  tags_only=1
+  shift
+fi
+url=${1:?usage: publish-mirror.sh [--tags-only] <mirror URL> [branch]}
 branch=${2:-main}
 notes=refs/notes/mirror
 
@@ -50,6 +58,35 @@ mirror_commit() {
   echo "$commit"
 }
 
+# Version tags whose commit is on the mirror but whose tag isn't yet.
+publish_tags() {
+  remote_tags=$(git ls-remote --tags "$url" 'v*' | sed 's#.*refs/tags/##')
+  published=$(mktemp)
+  git notes --ref=mirror list | while read -r note commit; do
+    echo "$(git cat-file -p "$note") $commit"
+  done >"$published"
+  refspecs=
+  for tag in $(git tag -l 'v*'); do
+    echo "$remote_tags" | grep -qx "$tag" && continue
+    source=$(git rev-parse "$tag^{commit}")
+    mirrored=$(awk -v s="$source" '$1 == s { print $2 }' "$published")
+    if [ -z "$mirrored" ]; then
+      echo "not publishing tag $tag: its commit isn't on the mirror (yet)"
+      continue
+    fi
+    echo "publishing tag $tag"
+    refspecs="$refspecs $mirrored:refs/tags/$tag"
+  done
+  rm -f "$published"
+  # shellcheck disable=SC2086
+  [ -z "$refspecs" ] || git push -q "$url" $refspecs
+}
+
+if [ -n "$tags_only" ]; then
+  publish_tags
+  exit 0
+fi
+
 head=$(git rev-parse HEAD)
 if [ -z "$tip" ]; then
   current=$(mirror_commit "$head" "$(filtered_tree "$head")" "Initial public release")
@@ -68,6 +105,7 @@ fi
 
 if [ "$current" = "$tip" ]; then
   echo "mirror already up to date"
-  exit 0
+else
+  git push -q "$url" "$current:refs/heads/$branch" "$notes:$notes"
 fi
-git push -q "$url" "$current:refs/heads/$branch" "$notes:$notes"
+publish_tags

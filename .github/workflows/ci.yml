@@ -7,6 +7,7 @@ name: CI
 on:
   push:
     branches: ["**"]
+    tags: ["v*"]
 
 jobs:
   verify:
@@ -67,7 +68,7 @@ jobs:
 
   deploy:
     needs: verify
-    if: github.server_url != 'https://github.com'
+    if: github.server_url != 'https://github.com' && startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -143,12 +144,13 @@ jobs:
           docker build --target app --build-arg CI_GIT_SHA="$(git rev-parse --short HEAD)" -t foqb-app:latest .
 
   # Copies main, minus the paths in .gitdontforward, to the public GitHub
-  # mirror (scripts/publish-mirror.sh). Skipped until the MIRROR_REPO and
-  # MIRROR_DEPLOY_KEY secrets are set; MIRROR_AUTHOR_NAME/EMAIL optionally
-  # replace the author on published commits.
+  # mirror (scripts/publish-mirror.sh), and version tags along with it.
+  # Skipped until the MIRROR_REPO and MIRROR_DEPLOY_KEY secrets are set;
+  # MIRROR_AUTHOR_NAME/EMAIL optionally replace the author on published
+  # commits.
   publish:
     needs: verify
-    if: github.ref == 'refs/heads/main' && github.server_url != 'https://github.com'
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -171,4 +173,39 @@ jobs:
           # GitHub's published SSH host key, so the push can't be intercepted.
           echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$key.known_hosts"
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$key.known_hosts"
-          scripts/publish-mirror.sh "$MIRROR_REPO" main
+          case "$GITHUB_REF" in
+            refs/tags/*) scripts/publish-mirror.sh --tags-only "$MIRROR_REPO" main ;;
+            *) scripts/publish-mirror.sh "$MIRROR_REPO" main ;;
+          esac
+
+  # On the public GitHub repository only: each version tag publishes the
+  # app and migration images to GitHub's container registry, as
+  # ghcr.io/<owner>/foqb and ghcr.io/<owner>/foqb-migrate, tagged with the
+  # version (without its "v") and "latest". docker/compose.yml runs them.
+  release-images:
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/v') && github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push images
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          for target in app migrate; do
+            name=foqb; [ "$target" = migrate ] && name=foqb-migrate
+            image=ghcr.io/$owner/$name
+            docker build --target "$target" --build-arg CI_GIT_SHA="${GITHUB_SHA::7}" \
+              --label org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
+              --label org.opencontainers.image.version="$version" \
+              -t "$image:$version" -t "$image:latest" .
+            docker push "$image:$version"
+            docker push "$image:latest"
+          done

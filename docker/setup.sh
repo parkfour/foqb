@@ -37,6 +37,11 @@ SERVICE_ROLE_KEY=$(jwt service_role)
 ENCRYPTION_KEY=$(openssl rand -base64 32)
 APP_PORT=8090
 
+# Released images. Leave both empty to build from this checkout instead
+# (docker compose up -d --build).
+FOQB_APP_IMAGE=ghcr.io/parkfour/foqb:latest
+FOQB_MIGRATE_IMAGE=ghcr.io/parkfour/foqb-migrate:latest
+
 # Bank sync (optional): from your Plaid Dashboard's Keys page.
 PLAID_CLIENT_ID=
 PLAID_SECRET=

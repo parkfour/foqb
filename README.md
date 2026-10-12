@@ -6,6 +6,14 @@ to run yourself, open source (AGPL-3.0), no per-seat pricing.
 Try it at <https://foqb.parkfour.com>, a public demo that's erased every 6
 hours.
 
+![Dashboard: cash, income, expenses and unreviewed bank transactions](docs/screenshots/dashboard.jpg)
+
+| Bank feed | Profit and loss |
+|---|---|
+| ![Bank transactions imported through Plaid, waiting to be categorized](docs/screenshots/bank-feed.jpg) | ![Income statement by account](docs/screenshots/profit-and-loss.jpg) |
+| **Receivables aging** | |
+| ![Accounts receivable aging by customer and bucket](docs/screenshots/ar-aging.jpg) | |
+
 ## How it compares
 
 Feature comparison against Wave's free Starter plan and QuickBooks Online's
@@ -62,8 +70,12 @@ To run your own instance, Supabase included, on any machine with Docker:
 
 ```bash
 docker/setup.sh https://books.example.com   # writes docker/.env with fresh secrets
-cd docker && docker compose up -d --build   # the app is on port 8090
+cd docker && docker compose up -d           # the app is on port 8090
 ```
+
+This uses the released images (`ghcr.io/parkfour/foqb`). To build from
+your own checkout instead, clear `FOQB_APP_IMAGE` and `FOQB_MIGRATE_IMAGE`
+in `docker/.env` and run `docker compose up -d --build`.
 
 Put a TLS reverse proxy in front of port 8090. Add your Plaid keys and
 operator details to `docker/.env` if you want them. See
