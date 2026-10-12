@@ -1,0 +1,7 @@
+# Paths kept in this (private) repository but never published to the public
+# GitHub mirror. Same pattern syntax as .gitignore, matched against the
+# repository root. Read by scripts/publish-mirror.sh for every commit it
+# publishes.
+
+# This operator's filled-in copies of the policy templates in docs/.
+docs/*_parkfour.md
