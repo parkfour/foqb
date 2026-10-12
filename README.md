@@ -3,6 +3,9 @@
 A multi-tenant, double-entry accounting PWA built on Next.js and Supabase. Free
 to run yourself, open source (AGPL-3.0), no per-seat pricing.
 
+Try it at <https://foqb.parkfour.com>, a public demo that's erased every 6
+hours.
+
 ## How it compares
 
 Feature comparison against Wave's free Starter plan and QuickBooks Online's
@@ -52,6 +55,20 @@ cuts, not oversights.
 - PWA with offline journal-entry queuing (syncs when back online)
 
 ## Getting started
+
+### The quick way: Docker
+
+To run your own instance, Supabase included, on any machine with Docker:
+
+```bash
+docker/setup.sh https://books.example.com   # writes docker/.env with fresh secrets
+cd docker && docker compose up -d --build   # the app is on port 8090
+```
+
+Put a TLS reverse proxy in front of port 8090. Add your Plaid keys and
+operator details to `docker/.env` if you want them. See
+[docs/SELF_HOSTING.md §9](docs/SELF_HOSTING.md#9-running-it-all-on-your-own-server-with-docker).
+The steps below set up a development environment instead.
 
 ### Prerequisites
 
