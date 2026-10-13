@@ -147,7 +147,7 @@ jobs:
   # mirror (scripts/publish-mirror.sh), and version tags along with it.
   # Skipped until the MIRROR_REPO and MIRROR_DEPLOY_KEY secrets are set;
   # MIRROR_AUTHOR_NAME/EMAIL optionally replace the author on published
-  # commits.
+  # commits by the emails in MIRROR_REPLACE_EMAILS (all commits if unset).
   publish:
     needs: verify
     if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.server_url != 'https://github.com'
@@ -163,6 +163,7 @@ jobs:
           MIRROR_DEPLOY_KEY: ${{ secrets.MIRROR_DEPLOY_KEY }}
           MIRROR_AUTHOR_NAME: ${{ secrets.MIRROR_AUTHOR_NAME }}
           MIRROR_AUTHOR_EMAIL: ${{ secrets.MIRROR_AUTHOR_EMAIL }}
+          MIRROR_REPLACE_EMAILS: ${{ secrets.MIRROR_REPLACE_EMAILS }}
         run: |
           if [ -z "$MIRROR_REPO" ] || [ -z "$MIRROR_DEPLOY_KEY" ]; then
             echo "Mirror secrets not set; skipping"

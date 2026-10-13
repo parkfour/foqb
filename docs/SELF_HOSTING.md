@@ -327,8 +327,10 @@ development history from before publishing stays private. To set it up:
 3. In the private repository, add the secrets `MIRROR_REPO` (e.g.
    `git@github.com:you/foqb.git`) and `MIRROR_DEPLOY_KEY` (the contents
    of `mirror-key`). Optionally add `MIRROR_AUTHOR_NAME` and
-   `MIRROR_AUTHOR_EMAIL`, to publish every commit under one identity (such
-   as your GitHub noreply address).
+   `MIRROR_AUTHOR_EMAIL` to publish your commits under another identity (such
+   as your GitHub noreply address). Also add `MIRROR_REPLACE_EMAILS` (your
+   own git email addresses, comma-separated), so only your commits are
+   renamed, not contributors'. Without it, every commit is renamed.
 4. The next push to `main` publishes. Never push to the mirror directly:
    the job then refuses rather than overwrite it.
 

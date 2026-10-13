@@ -14,7 +14,10 @@
 # tagged commit, once that commit has been published.
 #
 # usage: scripts/publish-mirror.sh [--tags-only] <mirror URL> [branch]
-# MIRROR_AUTHOR_NAME / MIRROR_AUTHOR_EMAIL, if set, replace every author.
+# MIRROR_AUTHOR_NAME / MIRROR_AUTHOR_EMAIL, if set, replace the author of
+# commits by the emails in MIRROR_REPLACE_EMAILS (comma-separated), or of
+# every commit when that's unset. Other authors, such as contributors whose
+# pull requests were imported, keep their own name.
 set -eu
 
 tags_only=
@@ -47,8 +50,14 @@ filtered_tree() {
 mirror_commit() {
   source=$1 tree=$2 message=$3
   shift 3
-  name=${MIRROR_AUTHOR_NAME:-$(git log -1 --format=%an "$source")}
-  email=${MIRROR_AUTHOR_EMAIL:-$(git log -1 --format=%ae "$source")}
+  name=$(git log -1 --format=%an "$source")
+  email=$(git log -1 --format=%ae "$source")
+  case ",${MIRROR_REPLACE_EMAILS:-$email}," in
+    *",$email,"*)
+      name=${MIRROR_AUTHOR_NAME:-$name}
+      email=${MIRROR_AUTHOR_EMAIL:-$email}
+      ;;
+  esac
   commit=$(printf '%s\n' "$message" |
     GIT_AUTHOR_NAME=$name GIT_AUTHOR_EMAIL=$email GIT_AUTHOR_DATE=$(git log -1 --format=%aI "$source") \
     GIT_COMMITTER_NAME=$name GIT_COMMITTER_EMAIL=$email \

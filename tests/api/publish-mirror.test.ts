@@ -81,6 +81,29 @@ describe("scripts/publish-mirror.sh", () => {
     expect(git(mirror, "rev-parse", "v0.2.0")).toBe(git(mirror, "rev-parse", "main"));
   });
 
+  it("renames only the listed authors when MIRROR_REPLACE_EMAILS is set", () => {
+    commit({ "app.ts": "v1" }, "wip");
+    publish();
+    commit({ "app.ts": "v2" }, "feat: mine");
+    writeFileSync(path.join(source, "contrib.ts"), "from alice");
+    git(source, "add", "-A");
+    execFileSync("git", ["commit", "-q", "-m", "feat: contributor"], {
+      cwd: source,
+      env: { ...process.env, GIT_AUTHOR_NAME: "Alice", GIT_AUTHOR_EMAIL: "alice@example.com", GIT_COMMITTER_NAME: "Alice", GIT_COMMITTER_EMAIL: "alice@example.com" },
+    });
+
+    execFileSync("sh", [script, mirror], {
+      cwd: source,
+      encoding: "utf8",
+      env: { ...process.env, MIRROR_AUTHOR_NAME: "Public Name", MIRROR_AUTHOR_EMAIL: "public@example.com", MIRROR_REPLACE_EMAILS: "other@example.com,dev@example.com" },
+    });
+
+    expect(git(mirror, "log", "--format=%s|%an <%ae>", "-2", "main").split("\n")).toEqual([
+      "feat: contributor|Alice <alice@example.com>",
+      "feat: mine|Public Name <public@example.com>",
+    ]);
+  });
+
   it("does nothing when there's nothing new", () => {
     commit({ "app.ts": "v1" }, "wip");
     publish();
