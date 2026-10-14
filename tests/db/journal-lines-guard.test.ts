@@ -102,6 +102,41 @@ describe("journal lines follow their entry's status and the period lock", () => 
     expect(rows[0].n).toBe(0);
   });
 
+  it("restores a backup whose rows have no created_at", async () => {
+    const orgId = newId();
+    const cash = newId();
+    const revenue = newId();
+    const entryId = newId();
+    const snapshot = {
+      organization: { id: orgId, name: "Sparse" },
+      accounts: [
+        { id: cash, organization_id: orgId, account_number: "1000", name: "Cash", type: "asset", is_active: true },
+        { id: revenue, organization_id: orgId, account_number: "4000", name: "Revenue", type: "revenue", is_active: true },
+      ],
+      journal_entries: [
+        {
+          id: entryId, organization_id: orgId, entry_date: "2026-03-15", memo: "Sale", status: "posted",
+          journal_lines: [
+            { id: newId(), journal_entry_id: entryId, account_id: cash, debit: 100, credit: 0 },
+            { id: newId(), journal_entry_id: entryId, account_id: revenue, debit: 0, credit: 100 },
+          ],
+        },
+      ],
+      customers: [{ id: newId(), organization_id: orgId, name: "Bluebird Café", is_active: true }],
+      vendors: [], invoices: [], bills: [], invoice_payments: [], bill_payments: [], items: [],
+      inventory_items: [], fixed_assets: [], recurring_invoices: [], recurring_bills: [], bank_transactions: [],
+      bank_reconciliations: [], categorization_rules: [],
+    };
+
+    const user = await createUser(client, "restorer-sparse@example.com");
+    await asUser(client, user);
+    await client.query("select restore_organization($1)", [JSON.stringify(snapshot)]);
+    await client.query("RESET ROLE");
+
+    const { rows } = await client.query("select count(*)::int as n from journal_entries where organization_id = $1 and status = 'posted'", [orgId]);
+    expect(rows[0].n).toBe(1);
+  });
+
   it("restores a backup with posted entries and a period lock", async () => {
     const orgId = newId();
     const cash = newId();
