@@ -278,7 +278,7 @@ export default async function SettingsPage({
                         email={member.email}
                       />
                     )}
-                    {userCanWrite ? (
+                    {isOwner ? (
                       <form action={updateMemberRole} className="flex items-center gap-2">
                         <input type="hidden" name="id" value={member.id} />
                         {isGuardedOwner && (
