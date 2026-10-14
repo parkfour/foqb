@@ -47,3 +47,6 @@ next-env.d.ts
 # graphify output
 graphify-out/
 .vitest/
+
+# Antigravity agent rules (local only)
+.agents/
