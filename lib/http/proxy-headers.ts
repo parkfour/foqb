@@ -20,3 +20,12 @@ export function getClientIp(headersList: Headers): string {
   }
   return headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
+
+// A post-sign-in destination taken from the URL (?next=...). Only paths on
+// this site: one leading "/" and nothing that would make the browser read
+// it as another host ("//evil.com", "/\evil.com", or "@evil.com" appended
+// to the origin). Anything else lands on "/".
+export function safeNextPath(next: string | null): string {
+  if (!next || !/^\/(?![/\\])/.test(next) || /[\u0000-\u001f\u007f]/.test(next)) return "/";
+  return next;
+}
