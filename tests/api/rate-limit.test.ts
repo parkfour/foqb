@@ -5,7 +5,7 @@ const { createAdminClientMock } = vi.hoisted(() => ({ createAdminClientMock: vi.
 
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: createAdminClientMock }));
 
-import { checkRateLimit } from "@/lib/auth/rate-limit";
+import { checkRateLimit, clearRateLimit } from "@/lib/auth/rate-limit";
 
 describe("checkRateLimit", () => {
   beforeEach(() => {
@@ -36,5 +36,17 @@ describe("checkRateLimit", () => {
     createAdminClientMock.mockReturnValue(client);
 
     expect(await checkRateLimit("login:ip", "1.2.3.4", 10, 900)).toBe(true);
+  });
+});
+
+describe("clearRateLimit", () => {
+  it("deletes the counter for that scope and identifier", async () => {
+    const { client, tables } = createSupabaseMock({ tables: { rate_limit_hits: { delete: ok(null) } } });
+    createAdminClientMock.mockReturnValue(client);
+
+    await clearRateLimit("login:email", "a@example.com");
+
+    expect(tables.rate_limit_hits.delete).toHaveBeenCalled();
+    expect(tables.rate_limit_hits.eq).toHaveBeenCalledWith("key", "login:email:a@example.com");
   });
 });

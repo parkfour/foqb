@@ -23,3 +23,10 @@ export async function checkRateLimit(
 
   return data as boolean;
 }
+
+// Forgets the attempts counted against one identifier, e.g. an email after a
+// successful sign-in, so its owner's own logins never add up to a lockout.
+export async function clearRateLimit(scope: string, identifier: string): Promise<void> {
+  const { error } = await createAdminClient().from("rate_limit_hits").delete().eq("key", `${scope}:${identifier}`);
+  if (error) console.error("Rate limit reset failed", error);
+}
