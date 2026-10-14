@@ -169,4 +169,29 @@ describe("match_bank_transaction", () => {
     const orgId = await createOrg(client);
     expect(await match(orgId, "UNKNOWN MERCHANT", -42)).toBeNull();
   });
+
+  it("refuses an invalid regular expression, so one rule can't break matching", async () => {
+    const orgId = await createOrg(client);
+    const accountId = await createAccount(client, orgId);
+
+    await client.query("SAVEPOINT s");
+    await expect(addRule(client, orgId, accountId, { matchType: "regex", matchText: "[a-z" })).rejects.toThrow(
+      /isn't a valid regular expression/,
+    );
+    await client.query("ROLLBACK TO SAVEPOINT s");
+
+    // A valid pattern is fine, and matching keeps working.
+    await addRule(client, orgId, accountId, { matchType: "regex", matchText: "^AMZN\\*" });
+    expect(await match(orgId, "AMZN*MKTP US", -10)).toBe(accountId);
+  });
+
+  it("refuses switching an invalid regex rule back on", async () => {
+    const orgId = await createOrg(client);
+    const accountId = await createAccount(client, orgId);
+    await addRule(client, orgId, accountId, { matchType: "regex", matchText: "[a-z", isActive: false });
+
+    await expect(
+      client.query("update categorization_rules set is_active = true where organization_id = $1", [orgId]),
+    ).rejects.toThrow(/isn't a valid regular expression/);
+  });
 });
