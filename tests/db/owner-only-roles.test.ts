@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, inject, i
 import { Client } from "pg";
 import { addMember, asUser, createOrg, createUser } from "./helpers";
 
-describe("only owners change roles or add members", () => {
+describe("only owners change roles, add or remove members", () => {
   let client: Client;
 
   beforeAll(async () => {
@@ -70,6 +70,32 @@ describe("only owners change roles or add members", () => {
       ).rejects.toThrow(/row-level security/);
       await client.query("ROLLBACK TO SAVEPOINT s");
     }
+  });
+
+  it("refuses an accountant removing members, through the function or directly", async () => {
+    const { orgId, accountant } = await orgWithAccountant();
+    const viewer = await createUser(client, "roles-viewer@example.com");
+    await addMember(client, orgId, viewer, "viewer");
+    const { rows } = await client.query(
+      "select id from organization_members where organization_id = $1 and user_id = $2",
+      [orgId, viewer],
+    );
+    await asUser(client, accountant);
+
+    await client.query("SAVEPOINT s");
+    await expect(client.query("select remove_org_member_guarded($1)", [rows[0].id])).rejects.toThrow(/only an owner/i);
+    await client.query("ROLLBACK TO SAVEPOINT s");
+    const { rowCount } = await client.query("delete from organization_members where id = $1", [rows[0].id]);
+    expect(rowCount).toBe(0);
+  });
+
+  it("still lets an owner remove members", async () => {
+    const { owner, accountantMemberId } = await orgWithAccountant();
+    await asUser(client, owner);
+
+    await client.query("select remove_org_member_guarded($1)", [accountantMemberId]);
+    const { rows } = await client.query("select 1 from organization_members where id = $1", [accountantMemberId]);
+    expect(rows).toHaveLength(0);
   });
 
   it("still lets an owner change roles and add members", async () => {

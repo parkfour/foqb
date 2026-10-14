@@ -305,7 +305,7 @@ export default async function SettingsPage({
                     ) : (
                       <span className="text-xs capitalize text-slate-500">{member.role}</span>
                     )}
-                    {userCanWrite && (
+                    {isOwner && (
                       <form action={removeMember} className="flex items-center gap-2">
                         <input type="hidden" name="id" value={member.id} />
                         {isGuardedOwner && (
