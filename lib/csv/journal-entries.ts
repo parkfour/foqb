@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { CSV_EXPORT_OPTIONS, unescapeFormula } from "./formula";
 
 interface JournalEntryCsvRow {
   entry_ref: string;
@@ -29,7 +30,7 @@ export function journalEntriesToCsv(rows: ExportableJournalLine[]): string {
       r.debit.toFixed(2),
       r.credit.toFixed(2),
     ]),
-  });
+  }, CSV_EXPORT_OPTIONS);
 }
 
 export interface JournalEntryLineRecord {
@@ -78,7 +79,7 @@ export function filterBalancedEntries<T extends { ref: string; lines: { debit: n
 }
 
 export function parseJournalEntriesCsv(csvText: string): ParsedJournalEntriesResult {
-  const parsed = Papa.parse<JournalEntryCsvRow>(csvText, { header: true, skipEmptyLines: true });
+  const parsed = Papa.parse<JournalEntryCsvRow>(csvText, { header: true, skipEmptyLines: true, transform: unescapeFormula });
   const errors: string[] = [...parsed.errors.map((e) => `Row ${e.row ?? "?"}: ${e.message}`)];
   const grouped = new Map<string, JournalEntryRecord>();
 

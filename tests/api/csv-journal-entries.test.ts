@@ -99,3 +99,17 @@ describe("parseJournalEntriesCsv", () => {
     expect(errors).toEqual([]);
   });
 });
+
+describe("formula injection", () => {
+  it("escapes formula-looking text but leaves amounts as numbers", () => {
+    const csv = journalEntriesToCsv([
+      { entry_ref: "1", entry_date: "2026-01-02", memo: "+cmd|' /C calc'!A0", account_number: "1000", debit: 10, credit: 0 },
+      { entry_ref: "1", entry_date: "2026-01-02", memo: "+cmd|' /C calc'!A0", account_number: "4000", debit: 0, credit: 10 },
+    ]);
+    expect(csv).toContain("'+cmd");
+    expect(csv).toMatch(/,10\.00,0\.00$/m); // debits/credits are never negative, so never escaped
+
+    const { entries } = parseJournalEntriesCsv(csv);
+    expect(entries[0].memo).toBe("+cmd|' /C calc'!A0");
+  });
+});

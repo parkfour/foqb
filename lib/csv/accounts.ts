@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { CSV_EXPORT_OPTIONS, unescapeFormula } from "./formula";
 
 const ACCOUNT_TYPES = new Set(["asset", "liability", "equity", "revenue", "expense"]);
 
@@ -34,7 +35,7 @@ export function accountsToCsv(accounts: ExportableAccount[]): string {
       a.description ?? "",
       a.is_active ? "true" : "false",
     ]),
-  });
+  }, CSV_EXPORT_OPTIONS);
 }
 
 export interface AccountRecord {
@@ -51,7 +52,7 @@ export interface ParsedAccountsResult {
 }
 
 export function parseAccountsCsv(csvText: string): ParsedAccountsResult {
-  const parsed = Papa.parse<AccountCsvRow>(csvText, { header: true, skipEmptyLines: true });
+  const parsed = Papa.parse<AccountCsvRow>(csvText, { header: true, skipEmptyLines: true, transform: unescapeFormula });
   const records: AccountRecord[] = [];
   const errors: string[] = [...parsed.errors.map((e) => `Row ${e.row ?? "?"}: ${e.message}`)];
 

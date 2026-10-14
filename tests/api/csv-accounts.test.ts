@@ -71,3 +71,17 @@ describe("parseAccountsCsv", () => {
     expect(records[0].type).toBe("asset");
   });
 });
+
+describe("formula injection", () => {
+  it("escapes text a spreadsheet would run as a formula, and imports it back unchanged", () => {
+    const csv = accountsToCsv([
+      { account_number: "1000", name: "=HYPERLINK(\"http://evil\")", type: "asset", description: "@note", is_active: true },
+    ]);
+    expect(csv).toContain(`"'=HYPERLINK(""http://evil"")"`);
+    expect(csv).toContain("'@note");
+
+    const { records } = parseAccountsCsv(csv);
+    expect(records[0].name).toBe('=HYPERLINK("http://evil")');
+    expect(records[0].description).toBe("@note");
+  });
+});
