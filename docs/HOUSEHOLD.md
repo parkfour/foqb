@@ -140,7 +140,7 @@ Settings → Tax form "Form 1040 with Schedules 1, B, C, D and E
 line from those forms, the way a business book tags Schedule C lines. An
 account on a Schedule E line also picks which of the book's properties it
 belongs to, so each rental gets its own column. The Tax Line report
-(`/reports/tax-line`; the household menu has no Reports entry) totals
+(`/reports?report=tax-line-items`; the household menu has no Reports entry) totals
 each line, per property for Schedule E, and opens the accounts behind it.
 
 ## Investments: not included
