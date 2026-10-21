@@ -5,10 +5,11 @@ import { DownloadButton } from "@/components/ui/download-button";
 import { NewAccountForm } from "@/components/accounts/new-account-form";
 import { DeleteAccountDialog } from "@/components/accounts/delete-account-dialog";
 import { EditAccountDialog } from "@/components/accounts/edit-account-dialog";
+import { TaxLineForm } from "@/components/accounts/tax-line-form";
 import { CsvImportForm } from "@/components/csv/import-form";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
-import { toggleAccountActive, updateAccountTaxLine } from "./actions";
+import { toggleAccountActive } from "./actions";
 import { FORM_NAMES, PER_PROPERTY_FORM, TAX_FORM_LINES } from "@/lib/tax/forms";
 
 interface AccountRow {
@@ -162,46 +163,12 @@ export default async function AccountsPage() {
                     <td className="px-5 py-3">
                       {account.type === "revenue" || account.type === "expense" ? (
                         userCanWrite ? (
-                          <form
-                            action={updateAccountTaxLine}
-                            className="flex items-center gap-2"
-                          >
-                            <input type="hidden" name="id" value={account.id} />
-                            <select
-                              name="taxLineId"
-                              defaultValue={account.tax_line_id ?? ""}
-                              className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                            >
-                              <option value="">Unassigned</option>
-                              {taxLines.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.code} — {t.label}
-                                </option>
-                              ))}
-                            </select>
-                            {/* Schedule E lines are kept per rental. */}
-                            {taxLineById.get(account.tax_line_id ?? "")?.form === PER_PROPERTY_FORM && (
-                              <select
-                                name="propertyId"
-                                defaultValue={account.property_id ?? ""}
-                                aria-label={`Property for ${account.name}`}
-                                className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                              >
-                                <option value="">No property</option>
-                                {properties.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                            <button
-                              type="submit"
-                              className="text-xs text-slate-500 hover:text-slate-900"
-                            >
-                              Save
-                            </button>
-                          </form>
+                          <TaxLineForm
+                            key={`${account.tax_line_id ?? ""}:${account.property_id ?? ""}`}
+                            account={account}
+                            taxLines={taxLines}
+                            properties={properties}
+                          />
                         ) : (
                           <span className="text-slate-600">
                             {account.tax_line_id

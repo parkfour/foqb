@@ -94,18 +94,23 @@ export async function toggleAccountActive(formData: FormData): Promise<void> {
   revalidatePath("/accounts");
 }
 
-export async function updateAccountTaxLine(formData: FormData): Promise<void> {
+export async function updateAccountTaxLine(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const id = formData.get("id") as string;
-  if (!id) return;
+  if (!id) return { error: "No account to save" };
 
   const taxLineId = (formData.get("taxLineId") as string) || null;
   // Only a Schedule E line asks for the property; any other line clears it.
   const propertyId = (formData.get("propertyId") as string) || null;
 
   const supabase = await createClient();
-  await supabase.from("accounts").update({ tax_line_id: taxLineId, property_id: taxLineId ? propertyId : null }).eq("id", id);
+  const { error } = await supabase
+    .from("accounts")
+    .update({ tax_line_id: taxLineId, property_id: taxLineId ? propertyId : null })
+    .eq("id", id);
+  if (error) return { error: `Couldn't save the tax line: ${error.message}` };
 
   revalidatePath("/accounts");
+  return { error: null };
 }
 
 // Name, number, description and type. The database refuses a type change
