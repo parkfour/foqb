@@ -120,6 +120,7 @@ properly means a database trigger feeding a queue.
 |---|---|---|
 | `invoice.actions` | beside "Download / Share PDF" on an invoice | `invoiceId`, `invoiceNumber`, `customer` (`name`, `email`), `total`, `remaining`, `dueDate`, `status`, `buildPdf()` (the same PDF the button makes) |
 | `settings.sections` | a section of its own on the Settings page | `organizationId` |
+| `dashboard.sections` | below the dashboard's own figures, household or business | `organizationId`, `workspaceType`, `canWrite` |
 | `properties.sections` | a section of its own on Properties & Assets | `organizationId`, `canWrite` |
 | `reconcile.header` | at the top of the Reconcile page, for writers | `accounts` (`id`, `name`, `account_number`, `type`) |
 | `bill.header` | above the Enter Bill form | `vendors`, `accounts`, `prefill(bill)`: fills in any of `vendorId`, `billNumber`, `billDate`, `lines` |
@@ -134,9 +135,11 @@ A plugin can have pages of its own: each entry in `pages` (`slug`,
 and listed in the menu, before Settings, while the plugin is enabled and
 the book is the right kind. The component renders in the browser and gets
 `context`: `organizationId`, `workspaceType`, `canWrite`, and `books` (every
-book the signed-in user belongs to: `id`, `name`, `workspaceType`), for a
-page that reads across books. Every read goes through that book's own
-access rules.
+book the signed-in user belongs to: `id`, `name`, `workspaceType`,
+`currency`), for a page that reads across books. Every read goes through
+that book's own access rules, and each book's amounts are in its own
+currency (see [CURRENCY.md](CURRENCY.md)); a page that adds books together
+converts them itself.
 
 ## Email invoices
 

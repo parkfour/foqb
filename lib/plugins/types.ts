@@ -76,6 +76,13 @@ export interface SlotContextMap {
   "reconcile.header": {
     accounts: { id: string; name: string; account_number: string; type: string }[];
   };
+  // Below the dashboard's own figures, for a household or a business: a
+  // reminder or a figure of the plugin's.
+  "dashboard.sections": {
+    organizationId: string;
+    workspaceType: WorkspaceType;
+    canWrite: boolean;
+  };
   // A section of its own on the Properties & Assets page.
   "properties.sections": {
     organizationId: string;
@@ -105,12 +112,12 @@ export type WorkspaceType = "business" | "household";
 // What a plugin page is handed. books is every book the signed-in user
 // belongs to, for a page that reads across them (a household's tax return
 // takes in its businesses' books); each read still goes through that
-// book's own access rules.
+// book's own access rules. Each book's amounts are in its own currency.
 export interface PluginPageContext {
   organizationId: string;
   workspaceType: WorkspaceType;
   canWrite: boolean;
-  books: { id: string; name: string; workspaceType: WorkspaceType }[];
+  books: { id: string; name: string; workspaceType: WorkspaceType; currency: string }[];
 }
 
 // A page of the plugin's own at /plugins/<plugin id>/<slug>, listed in the

@@ -28,7 +28,7 @@ export default async function PluginPageRoute({ params }: { params: Promise<{ pl
           organizationId: orgId,
           workspaceType,
           canWrite: canWrite(role),
-          books: organizations.map((o) => ({ id: o.id, name: o.name, workspaceType: o.workspace_type ?? "business" })),
+          books: organizations.map((o) => ({ id: o.id, name: o.name, workspaceType: o.workspace_type ?? "business", currency: o.currency ?? "USD" })),
         }}
       />
     </div>

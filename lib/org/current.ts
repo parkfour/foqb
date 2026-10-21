@@ -7,6 +7,7 @@ export interface UserOrganization {
   id: string;
   name: string;
   workspace_type?: "business" | "household";
+  currency?: string;
   logoDataUrl: string | null;
 }
 
@@ -136,7 +137,7 @@ export async function getUserOrganizations(): Promise<UserOrganization[]> {
 
   const { data } = await supabase
     .from("organization_members")
-    .select("organizations(id, name, workspace_type, logoDataUrl:logo_data_url)")
+    .select("organizations(id, name, workspace_type, currency, logoDataUrl:logo_data_url)")
     .eq("user_id", user.id);
 
   const rows =

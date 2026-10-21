@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchIncomeStatement, fetchBalanceSheet } from "@/lib/reports";
-import { getCurrentOrgId, getWorkspaceType } from "@/lib/org/current";
+import { canWrite, getCurrentOrgId, getCurrentUserRole, getWorkspaceType } from "@/lib/org/current";
+import { PluginSlot } from "@/components/plugins/plugin-slot";
 import { CreateOrRestoreOrg } from "@/components/onboarding/create-or-restore-org";
 import { YoyComparison, type MonthComparison } from "@/components/dashboard/yoy-comparison";
 import { PersonalWealthDashboard } from "@/components/dashboard/personal-wealth-dashboard";
@@ -79,7 +80,14 @@ export default async function DashboardPage() {
     return <CreateOrRestoreOrg />;
   }
 
-  const workspaceType = await getWorkspaceType(orgId);
+  const [workspaceType, role] = await Promise.all([getWorkspaceType(orgId), getCurrentUserRole(orgId)]);
+  const pluginSections = (
+    <PluginSlot
+      name="dashboard.sections"
+      context={{ organizationId: orgId, workspaceType, canWrite: canWrite(role) }}
+      className="flex flex-col gap-6"
+    />
+  );
 
   if (workspaceType === "household") {
     const supabase = await createClient();
@@ -109,6 +117,7 @@ export default async function DashboardPage() {
           })),
         }}
       />
+      <div className="mt-6">{pluginSections}</div>
       </>
     );
   }
@@ -225,6 +234,7 @@ export default async function DashboardPage() {
           </table>
         </div>
       </div>
+      {pluginSections}
     </div>
   );
 }
