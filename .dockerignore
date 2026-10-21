@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+.env*
+!.env.example
+.vitest
+coverage
+graphify-out
+supabase/.temp
+supabase/.branches

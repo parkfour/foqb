@@ -1,0 +1,235 @@
+name: CI
+
+# Runs on both Gitea (where this repo is developed) and GitHub (its public
+# mirror). Only Gitea deploys and publishes: those jobs check
+# github.server_url, so on GitHub just the checks run.
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      # Known-vulnerability scan of everything that ships to production on
+      # every push; a high or critical advisory fails the build, so it can't
+      # deploy. Dev-only tooling is excluded (it never runs in production,
+      # and some of it has advisories with no patched release yet).
+      - name: Dependency vulnerability scan
+        run: npm audit --omit=dev --audit-level=high
+
+      # tsc needs the route/layout prop types (LayoutProps, PageProps, ...)
+      # Next.js generates into .next/types — normally produced by `next dev`
+      # or `next build`, which a clean CI checkout has never run. `next
+      # typegen` produces just those types without a full build.
+      - name: Generate Next.js types
+        run: npx next typegen
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Component tests
+        run: npm run test:components
+
+      # Spins up its own ephemeral Postgres via direct `docker run` calls
+      # from inside the test process (see tests/db/global-setup.ts) — needs
+      # real Docker CLI access on this runner, not just a plain job
+      # container. If this step fails with something like "docker: command
+      # not found" or a permission error, the runner's executor needs
+      # Docker socket access (or switch to a host-mode runner) before this
+      # will work.
+      #
+      # global-setup.ts also shells out to the `psql` CLI to load the auth
+      # stub and migrations — not bundled in docker.gitea.com/runner-images.
+      - name: Install postgresql-client
+        run: |
+          SUDO=$(command -v sudo || true)
+          $SUDO apt-get update && $SUDO apt-get install -y --no-install-recommends postgresql-client
+
+      - name: DB integration tests
+        run: npm run test:db
+
+  deploy:
+    needs: verify
+    if: github.server_url != 'https://github.com' && startsWith(github.ref, 'refs/heads/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Private plugins (docs/PLUGINS.md): this instance's own repo of them,
+      # cloned into plugins/local when the FOQB_PRIVATE_DEPLOY_KEY secret (a
+      # read-only deploy key on paul/foqb-private, so it reads that repo and
+      # nothing else) is set. `vercel deploy` uploads that gitignored
+      # folder, and the build registers what's in it. Only the yes/no goes
+      # in the environment; the key is written to a file for the clone and
+      # removed after.
+      - name: Look for private plugins
+        run: echo "PRIVATE_PLUGINS=${{ secrets.FOQB_PRIVATE_DEPLOY_KEY != '' }}" >> "$GITHUB_ENV"
+
+      - name: Check out private plugins
+        if: env.PRIVATE_PLUGINS == 'true'
+        run: |
+          key="$RUNNER_TEMP/foqb-private-key"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+            git clone --depth 1 ssh://git@center.n.parkfour.com/paul/foqb-private.git plugins/local
+          rm -rf plugins/local/.git
+        env:
+          DEPLOY_KEY: ${{ secrets.FOQB_PRIVATE_DEPLOY_KEY }}
+
+      # There's one Supabase project (production) behind this app, not one
+      # per branch, so migrations only run on main — a preview deploy runs
+      # against the same already-migrated database.
+      - uses: supabase/setup-cli@v1
+        if: github.ref == 'refs/heads/main'
+        with:
+          version: latest
+
+      # `link` authenticates the CLI to the project via the access token;
+      # `db push` then opens a direct Postgres connection to actually run
+      # pending migrations, which needs the DB password separately — the
+      # access token alone only covers the Management API. Secret name
+      # keeps its _PUBLIC suffix from when this repo ran two instances —
+      # not worth an unnecessary Gitea secret rename now that it's the
+      # only one.
+      - name: Run DB migrations
+        if: github.ref == 'refs/heads/main'
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push --password "$SUPABASE_DB_PASSWORD_PUBLIC"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD_PUBLIC: ${{ secrets.SUPABASE_DB_PASSWORD_PUBLIC }}
+
+      - run: npm install -g vercel@latest
+
+      # A plain `vercel deploy` doesn't upload .git and isn't triggered via
+      # Vercel's native Git integration, so the app can't learn its own
+      # commit SHA any other way (confirmed live: it showed "unknown" in
+      # the version footer before this) — pass it explicitly. next.config.ts
+      # reads it back as CI_GIT_SHA.
+      - name: Resolve git SHA
+        run: echo "GIT_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      # Plain `vercel deploy` (no --prebuilt) uploads source and triggers a
+      # REMOTE build on Vercel's own infrastructure — this runner just
+      # triggers it and waits, it doesn't compile the app itself.
+      - name: Deploy preview
+        if: github.ref != 'refs/heads/main'
+        run: vercel deploy --build-env CI_GIT_SHA="$GIT_SHA" --token="$VERCEL_TOKEN" --yes
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy production
+        if: github.ref == 'refs/heads/main'
+        run: vercel deploy --prod --build-env CI_GIT_SHA="$GIT_SHA" --token="$VERCEL_TOKEN" --yes
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # The runner's jobs share the Docker daemon of the host they run on, so
+  # these images land right where the public demo (docker/compose.yml)
+  # runs. Its 6-hourly reset (docker/reset-demo.sh) starts over on the
+  # newest ones.
+  demo-images:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.server_url != 'https://github.com'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app and migration images
+        run: |
+          docker build --target migrate -t foqb-migrate:latest .
+          docker build --target app --build-arg CI_GIT_SHA="$(git rev-parse --short HEAD)" -t foqb-app:latest .
+
+  # Copies main, minus the paths in .gitdontforward, to the public GitHub
+  # mirror (scripts/publish-mirror.sh), and version tags along with it.
+  # Skipped until the MIRROR_REPO and MIRROR_DEPLOY_KEY secrets are set;
+  # MIRROR_AUTHOR_NAME/EMAIL optionally replace the author on published
+  # commits by the emails in MIRROR_REPLACE_EMAILS (all commits if unset).
+  publish:
+    needs: verify
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.server_url != 'https://github.com'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Publish to the public mirror
+        env:
+          MIRROR_REPO: ${{ secrets.MIRROR_REPO }}
+          MIRROR_DEPLOY_KEY: ${{ secrets.MIRROR_DEPLOY_KEY }}
+          MIRROR_AUTHOR_NAME: ${{ secrets.MIRROR_AUTHOR_NAME }}
+          MIRROR_AUTHOR_EMAIL: ${{ secrets.MIRROR_AUTHOR_EMAIL }}
+          MIRROR_REPLACE_EMAILS: ${{ secrets.MIRROR_REPLACE_EMAILS }}
+        run: |
+          if [ -z "$MIRROR_REPO" ] || [ -z "$MIRROR_DEPLOY_KEY" ]; then
+            echo "Mirror secrets not set; skipping"
+            exit 0
+          fi
+          key=$(mktemp)
+          printf '%s\n' "$MIRROR_DEPLOY_KEY" > "$key"
+          # GitHub's published SSH host key, so the push can't be intercepted.
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$key.known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$key.known_hosts"
+          case "$GITHUB_REF" in
+            refs/tags/*) scripts/publish-mirror.sh --tags-only "$MIRROR_REPO" main ;;
+            *) scripts/publish-mirror.sh "$MIRROR_REPO" main ;;
+          esac
+
+  # On the public GitHub repository only: each version tag publishes the
+  # app and migration images to GitHub's container registry, as
+  # ghcr.io/<owner>/foqb and ghcr.io/<owner>/foqb-migrate, tagged with the
+  # version (without its "v") and "latest". docker/compose.yml runs them.
+  release-images:
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/v') && github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push images
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          for target in app migrate; do
+            name=foqb; [ "$target" = migrate ] && name=foqb-migrate
+            image=ghcr.io/$owner/$name
+            docker build --target "$target" --build-arg CI_GIT_SHA="${GITHUB_SHA::7}" \
+              --label org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
+              --label org.opencontainers.image.version="$version" \
+              -t "$image:$version" -t "$image:latest" .
+            docker push "$image:$version"
+            docker push "$image:latest"
+          done
