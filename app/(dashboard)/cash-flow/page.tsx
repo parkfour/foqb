@@ -5,13 +5,13 @@ import { fetchIncomeStatement } from "@/lib/reports";
 import { bookToday } from "@/lib/org/book-clock";
 import { monthStart } from "@/lib/time/book-time";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
-
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val);
-}
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 export default async function CashFlowPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     return (

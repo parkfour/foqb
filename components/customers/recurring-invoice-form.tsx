@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createRecurringInvoice } from "@/app/(dashboard)/customers/recurring/actions";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface CustomerOption {
   id: string;
@@ -48,6 +49,7 @@ export function RecurringInvoiceForm({
   items: ItemOption[];
   showAccountCodes?: boolean;
 }) {
+  const formatCurrency = useMoney();
   const [customerId, setCustomerId] = useState("");
   const [frequency, setFrequency] = useState<"weekly" | "monthly" | "yearly">("monthly");
   const today = useBookToday();
@@ -253,7 +255,7 @@ export function RecurringInvoiceForm({
               />
               %
             </label>
-            <p className="font-medium text-slate-900">Subtotal: ${subtotal.toFixed(2)}</p>
+            <p className="font-medium text-slate-900">Subtotal: {formatCurrency(subtotal)}</p>
           </div>
         </div>
 

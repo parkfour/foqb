@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/org/current";
 import { AGING_BUCKETS, fetchCustomerInvoices } from "@/lib/reports/aging";
 import { bookToday } from "@/lib/org/book-clock";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 const BUCKET_LABELS: Record<string, string> = {
   current: "Current",
@@ -30,13 +32,11 @@ interface CustomerRow {
   is_active: boolean;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
 export default async function CustomerStatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     redirect("/");

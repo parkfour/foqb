@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { useBookCurrency, useMoney } from "@/components/providers/book-currency-provider";
 
 function noopSubscribe() {
   return () => {};
@@ -25,14 +26,10 @@ export interface MonthComparison {
   lastYearExpense: number;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
-function formatAxisLabel(value: number): string {
+function formatAxisLabel(value: number, currency: string): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -45,6 +42,8 @@ const SERIES = [
 ] as const;
 
 function BarChart({ data }: { data: MonthComparison[] }) {
+  const currency = useBookCurrency();
+  const formatCurrency = useMoney();
   // React's SSR hoists any <title> element it finds anywhere in the tree as
   // document-head metadata, including this one nested deep inside an SVG
   // <rect> for a native hover tooltip — not the document title it looks
@@ -87,7 +86,7 @@ function BarChart({ data }: { data: MonthComparison[] }) {
                 strokeWidth={1}
               />
               <text x={-8} y={chartHeight * (1 - fraction)} textAnchor="end" dominantBaseline="middle" fontSize={10} fill="#64748b">
-                {formatAxisLabel(maxValue * fraction)}
+                {formatAxisLabel(maxValue * fraction, currency)}
               </text>
             </g>
           ))}
@@ -144,6 +143,7 @@ function BarChart({ data }: { data: MonthComparison[] }) {
 }
 
 function ComparisonTable({ data }: { data: MonthComparison[] }) {
+  const formatCurrency = useMoney();
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">

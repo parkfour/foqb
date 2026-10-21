@@ -8,12 +8,10 @@ import type { SlotComponent } from "@/lib/plugins/types";
 import { useBookClock } from "@/components/providers/book-clock-provider";
 import { formatTimestamp } from "@/lib/time/book-time";
 import { getInvoiceEmailStatus, sendInvoiceEmail, type InvoiceEmailStatus } from "./actions";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 export const EmailInvoiceButton: SlotComponent<"invoice.actions"> = ({ context }) => {
+  const formatCurrency = useMoney();
   const { invoiceId, invoiceNumber, customer, remaining, dueDate, status, buildPdf } = context;
   const { timeZone } = useBookClock();
   const dialogRef = useRef<HTMLDialogElement>(null);

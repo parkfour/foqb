@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { toggleItemActive, deleteItem } from "./actions";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface ItemRow {
   id: string;
@@ -18,6 +20,8 @@ interface ItemRow {
 
 export default async function ItemsPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+
 
   if (!orgId) {
     return (
@@ -105,7 +109,7 @@ export default async function ItemsPage() {
                       {item.accounts ? formatAccountLabel(item.accounts, showAccountCodes) : "—"}
                     </td>
                     <td className="px-5 py-3 text-slate-600">
-                      {item.sale_price != null ? `$${item.sale_price.toFixed(2)}` : "—"}
+                      {item.sale_price != null ? formatMoney(item.sale_price, currency) : "—"}
                     </td>
                     <td className="px-5 py-3 text-slate-600">
                       {item.track_quantity ? item.quantity_on_hand : "—"}

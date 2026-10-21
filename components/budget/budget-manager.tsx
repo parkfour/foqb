@@ -18,17 +18,11 @@ import {
 } from "lucide-react";
 import type { MonthlyBudgetReport, BudgetCategoryItem } from "@/lib/budget/engine";
 import { updateBudgetCategoryAction, copyPreviousMonthAction } from "@/app/(dashboard)/budget/actions";
+import { useBookCurrency, useMoney } from "@/components/providers/book-currency-provider";
 
 interface BudgetManagerProps {
   report: MonthlyBudgetReport;
   canWrite: boolean;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
 }
 
 function parseMonthLabel(yearMonth: string): string {
@@ -48,6 +42,8 @@ function getAdjacentMonth(yearMonth: string, offset: number): string {
 }
 
 export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
+  const currency = useBookCurrency();
+  const formatCurrency = useMoney();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -347,7 +343,7 @@ export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
                   <div className="flex items-center justify-end gap-4 sm:w-1/4">
                     {isEditing ? (
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-slate-400 font-mono">$</span>
+                        <span className="text-xs text-slate-400 font-mono">{currency}</span>
                         <input
                           type="number"
                           step="10"

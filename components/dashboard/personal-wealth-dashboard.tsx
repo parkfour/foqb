@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Building, Home, Landmark, LineChart, Wallet } from "lucide-react";
 import type { NetWorthBucket, NetWorthSnapshotData } from "@/lib/net-worth/engine";
 import { BreakdownDialog, type Breakdown, type BreakdownLine } from "./breakdown-dialog";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface WealthDashboardProps {
   data: NetWorthSnapshotData;
@@ -14,15 +15,12 @@ interface WealthDashboardProps {
   };
 }
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val);
-}
-
 export function PersonalWealthDashboard({
   data,
   history,
   businessEquity,
 }: WealthDashboardProps) {
+  const formatCurrency = useMoney();
   const [timeframe, setTimeframe] = useState<"1M" | "6M" | "1Y" | "ALL">("1Y");
   const [includeBusiness, setIncludeBusiness] = useState(false);
   const [breakdown, setBreakdown] = useState<Breakdown | null>(null);

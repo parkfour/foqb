@@ -12,6 +12,7 @@ import { removeItem } from "@/lib/plaid/client";
 import { decryptToken } from "@/lib/crypto/token-encryption";
 import { MAX_LOGO_BYTES } from "@/lib/org/logo";
 import { instanceTimezone } from "@/lib/org/book-clock";
+import { isValidCurrency } from "@/lib/money";
 
 const MEMBER_CREATE_LIMIT = 20;
 
@@ -268,6 +269,27 @@ export async function setOrganizationTimezone(formData: FormData): Promise<void>
     p_instance_default: instanceTimezone(),
   });
 
+  if (error) {
+    redirect(`/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/", "layout");
+}
+
+// Owner-only. The database refuses a change once the book has entries.
+export async function setOrganizationCurrency(formData: FormData): Promise<void> {
+  const organizationId = formData.get("organizationId") as string;
+  const currency = formData.get("currency") as string;
+  if (!organizationId) return;
+  if (!isValidCurrency(currency)) {
+    redirect(`/settings?error=${encodeURIComponent("That isn't a currency code")}`);
+  }
+  if ((await getCurrentUserRole(organizationId)) !== "owner") {
+    redirect(`/settings?error=${encodeURIComponent("Only an owner can change the book's currency")}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("organizations").update({ currency }).eq("id", organizationId);
   if (error) {
     redirect(`/settings?error=${encodeURIComponent(error.message)}`);
   }

@@ -9,6 +9,8 @@ import { requireCurrentPolicyAcceptance } from "@/lib/legal/policy";
 import { getSourceCodeUrl } from "@/lib/legal/source-code";
 import { getBookClock } from "@/lib/org/book-clock";
 import { BookClockProvider } from "@/components/providers/book-clock-provider";
+import { BookCurrencyProvider } from "@/components/providers/book-currency-provider";
+import { getBookCurrency } from "@/lib/org/book-currency";
 import { EnabledPluginsProvider } from "@/components/plugins/plugin-slot";
 import { enabledPluginIds } from "@/lib/plugins/loader";
 import { pluginPageLinks } from "@/lib/plugins/pages";
@@ -21,10 +23,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     getUserOrganizations(),
     isSiteAdmin(),
   ]);
-  const [role, orgStatus, bookClock] = await Promise.all([
+  const [role, orgStatus, bookClock, currency] = await Promise.all([
     getCurrentUserRole(currentOrgId),
     getOrgStatus(currentOrgId),
     getBookClock(currentOrgId),
+    getBookCurrency(currentOrgId),
   ]);
 
   let inventoryEnabled = false;
@@ -75,7 +78,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             </div>
           )}
           <BookClockProvider timeZone={bookClock.timeZone} changes={bookClock.changes}>
-            <EnabledPluginsProvider ids={enabledPluginIds()}>{children}</EnabledPluginsProvider>
+            <BookCurrencyProvider currency={currency}>
+              <EnabledPluginsProvider ids={enabledPluginIds()}>{children}</EnabledPluginsProvider>
+            </BookCurrencyProvider>
           </BookClockProvider>
         </main>
       </div>

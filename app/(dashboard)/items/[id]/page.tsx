@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { fetchItemSales } from "@/lib/reports/item-sales";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 const STATUS_LABELS: Record<string, string> = {
   open: "Open",
@@ -20,13 +22,11 @@ interface ItemRow {
   accounts: { account_number: string; name: string } | null;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
 export default async function ItemSalesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     redirect("/");

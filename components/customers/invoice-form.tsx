@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface CustomerOption {
   id: string;
@@ -51,6 +52,7 @@ export function InvoiceForm({
   defaultTaxRate?: number;
   showAccountCodes?: boolean;
 }) {
+  const formatCurrency = useMoney();
   const router = useRouter();
   const [customerId, setCustomerId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -266,7 +268,7 @@ export function InvoiceForm({
             + Add line
           </button>
           <div className="flex flex-col items-end gap-1 text-sm">
-            <p className="text-slate-600">Subtotal: ${subtotal.toFixed(2)}</p>
+            <p className="text-slate-600">Subtotal: {formatCurrency(subtotal)}</p>
             <label className="flex items-center gap-2 text-slate-600">
               Tax rate
               <input
@@ -279,8 +281,8 @@ export function InvoiceForm({
               />
               %
             </label>
-            <p className="text-slate-600">Tax: ${taxAmount.toFixed(2)}</p>
-            <p className="font-medium text-slate-900">Total: ${total.toFixed(2)}</p>
+            <p className="text-slate-600">Tax: {formatCurrency(taxAmount)}</p>
+            <p className="font-medium text-slate-900">Total: {formatCurrency(total)}</p>
           </div>
         </div>
 

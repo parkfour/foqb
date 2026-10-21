@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 export interface BreakdownLine {
   name: string;
@@ -20,13 +21,10 @@ export interface Breakdown {
   sections: BreakdownSection[];
 }
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val);
-}
-
 // What's in a figure on the dashboard: each account or property behind it,
 // linked to where it's kept. Opens while `breakdown` is set.
 export function BreakdownDialog({ breakdown, onClose }: { breakdown: Breakdown | null; onClose: () => void }) {
+  const formatCurrency = useMoney();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {

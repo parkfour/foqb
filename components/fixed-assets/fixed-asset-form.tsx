@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createFixedAsset } from "@/app/(dashboard)/fixed-assets/actions";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface AccountOption {
   id: string;
@@ -22,6 +23,7 @@ export function FixedAssetForm({
   expenseAccounts: AccountOption[];
   showAccountCodes?: boolean;
 }) {
+  const formatCurrency = useMoney();
   const [name, setName] = useState("");
   const [assetAccountId, setAssetAccountId] = useState("");
   const [accumulatedDepreciationAccountId, setAccumulatedDepreciationAccountId] = useState("");
@@ -184,7 +186,7 @@ export function FixedAssetForm({
         </div>
 
         <p className="text-sm text-slate-600">
-          Monthly depreciation: <span className="font-medium text-slate-900">${monthly.toFixed(2)}</span>
+          Monthly depreciation: <span className="font-medium text-slate-900">{formatCurrency(monthly)}</span>
         </p>
 
         <button

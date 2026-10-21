@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current";
 import { voidBill } from "../actions";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface RawBill {
   id: string;
@@ -14,10 +16,6 @@ interface RawBill {
   bill_payments: { amount: number }[];
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
 const STATUS_STYLES: Record<string, string> = {
   open: "bg-amber-100 text-amber-800",
   partial: "bg-sky-100 text-sky-800",
@@ -27,6 +25,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function BillsListPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     return (

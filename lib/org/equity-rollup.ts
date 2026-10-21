@@ -14,9 +14,12 @@ export function computeBookEquity(assets: number, liabilities: number): number {
   return Math.round((assets - liabilities) * 100) / 100;
 }
 
+// Only businesses kept in `currency` (the household's) are added up: nothing
+// converts between currencies.
 export async function calculateUserBusinessEquity(
   userId: string,
   supabaseClient?: Awaited<ReturnType<typeof createClient>>,
+  currency = "USD",
 ): Promise<{
   businesses: BusinessEquityRollup[];
   totalBusinessEquity: number;
@@ -26,7 +29,7 @@ export async function calculateUserBusinessEquity(
   // Find business organizations owned by this user
   const { data: members, error: memError } = await supabase
     .from("organization_members")
-    .select("organization_id, role, organizations(id, name, workspace_type, timezone)")
+    .select("organization_id, role, organizations(id, name, workspace_type, timezone, currency)")
     .eq("user_id", userId)
     .eq("role", "owner");
 
@@ -37,12 +40,22 @@ export async function calculateUserBusinessEquity(
   interface OrgMemberRecord {
     organization_id: string;
     role: string;
-    organizations?: { id: string; name: string; workspace_type?: string; timezone?: string | null } | null;
+    organizations?: {
+      id: string;
+      name: string;
+      workspace_type?: string;
+      timezone?: string | null;
+      currency?: string;
+    } | null;
   }
 
   const businessOrgs: { id: string; name: string; timeZone: string }[] = [];
   for (const m of members as unknown as OrgMemberRecord[]) {
-    if (m.organizations && (m.organizations.workspace_type === "business" || !m.organizations.workspace_type)) {
+    if (
+      m.organizations &&
+      (m.organizations.workspace_type === "business" || !m.organizations.workspace_type) &&
+      (m.organizations.currency ?? "USD") === currency
+    ) {
       businessOrgs.push({
         id: m.organizations.id,
         name: m.organizations.name,

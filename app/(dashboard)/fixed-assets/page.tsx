@@ -5,6 +5,8 @@ import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current
 import { monthlyDepreciationAmount } from "@/lib/fixed-assets/depreciate";
 import { deleteFixedAsset, recordDepreciationNow } from "./actions";
 import { bookToday } from "@/lib/org/book-clock";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface FixedAssetRow {
   id: string;
@@ -16,12 +18,10 @@ interface FixedAssetRow {
   next_depreciation_date: string;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
 export default async function FixedAssetsPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     return (

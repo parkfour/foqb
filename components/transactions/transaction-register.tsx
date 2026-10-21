@@ -16,6 +16,7 @@ import {
   splitBankTransactionAction,
 } from "@/app/(dashboard)/transactions/actions";
 import { createAccountQuickAction } from "@/app/(dashboard)/accounts/actions";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 export interface RegisterTransaction {
   id: string;
@@ -102,10 +103,6 @@ interface PayeePrompt {
   text: string;
 }
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val);
-}
-
 export function TransactionRegister({
   transactions: initialTransactions,
   accounts: initialAccounts,
@@ -121,6 +118,7 @@ export function TransactionRegister({
   onSavePayeeRule = savePayeeRuleAction,
   onCreateAccount = createAccountQuickAction,
 }: TransactionRegisterProps) {
+  const formatCurrency = useMoney();
   const [transactions, setTransactions] = useState<RegisterTransaction[]>(initialTransactions);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

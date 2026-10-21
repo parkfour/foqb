@@ -1,8 +1,6 @@
 import { AGING_BUCKETS, fetchApAging } from "@/lib/reports/aging";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 const BUCKET_LABELS: Record<string, string> = {
   current: "Current",
@@ -13,6 +11,8 @@ const BUCKET_LABELS: Record<string, string> = {
 };
 
 export async function ApAgingReport({ orgId, asOf }: { orgId: string; asOf: string }) {
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
   const rows = await fetchApAging(orgId, asOf);
   const totalDue = rows.reduce((sum, r) => sum + r.remaining, 0);
 

@@ -5,6 +5,8 @@ import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current
 import { createPropertyAction, deletePropertyAction, updatePropertyValueAction } from "./actions";
 import { formatTimestampDate } from "@/lib/time/book-time";
 import { getBookClock } from "@/lib/org/book-clock";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface PropertyRow {
   id: string;
@@ -19,12 +21,10 @@ interface PropertyRow {
   last_valuation_at: string | null;
 }
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val);
-}
-
 export default async function PropertiesPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
   const { timeZone } = await getBookClock(orgId);
 
   if (!orgId) {

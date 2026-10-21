@@ -17,6 +17,8 @@ import {
   reopenBankTransaction,
   voidJournalEntry,
 } from "./actions";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface AccountOption {
   id: string;
@@ -47,8 +49,6 @@ function categoryOf(tx: BankTransactionRow): string | null {
   return lines.length === 1 ? lines[0].account_id : null;
 }
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-
 interface JournalEntryRow {
   id: string;
   entry_date: string;
@@ -59,6 +59,8 @@ interface JournalEntryRow {
 
 export default async function TransactionsPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     return (
@@ -172,12 +174,12 @@ export default async function TransactionsPage() {
                       {tx.name ?? "—"}
                       {tx.bank_change && (
                         <p className="mt-1 text-xs text-amber-700">
-                          Bank changed this: {usd.format(tx.amount)} on {tx.date} →{" "}
-                          {usd.format(tx.bank_change.amount)} on {tx.bank_change.date}
+                          Bank changed this: {formatCurrency(tx.amount)} on {tx.date} →{" "}
+                          {formatCurrency(tx.bank_change.amount)} on {tx.bank_change.date}
                         </p>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-slate-900">{usd.format(tx.amount)}</td>
+                    <td className="px-5 py-3 text-slate-900">{formatCurrency(tx.amount)}</td>
                     <td className="px-5 py-3">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -278,7 +280,7 @@ export default async function TransactionsPage() {
                           <input type="hidden" name="otherAccountId" value={transfers.get(tx.id)!.account_id ?? ""} />
                           <button
                             type="submit"
-                            title={`Book both sides as one transfer: ${usd.format(transfers.get(tx.id)!.amount)} on ${transfers.get(tx.id)!.date}`}
+                            title={`Book both sides as one transfer: ${formatCurrency(transfers.get(tx.id)!.amount)} on ${transfers.get(tx.id)!.date}`}
                             className="rounded-md border border-sky-300 bg-sky-50 px-2 py-1 text-xs font-medium text-sky-800 hover:bg-sky-100"
                           >
                             Transfer {tx.amount < 0 ? "to" : "from"} {transfers.get(tx.id)!.accounts?.name ?? "another account"}
@@ -364,10 +366,7 @@ export default async function TransactionsPage() {
                       <td className="px-5 py-3 text-slate-600">{entry.entry_date}</td>
                       <td className="px-5 py-3 text-slate-900">{entry.memo ?? "—"}</td>
                       <td className="px-5 py-3 text-slate-900">
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                        }).format(amount)}
+                        {formatCurrency(amount)}
                       </td>
                       <td className="px-5 py-3">
                         <span

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createRecurringBill } from "@/app/(dashboard)/vendors/recurring/actions";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface VendorOption {
   id: string;
@@ -38,6 +39,7 @@ export function RecurringBillForm({
   accounts: AccountOption[];
   showAccountCodes?: boolean;
 }) {
+  const formatCurrency = useMoney();
   const [vendorId, setVendorId] = useState("");
   const [frequency, setFrequency] = useState<"weekly" | "monthly" | "yearly">("monthly");
   const today = useBookToday();
@@ -201,7 +203,7 @@ export function RecurringBillForm({
           >
             + Add line
           </button>
-          <p className="text-sm font-medium text-slate-900">Total: ${total.toFixed(2)}</p>
+          <p className="text-sm font-medium text-slate-900">Total: {formatCurrency(total)}</p>
         </div>
 
         <button

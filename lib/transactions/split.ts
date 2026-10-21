@@ -114,7 +114,7 @@ export async function submitSplitTransaction(
       error:
         validation.difference === 0
           ? "Every split line needs an account and an amount above zero"
-          : `Split amounts must match transaction total exactly (difference: $${validation.difference.toFixed(2)})`,
+          : `Split amounts must match transaction total exactly (difference: ${validation.difference.toFixed(2)})`,
     };
   }
 

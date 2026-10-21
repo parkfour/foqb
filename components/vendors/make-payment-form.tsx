@@ -5,6 +5,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface VendorOption {
   id: string;
@@ -44,6 +45,7 @@ export function MakePaymentForm({
   bankTransactions: BankTransactionOption[];
   showAccountCodes?: boolean;
 }) {
+  const formatCurrency = useMoney();
   const router = useRouter();
   const [vendorId, setVendorId] = useState("");
   const [billId, setBillId] = useState("");
@@ -137,14 +139,14 @@ export function MakePaymentForm({
           <option value="">{vendorId ? "Open bill…" : "Select a vendor first"}</option>
           {vendorBills.map((bill) => (
             <option key={bill.id} value={bill.id}>
-              {bill.billNumber} — ${bill.remaining.toFixed(2)} remaining
+              {bill.billNumber} — {formatCurrency(bill.remaining)} remaining
             </option>
           ))}
         </select>
 
         {selectedBill && (
           <p className="text-sm text-slate-500">
-            Remaining balance: ${selectedBill.remaining.toFixed(2)}
+            Remaining balance: {formatCurrency(selectedBill.remaining)}
           </p>
         )}
 
@@ -161,7 +163,7 @@ export function MakePaymentForm({
               <option value="">None — enter manually</option>
               {bankTransactions.map((tx) => (
                 <option key={tx.id} value={tx.id}>
-                  {tx.date} — {tx.name ?? "Withdrawal"} — ${Math.abs(tx.amount).toFixed(2)}
+                  {tx.date} — {tx.name ?? "Withdrawal"} — {formatCurrency(Math.abs(tx.amount))}
                 </option>
               ))}
             </select>

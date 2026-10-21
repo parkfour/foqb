@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { adjustInventoryQuantity, toggleInventoryItemActive, deleteInventoryItem } from "./actions";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface AccountOption {
   id: string;
@@ -25,6 +27,8 @@ interface InventoryItemRow {
 
 export default async function InventoryPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+
 
   if (!orgId) {
     return (
@@ -140,7 +144,7 @@ export default async function InventoryPage() {
                         item.quantity_on_hand
                       )}
                     </td>
-                    <td className="px-5 py-3 text-slate-600">{item.unit_cost.toFixed(2)}</td>
+                    <td className="px-5 py-3 text-slate-600">{formatMoney(item.unit_cost, currency)}</td>
                     <td className="px-5 py-3 text-slate-600">
                       {item.accounts ? formatAccountLabel(item.accounts, showAccountCodes) : "—"}
                     </td>

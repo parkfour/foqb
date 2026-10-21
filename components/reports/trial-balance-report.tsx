@@ -2,12 +2,12 @@ import Link from "next/link";
 import { fetchTrialBalance } from "@/lib/reports";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { getUseAccountCodes } from "@/lib/org/current";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 export async function TrialBalanceReport({ orgId, asOf }: { orgId: string; asOf: string }) {
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
   const [rows, showAccountCodes] = await Promise.all([
     fetchTrialBalance(orgId, asOf),
     getUseAccountCodes(orgId),

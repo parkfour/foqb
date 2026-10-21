@@ -75,7 +75,7 @@ export async function buildOrganizationSnapshot(
     supabase
       .from("organizations")
       .select(
-        "id, name, status, period_lock_date, inventory_enabled, use_account_codes, tax_form, ar_account_id, ap_account_id, tax_payable_account_id, default_tax_rate, workspace_type, timezone, created_at",
+        "id, name, status, period_lock_date, inventory_enabled, use_account_codes, tax_form, ar_account_id, ap_account_id, tax_payable_account_id, default_tax_rate, workspace_type, timezone, currency, created_at",
       )
       .eq("id", orgId)
       .maybeSingle(),

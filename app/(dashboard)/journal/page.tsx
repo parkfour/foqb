@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current";
 import { voidJournalEntry } from "../transactions/actions";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 const PER_PAGE = 50;
 
@@ -19,8 +21,6 @@ interface EntryRow {
   bank_transactions: { id: string }[];
 }
 
-const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-
 // Every journal entry, newest first, to find one the register doesn't show
 // (an opening balance, a manual entry) and void it.
 export default async function JournalPage({ searchParams }: JournalPageProps) {
@@ -28,6 +28,8 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
   const q = (params.q ?? "").trim().slice(0, 100);
   const page = Math.max(0, Math.floor(Number(params.page)) || 0);
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     return (
@@ -100,7 +102,7 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
                     <td className="whitespace-nowrap px-5 py-3 text-slate-600">{entry.entry_date}</td>
                     <td className="px-5 py-3 text-slate-900">{entry.memo ?? "—"}</td>
                     <td className="px-5 py-3 text-xs text-slate-600">{accounts.join(", ")}</td>
-                    <td className="px-5 py-3 text-right font-mono text-slate-900">{money.format(amount)}</td>
+                    <td className="px-5 py-3 text-right font-mono text-slate-900">{formatCurrency(amount)}</td>
                     <td className="px-5 py-3 text-xs text-slate-600">{entry.status}</td>
                     <td className="px-5 py-3 text-right text-xs">
                       {userCanWrite && entry.status === "posted" && fromFeed && (

@@ -7,13 +7,10 @@ import { useState, type DragEvent } from "react";
 import type { BillPrefill, SlotComponent } from "@/lib/plugins/types";
 import { matchVendor, parseReceipt, type ParsedReceipt } from "./parse";
 import { readReceipt, type ReceiptText } from "./read-receipt";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 // Below this, OCR has probably misread something.
 const LOW_CONFIDENCE = 70;
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
 
 function toPrefill(parsed: ParsedReceipt, vendorId: string | undefined): BillPrefill {
   const lines: NonNullable<BillPrefill["lines"]> = parsed.items
@@ -38,6 +35,7 @@ interface Outcome {
 }
 
 export const ReceiptScanner: SlotComponent<"bill.header"> = ({ context }) => {
+  const formatCurrency = useMoney();
   const { vendors, prefill } = context;
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

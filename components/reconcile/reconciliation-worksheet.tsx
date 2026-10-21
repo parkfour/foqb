@@ -3,10 +3,7 @@
 import { useMemo, useState } from "react";
 import { finishReconciliation } from "@/app/(dashboard)/reconcile/actions";
 import { signedAmount, type ReconciliationLine } from "@/lib/reconcile/shared";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 export function ReconciliationWorksheet({
   reconciliationId,
@@ -25,6 +22,7 @@ export function ReconciliationWorksheet({
   lines: ReconciliationLine[];
   canWrite: boolean;
 }) {
+  const formatCurrency = useMoney();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const clearedTotal = useMemo(

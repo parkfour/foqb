@@ -7,6 +7,7 @@ import { useBookToday } from "@/components/providers/book-clock-provider";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
 import type { BillPrefill } from "@/lib/plugins/types";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface VendorOption {
   id: string;
@@ -41,6 +42,7 @@ export function BillForm({
   accounts: AccountOption[];
   showAccountCodes?: boolean;
 }) {
+  const formatCurrency = useMoney();
   const router = useRouter();
   const [vendorId, setVendorId] = useState("");
   const [billNumber, setBillNumber] = useState("");
@@ -241,7 +243,7 @@ export function BillForm({
           >
             + Add line
           </button>
-          <p className="text-sm font-medium text-slate-900">Total: ${total.toFixed(2)}</p>
+          <p className="text-sm font-medium text-slate-900">Total: {formatCurrency(total)}</p>
         </div>
 
         <button

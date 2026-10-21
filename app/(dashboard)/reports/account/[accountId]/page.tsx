@@ -7,16 +7,14 @@ import { formatAccountLabel } from "@/lib/accounts/format";
 import { fetchAccountLedger, type AccountLedgerRow } from "@/lib/reports";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { bookToday } from "@/lib/org/book-clock";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface AccountRow {
   id: string;
   account_number: string;
   name: string;
   type: "asset" | "liability" | "equity" | "revenue" | "expense";
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 }
 
 function withRunningBalance(rows: AccountLedgerRow[], isDebitNormal: boolean) {
@@ -36,6 +34,8 @@ export default async function AccountLedgerPage({ params, searchParams }: PagePr
   const { accountId } = await params;
   const sp = await searchParams;
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     redirect("/");

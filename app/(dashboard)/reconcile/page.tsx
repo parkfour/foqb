@@ -8,6 +8,8 @@ import { PluginSlot } from "@/components/plugins/plugin-slot";
 import { startReconciliation, cancelReconciliation } from "./actions";
 import { formatTimestamp, formatTimestampDate } from "@/lib/time/book-time";
 import { bookToday, getBookClock } from "@/lib/org/book-clock";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 interface AccountOption {
   id: string;
@@ -27,12 +29,10 @@ interface ReconciliationRow {
   accounts: { account_number: string; name: string } | null;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
 export default async function ReconcilePage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
   const { timeZone } = await getBookClock(orgId);
 
   if (!orgId) {

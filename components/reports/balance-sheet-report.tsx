@@ -2,10 +2,8 @@ import Link from "next/link";
 import { fetchBalanceSheet, type BalanceSheetRow } from "@/lib/reports";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { getUseAccountCodes } from "@/lib/org/current";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 // The synthetic Retained Earnings row (account_id null) has no real account
 // behind it, so it isn't a drill-down link — just plain text.
@@ -32,6 +30,8 @@ function AccountCell({
 }
 
 export async function BalanceSheetReport({ orgId, asOf }: { orgId: string; asOf: string }) {
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
   const [rows, showAccountCodes] = await Promise.all([
     fetchBalanceSheet(orgId, asOf),
     getUseAccountCodes(orgId),

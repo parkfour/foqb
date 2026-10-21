@@ -2,10 +2,8 @@ import Link from "next/link";
 import { fetchIncomeStatement } from "@/lib/reports";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { getUseAccountCodes } from "@/lib/org/current";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 export async function IncomeStatementReport({
   orgId,
@@ -16,6 +14,8 @@ export async function IncomeStatementReport({
   start: string;
   end: string;
 }) {
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
   const [rows, showAccountCodes] = await Promise.all([
     fetchIncomeStatement(orgId, start, end),
     getUseAccountCodes(orgId),

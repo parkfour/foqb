@@ -6,6 +6,7 @@ import {
   validateSplitTransaction,
   type SplitLineInput,
 } from "@/lib/transactions/split";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 export interface SplitTransactionModalProps {
   isOpen: boolean;
@@ -33,10 +34,6 @@ interface ModalLine {
   memo: string;
 }
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val);
-}
-
 export function SplitTransactionModal({
   isOpen,
   onClose,
@@ -44,6 +41,7 @@ export function SplitTransactionModal({
   accounts,
   onSave,
 }: SplitTransactionModalProps) {
+  const formatCurrency = useMoney();
   const baseId = useId();
   const [lines, setLines] = useState<ModalLine[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);

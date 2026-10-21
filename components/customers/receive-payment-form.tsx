@@ -5,6 +5,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface CustomerOption {
   id: string;
@@ -44,6 +45,7 @@ export function ReceivePaymentForm({
   bankTransactions: BankTransactionOption[];
   showAccountCodes?: boolean;
 }) {
+  const formatCurrency = useMoney();
   const router = useRouter();
   const [customerId, setCustomerId] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
@@ -139,14 +141,14 @@ export function ReceivePaymentForm({
           </option>
           {customerInvoices.map((invoice) => (
             <option key={invoice.id} value={invoice.id}>
-              {invoice.invoiceNumber} — ${invoice.remaining.toFixed(2)} remaining
+              {invoice.invoiceNumber} — {formatCurrency(invoice.remaining)} remaining
             </option>
           ))}
         </select>
 
         {selectedInvoice && (
           <p className="text-sm text-slate-500">
-            Remaining balance: ${selectedInvoice.remaining.toFixed(2)}
+            Remaining balance: {formatCurrency(selectedInvoice.remaining)}
           </p>
         )}
 
@@ -163,7 +165,7 @@ export function ReceivePaymentForm({
               <option value="">None — enter manually</option>
               {bankTransactions.map((tx) => (
                 <option key={tx.id} value={tx.id}>
-                  {tx.date} — {tx.name ?? "Deposit"} — ${tx.amount.toFixed(2)}
+                  {tx.date} — {tx.name ?? "Deposit"} — {formatCurrency(tx.amount)}
                 </option>
               ))}
             </select>

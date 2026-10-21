@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { fetchTaxLineReport, type TaxLineReportRow } from "@/lib/reports";
 import { FORM_NAMES } from "@/lib/tax/forms";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 function accountsHref(row: TaxLineReportRow, start: string, end: string): string {
   const params = new URLSearchParams({ start, end, type: row.account_type });
@@ -35,6 +33,8 @@ export async function TaxLineReport({
   start: string;
   end: string;
 }) {
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
   const rows = await fetchTaxLineReport(orgId, start, end);
   const forms = new Set(rows.map((r) => r.form).filter(Boolean)).size;
   const income = rows.filter((r) => r.account_type === "revenue");

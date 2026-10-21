@@ -23,6 +23,7 @@ import {
   setBankLinking,
   setOwnerRemovalSecret,
   updateMemberRole,
+  setOrganizationCurrency,
   updateOrganizationSettings,
   uploadOrganizationLogo,
 } from "./actions";
@@ -38,6 +39,7 @@ interface EnrollmentRow {
 
 interface OrganizationRow {
   name: string;
+  currency: string;
   period_lock_date: string | null;
   inventory_enabled: boolean;
   use_account_codes: boolean;
@@ -115,7 +117,7 @@ export default async function SettingsPage({
     supabase
       .from("organizations")
       .select(
-        "name, period_lock_date, inventory_enabled, use_account_codes, bank_linking_enabled, tax_form, ar_account_id, ap_account_id, tax_payable_account_id, default_tax_rate, logo_data_url",
+        "name, currency, period_lock_date, inventory_enabled, use_account_codes, bank_linking_enabled, tax_form, ar_account_id, ap_account_id, tax_payable_account_id, default_tax_rate, logo_data_url",
       )
       .eq("id", orgId)
       .single(),
@@ -147,6 +149,15 @@ export default async function SettingsPage({
   const members = (memberData as MemberRow[] | null) ?? [];
   const userCanWrite = canWrite(role);
   const isOwner = role === "owner";
+  const { count: entryCount } = await supabase
+    .from("journal_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId);
+  const { count: feedCount } = await supabase
+    .from("bank_transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId);
+  const bookHasEntries = (entryCount ?? 0) + (feedCount ?? 0) > 0;
   const ownerCount = members.filter((m) => m.role === "owner").length;
   const orgAllowsBanks = organization?.bank_linking_enabled ?? true;
   const bankLinkingBlocked = !siteSettings.bankLinkingEnabled
@@ -474,6 +485,39 @@ export default async function SettingsPage({
           usesInstanceDefault={bookClock.usesInstanceDefault}
           isOwner={isOwner}
         />
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Currency</h2>
+        <p className="mb-2 text-xs text-slate-500">
+          Every amount in this book is in its currency. It can be changed only while nothing has been booked or
+          imported; nothing is converted between books.
+        </p>
+        {isOwner && !bookHasEntries ? (
+          <form action={setOrganizationCurrency} className="flex items-center gap-2">
+            <input type="hidden" name="organizationId" value={orgId} />
+            <select
+              name="currency"
+              defaultValue={organization?.currency ?? "USD"}
+              aria-label="Currency"
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            >
+              {Intl.supportedValuesOf("currency").map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Save
+            </button>
+          </form>
+        ) : (
+          <p className="text-sm font-medium text-slate-700">{organization?.currency ?? "USD"}</p>
+        )}
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

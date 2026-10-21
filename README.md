@@ -140,6 +140,7 @@ For manual local development without Docker, running tests, or building from sou
 | [The bank feed](docs/BANK_FEED.md) | Bank history, updates, editing, transfers between your own accounts, reconciling, starting the books from statements |
 | [Households](docs/HOUSEHOLD.md) | Net worth, register and split transactions, budget, properties, journal entries, tax lines |
 | [Book timezones](docs/TIMEZONES.md) | What "today" means for each organization, and changing it |
+| [Book currency](docs/CURRENCY.md) | Each organization's currency, and why it's fixed once anything is booked |
 | [Self-hosting](docs/SELF_HOSTING.md) | Running in production: Docker, Vercel + Supabase, reverse proxy, CI/CD, backups, and Plaid keys |
 | [Security procedures](docs/SECURITY_PROCEDURES.md) | Operational security, access controls, vulnerability response, and incident handling |
 | [Data retention policy](docs/DATA_RETENTION_POLICY.md) | Data lifecycles, backup schedules, and deletion rules |

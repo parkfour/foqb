@@ -9,6 +9,8 @@ import { calculateUserBusinessEquity } from "@/lib/org/equity-rollup";
 import { bookToday } from "@/lib/org/book-clock";
 import { monthStart } from "@/lib/time/book-time";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
+import { formatMoney } from "@/lib/money";
+import { getBookCurrency } from "@/lib/org/book-currency";
 
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -68,12 +70,10 @@ interface RecentTransaction {
   status: "unreconciled" | "matched" | "ignored";
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
 export default async function DashboardPage() {
   const orgId = await getCurrentOrgId();
+  const currency = await getBookCurrency(orgId);
+  const formatCurrency = (value: number) => formatMoney(value, currency);
 
   if (!orgId) {
     return <CreateOrRestoreOrg />;
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
     const [netWorthData, history, businessEquityRollup] = await Promise.all([
       calculateHouseholdNetWorth(orgId, today, supabase),
       fetchNetWorthHistory(orgId, "1Y", today, supabase),
-      user?.id ? calculateUserBusinessEquity(user.id, supabase) : Promise.resolve({ businesses: [], totalBusinessEquity: 0 }),
+      user?.id ? calculateUserBusinessEquity(user.id, supabase, currency) : Promise.resolve({ businesses: [], totalBusinessEquity: 0 }),
     ]);
 
     return (

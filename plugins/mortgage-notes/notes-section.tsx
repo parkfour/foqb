@@ -18,10 +18,7 @@ import {
   type NoteSummary,
 } from "./actions";
 import { levelPayment } from "./schedule";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 const input = "mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-xs";
 
@@ -91,7 +88,7 @@ const escape = (s: string | null) =>
   (s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 // The borrower's statement, in a window of its own to print.
-function printStatement(r: Form1098Report) {
+function printStatement(r: Form1098Report, formatCurrency: (value: number) => string) {
   const html = `<!doctype html><meta charset="utf-8"><title>Mortgage interest statement ${r.year}</title>
 <body style="font-family:system-ui,sans-serif;font-size:14px;max-width:640px;margin:32px auto">
 <h1 style="font-size:18px">Mortgage Interest Statement (Form 1098 information), ${r.year}</h1>
@@ -114,6 +111,7 @@ ${r.escrowReceived || r.escrowPaidOut ? boxRow("Escrow received / paid out", `${
 
 export const MortgageNotesSection: SlotComponent<"properties.sections"> = ({ context }) => {
   const { organizationId } = context;
+  const formatCurrency = useMoney();
   const [notes, setNotes] = useState<NoteSummary[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -347,7 +345,7 @@ export const MortgageNotesSection: SlotComponent<"properties.sections"> = ({ con
           </p>
           <button
             type="button"
-            onClick={() => printStatement(report)}
+            onClick={() => printStatement(report, formatCurrency)}
             className="mt-3 rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white hover:bg-slate-800"
           >
             Borrower&rsquo;s statement to print

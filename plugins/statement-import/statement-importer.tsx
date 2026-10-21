@@ -13,12 +13,9 @@ import { readStatementLines } from "./read-statement";
 import { importStatementAction } from "./actions";
 import { createAccountQuickAction } from "@/app/(dashboard)/accounts/actions";
 import type { ImportResult } from "./import";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 type Account = SlotContextMap["reconcile.header"]["accounts"][number];
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
 
 // The account a statement most likely belongs to: the right type, with the
 // statement's last four digits in its name (linked accounts are "Name ••1234").
@@ -48,6 +45,7 @@ function resultText(r: ImportResult): string {
 }
 
 export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }) => {
+  const formatCurrency = useMoney();
   const router = useRouter();
   const [found, setFound] = useState<Found[]>([]);
   const [error, setError] = useState<string | null>(null);

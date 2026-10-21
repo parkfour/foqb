@@ -8,6 +8,7 @@ import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import { shareOrDownloadFile } from "@/lib/pwa/share-or-download";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
+import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface CustomerInfo {
   name: string;
@@ -37,10 +38,6 @@ interface InvoiceDetailProps {
   taxAmount: number;
   total: number;
   remaining: number;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 }
 
 // Renders the invoice to an off-DOM canvas (html2canvas) and embeds that as
@@ -85,6 +82,7 @@ export function InvoiceDetail({
   total,
   remaining,
 }: InvoiceDetailProps) {
+  const formatCurrency = useMoney();
   const printableRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
