@@ -37,23 +37,26 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   const supabase = await createClient();
   const role = await getCurrentUserRole(orgId);
 
-  // Read one row past maxRows, to know whether there are older ones.
-  const readTransactions = () =>
-    readAllRows<unknown>((from, to) => {
-      let query = supabase.from("bank_transactions").select(TXN_COLUMNS).eq("organization_id", orgId);
-      if (account) query = query.eq("account_id", account);
-      return query.order("date", { ascending: false }).order("id").range(from, to);
-    }, maxRows);
+  const { data: rawAccounts } = await supabase
+    .from("accounts")
+    .select("id, account_number, name, type, has_bank_feed")
+    .eq("organization_id", orgId)
+    .eq("is_active", true)
+    .order("account_number");
+  // An account no bank feeds, like an income or expense category: the
+  // transactions categorized to it, splits included, rather than none.
+  const byCategory = Boolean(account) && rawAccounts?.find((a) => a.id === account)?.has_bank_feed === false;
 
-  const [{ data: rawAccounts }, txnRows] = await Promise.all([
-    supabase
-      .from("accounts")
-      .select("id, account_number, name, type")
-      .eq("organization_id", orgId)
-      .eq("is_active", true)
-      .order("account_number"),
-    readTransactions(),
-  ]);
+  // Read one row past maxRows, to know whether there are older ones.
+  const txnRows = await readAllRows<unknown>((from, to) => {
+    let query = supabase
+      .from("bank_transactions")
+      .select(byCategory ? `${TXN_COLUMNS}, category:journal_entries!inner(journal_lines!inner(account_id))` : TXN_COLUMNS)
+      .eq("organization_id", orgId);
+    if (byCategory) query = query.eq("category.journal_lines.account_id", account!);
+    else if (account) query = query.eq("account_id", account);
+    return query.order("date", { ascending: false }).order("id").range(from, to);
+  }, maxRows);
   const hasOlder = txnRows.length > maxRows;
   const rawTxns = hasOlder ? txnRows.slice(0, maxRows) : txnRows;
 
@@ -62,6 +65,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
     account_number: a.account_number,
     name: a.name,
     type: a.type,
+    has_bank_feed: a.has_bank_feed,
   }));
 
 interface RawJournalLine {

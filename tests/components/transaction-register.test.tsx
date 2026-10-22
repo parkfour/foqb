@@ -72,6 +72,20 @@ describe("TransactionRegister", () => {
     }
   });
 
+  it("lists categories apart from bank accounts, and filters to one", () => {
+    const accounts = mockAccounts.map((a) => ({ ...a, has_bank_feed: a.id === "acc-checking" }));
+    render(<TransactionRegister transactions={mockTransactions} accounts={accounts} />);
+    const filter = screen.getByLabelText(/filter by account/i);
+    const categories = within(filter).getByRole("group", { name: "Categories" });
+    expect(within(categories).getByRole("option", { name: "Salary Income" })).toBeInTheDocument();
+    expect(within(categories).queryByRole("option", { name: "Checking Account" })).not.toBeInTheDocument();
+
+    fireEvent.change(filter, { target: { value: "acc-salary" } });
+    expect(pushMock).toHaveBeenCalledWith("/register?account=acc-salary");
+    expect(screen.getByText("Employer Payroll")).toBeInTheDocument();
+    expect(screen.queryByText("Whole Foods")).not.toBeInTheDocument();
+  });
+
   it("shows a running total only once a single account is selected", () => {
     render(<TransactionRegister transactions={mockTransactions} accounts={mockAccounts} />);
     expect(screen.queryByText("$2,879.50")).not.toBeInTheDocument();

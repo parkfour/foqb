@@ -54,6 +54,7 @@ export interface RegisterAccount {
   account_number?: string;
   name: string;
   type?: string;
+  has_bank_feed?: boolean;
 }
 
 export interface TransactionRegisterProps {
@@ -137,7 +138,14 @@ export function TransactionRegister({
   // Filter transactions
   const filtered = useMemo(() => {
     return transactions.filter((tx) => {
-      if (accountFilter !== "all" && tx.account_id !== accountFilter) {
+      // A category's transactions come from the server; a split's
+      // category_id is null, so keep those while it reloads.
+      if (
+        accountFilter !== "all" &&
+        tx.account_id !== accountFilter &&
+        tx.category_id !== accountFilter &&
+        !tx.is_split
+      ) {
         return false;
       }
       if (statusFilter !== "all" && tx.status !== statusFilter) {
@@ -420,11 +428,20 @@ export function TransactionRegister({
               className="rounded-md border border-slate-300 py-1.5 pl-2 pr-6 text-xs text-slate-700 hover:bg-slate-50 focus:border-slate-500 focus:outline-none"
             >
               <option value="all">All Accounts</option>
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name}
-                </option>
-              ))}
+              <optgroup label="Bank accounts">
+                {accounts.filter((acc) => acc.has_bank_feed !== false).map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Categories">
+                {accounts.filter((acc) => acc.has_bank_feed === false).map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
