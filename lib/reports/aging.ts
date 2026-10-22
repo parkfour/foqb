@@ -5,6 +5,7 @@ export type AgingBucket = "current" | "1-30" | "31-60" | "61-90" | "90+";
 export interface AgingRow {
   id: string;
   number: string;
+  partyId: string | null;
   partyName: string;
   dueDate: string;
   remaining: number;
@@ -33,7 +34,7 @@ interface RawDocument {
   date: string;
   due_date: string | null;
   tax_amount?: number;
-  party: { name: string } | null;
+  party: { id: string; name: string } | null;
   lines: { amount: number }[];
   payments: { amount: number }[];
 }
@@ -51,6 +52,7 @@ function toAgingRows(documents: RawDocument[], asOf: string): AgingRow[] {
       return {
         id: doc.id,
         number: doc.number,
+        partyId: doc.party?.id ?? null,
         partyName: doc.party?.name ?? "—",
         dueDate,
         remaining,
@@ -67,7 +69,7 @@ export async function fetchArAging(orgId: string, asOf: string): Promise<AgingRo
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, number:invoice_number, date:invoice_date, due_date, tax_amount, party:customers(name), lines:invoice_lines(amount), payments:invoice_payments(amount)",
+      "id, number:invoice_number, date:invoice_date, due_date, tax_amount, party:customers(id, name), lines:invoice_lines(amount), payments:invoice_payments(amount)",
     )
     .eq("organization_id", orgId)
     .in("status", ["open", "partial"])
@@ -82,7 +84,7 @@ export async function fetchApAging(orgId: string, asOf: string): Promise<AgingRo
   const { data, error } = await supabase
     .from("bills")
     .select(
-      "id, number:bill_number, date:bill_date, due_date, party:vendors(name), lines:bill_lines(amount), payments:bill_payments(amount)",
+      "id, number:bill_number, date:bill_date, due_date, party:vendors(id, name), lines:bill_lines(amount), payments:bill_payments(amount)",
     )
     .eq("organization_id", orgId)
     .in("status", ["open", "partial"])
@@ -149,7 +151,7 @@ export async function fetchCustomerInvoices(
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, number:invoice_number, date:invoice_date, due_date, status, tax_amount, party:customers(name), lines:invoice_lines(amount), payments:invoice_payments(amount)",
+      "id, number:invoice_number, date:invoice_date, due_date, status, tax_amount, party:customers(id, name), lines:invoice_lines(amount), payments:invoice_payments(amount)",
     )
     .eq("organization_id", orgId)
     .eq("customer_id", customerId);
@@ -167,7 +169,7 @@ export async function fetchVendorBills(
   const { data, error } = await supabase
     .from("bills")
     .select(
-      "id, number:bill_number, date:bill_date, due_date, status, party:vendors(name), lines:bill_lines(amount), payments:bill_payments(amount)",
+      "id, number:bill_number, date:bill_date, due_date, status, party:vendors(id, name), lines:bill_lines(amount), payments:bill_payments(amount)",
     )
     .eq("organization_id", orgId)
     .eq("vendor_id", vendorId);

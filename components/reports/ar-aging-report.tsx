@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AGING_BUCKETS, fetchArAging } from "@/lib/reports/aging";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
@@ -61,8 +62,20 @@ export async function ArAgingReport({ orgId, asOf }: { orgId: string; asOf: stri
               ) : (
                 rows.map((row) => (
                   <tr key={row.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-5 py-3 text-slate-900">{row.number}</td>
-                    <td className="px-5 py-3 text-slate-600">{row.partyName}</td>
+                    <td className="px-5 py-3 text-slate-900">
+                      <Link href={`/customers/invoices/${row.id}`} className="hover:underline">
+                        {row.number}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {row.partyId ? (
+                        <Link href={`/customers/${row.partyId}`} className="hover:underline">
+                          {row.partyName}
+                        </Link>
+                      ) : (
+                        row.partyName
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-slate-600">{row.dueDate}</td>
                     <td className="px-5 py-3 text-slate-600">{Math.max(row.daysOverdue, 0)}</td>
                     <td className="px-5 py-3 text-slate-600">{BUCKET_LABELS[row.bucket]}</td>

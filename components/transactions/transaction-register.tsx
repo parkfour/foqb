@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EyeOff, Filter, Search, SlidersHorizontal, Split as SplitIcon } from "lucide-react";
@@ -68,6 +68,9 @@ export interface TransactionRegisterProps {
   account?: string;
   // Where "Load older" goes; null when the oldest transaction is listed.
   olderHref?: string | null;
+  // A transaction to open on (a drill-down's last step): highlighted and
+  // scrolled into view.
+  focusId?: string;
   onClearedToggle?: (id: string, cleared: boolean) => Promise<ActionResult>;
   onSplitSave?: (transactionId: string, splits: SplitLineInput[]) => Promise<ActionResult>;
   onReopen?: (transactionId: string) => Promise<ActionResult>;
@@ -114,6 +117,7 @@ export function TransactionRegister({
   canWrite = true,
   account = "all",
   olderHref = null,
+  focusId,
   onClearedToggle = setRegisterClearedAction,
   onSplitSave = splitBankTransactionAction,
   onReopen = reopenTransactionAction,
@@ -136,6 +140,10 @@ export function TransactionRegister({
   const [accountFilter, setAccountFilter] = useState<string>(account);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (focusId) document.getElementById(`tx-${focusId}`)?.scrollIntoView?.({ block: "center" });
+  }, [focusId]);
 
   // Split modal state
   const [activeSplitTx, setActiveSplitTx] = useState<RegisterTransaction | null>(null);
@@ -540,11 +548,15 @@ export function TransactionRegister({
                 return (
                   <Fragment key={tx.id}>
                   <tr
+                    id={`tx-${tx.id}`}
+                    aria-current={tx.id === focusId ? "true" : undefined}
                     onClick={() => setSelectedIndex(idx)}
                     className={`cursor-pointer transition-colors ${
                       isSelected
                         ? "bg-blue-50/80 font-medium text-slate-900"
-                        : "hover:bg-slate-50/70 text-slate-700"
+                        : tx.id === focusId
+                          ? "bg-amber-50 font-medium text-slate-900 ring-2 ring-inset ring-amber-300"
+                          : "hover:bg-slate-50/70 text-slate-700"
                     }`}
                   >
                     <td className="py-2 pl-4 pr-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">

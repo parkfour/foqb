@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { fetchAccountLedger, type AccountLedgerRow } from "@/lib/reports";
+import { entryHrefs } from "@/lib/reports/entry-links";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { bookToday } from "@/lib/org/book-clock";
 import { formatMoney } from "@/lib/money";
@@ -45,7 +46,7 @@ export default async function AccountLedgerPage({ params, searchParams }: PagePr
   const start = sp.start || null;
 
   const supabase = await createClient();
-  const [{ data: accountData }, rows, showAccountCodes] = await Promise.all([
+  const [{ data: accountData }, rows, showAccountCodes, hrefFor] = await Promise.all([
     supabase
       .from("accounts")
       .select("id, account_number, name, type")
@@ -54,6 +55,7 @@ export default async function AccountLedgerPage({ params, searchParams }: PagePr
       .maybeSingle(),
     fetchAccountLedger(orgId, accountId, start, end),
     getUseAccountCodes(orgId),
+    entryHrefs(supabase, orgId, accountId),
   ]);
 
   const account = accountData as AccountRow | null;
@@ -124,7 +126,11 @@ export default async function AccountLedgerPage({ params, searchParams }: PagePr
                 rowsWithBalance.map((r, i) => (
                   <tr key={`${r.entry_id}-${i}`} className="border-b border-slate-100 last:border-0">
                     <td className="px-5 py-3 text-slate-600">{r.entry_date}</td>
-                    <td className="px-5 py-3 text-slate-900">{r.memo ?? r.description ?? "—"}</td>
+                    <td className="px-5 py-3 text-slate-900">
+                      <Link href={hrefFor(r.entry_id)} className="hover:underline">
+                        {r.memo ?? r.description ?? "—"}
+                      </Link>
+                    </td>
                     <td className="px-5 py-3 text-right text-slate-900">
                       {r.debit ? formatCurrency(r.debit) : ""}
                     </td>

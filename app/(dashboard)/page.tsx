@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { fetchIncomeStatement, fetchBalanceSheet } from "@/lib/reports";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getWorkspaceType } from "@/lib/org/current";
@@ -10,6 +11,7 @@ import { calculateUserBusinessEquity } from "@/lib/org/equity-rollup";
 import { bookToday } from "@/lib/org/book-clock";
 import { monthStart } from "@/lib/time/book-time";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
+import { registerHref } from "@/lib/reports/entry-links";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
 
@@ -69,6 +71,7 @@ interface RecentTransaction {
   name: string | null;
   amount: number;
   status: "unreconciled" | "matched" | "ignored";
+  account_id: string | null;
 }
 
 export default async function DashboardPage() {
@@ -153,7 +156,7 @@ export default async function DashboardPage() {
       .eq("status", "unreconciled"),
     supabase
       .from("bank_transactions")
-      .select("id, date, name, amount, status")
+      .select("id, date, name, amount, status, account_id")
       .eq("organization_id", orgId)
       .order("date", { ascending: false })
       .limit(5),
@@ -161,11 +164,17 @@ export default async function DashboardPage() {
 
   const transactions = (recentTransactions as RecentTransaction[] | null) ?? [];
 
+  // Each card opens what it adds up.
+  const incomeStatementHref = `/reports?report=income-statement&start=${start}&end=${end}`;
   const cards = [
-    { label: "Cash on Hand", value: formatCurrency(cashOnHand) },
-    { label: "Net Income", value: formatCurrency(netIncome) },
-    { label: "Total Expenses", value: formatCurrency(expenses) },
-    { label: "Unreconciled Transactions", value: String(unreconciledCount ?? 0) },
+    { label: "Cash on Hand", value: formatCurrency(cashOnHand), href: `/reports?report=balance-sheet&asOf=${end}` },
+    { label: "Net Income", value: formatCurrency(netIncome), href: incomeStatementHref },
+    { label: "Total Expenses", value: formatCurrency(expenses), href: incomeStatementHref },
+    {
+      label: "Unreconciled Transactions",
+      value: String(unreconciledCount ?? 0),
+      href: "/transactions?status=unreconciled",
+    },
   ];
 
   return (
@@ -173,13 +182,14 @@ export default async function DashboardPage() {
       <TimezoneChangeNotice from={start} to={end} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <div
+          <Link
             key={card.label}
-            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+            href={card.href}
+            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 hover:bg-slate-50"
           >
             <p className="text-sm font-medium text-slate-500">{card.label}</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{card.value}</p>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -214,7 +224,15 @@ export default async function DashboardPage() {
                 transactions.map((tx) => (
                   <tr key={tx.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-5 py-3 text-slate-600">{tx.date}</td>
-                    <td className="px-5 py-3 text-slate-900">{tx.name ?? "—"}</td>
+                    <td className="px-5 py-3 text-slate-900">
+                      {tx.account_id ? (
+                        <Link href={registerHref(tx.account_id, tx.id)} className="hover:underline">
+                          {tx.name ?? "—"}
+                        </Link>
+                      ) : (
+                        (tx.name ?? "—")
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-slate-900">{formatCurrency(tx.amount)}</td>
                     <td className="px-5 py-3">
                       <span

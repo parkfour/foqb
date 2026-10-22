@@ -100,7 +100,11 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
                 return (
                   <tr key={entry.id} className="border-b border-slate-100 last:border-0">
                     <td className="whitespace-nowrap px-5 py-3 text-slate-600">{entry.entry_date}</td>
-                    <td className="px-5 py-3 text-slate-900">{entry.memo ?? "—"}</td>
+                    <td className="px-5 py-3 text-slate-900">
+                      <Link href={`/journal/${entry.id}`} className="hover:underline">
+                        {entry.memo ?? "—"}
+                      </Link>
+                    </td>
                     <td className="px-5 py-3 text-xs text-slate-600">{accounts.join(", ")}</td>
                     <td className="px-5 py-3 text-right font-mono text-slate-900">{formatCurrency(amount)}</td>
                     <td className="px-5 py-3 text-xs text-slate-600">{entry.status}</td>

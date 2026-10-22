@@ -334,6 +334,17 @@ describe("TransactionRegister", () => {
     expect(screen.getByLabelText("Category for Target Store")).toBeInTheDocument();
   });
 
+  it("opens on one transaction: highlighted and scrolled into view", () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    render(<TransactionRegister transactions={mockTransactions} accounts={mockAccounts} focusId="tx-2" />);
+
+    const row = screen.getByText("Whole Foods").closest("tr")!;
+    expect(row).toHaveAttribute("aria-current", "true");
+    expect(screen.getByText("Target Store").closest("tr")).not.toHaveAttribute("aria-current");
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+  });
+
   it("offers Split only on uncategorized transactions, and opens the modal", () => {
     render(<TransactionRegister transactions={mockTransactions} accounts={mockAccounts} />);
 

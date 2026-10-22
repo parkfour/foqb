@@ -12,13 +12,14 @@ const TXN_COLUMNS =
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface RegisterPageProps {
-  searchParams: Promise<{ account?: string; pages?: string }>;
+  searchParams: Promise<{ account?: string; pages?: string; tx?: string }>;
 }
 
 export default async function RegisterPage({ searchParams }: RegisterPageProps) {
   const params = await searchParams;
   const account = UUID.test(params.account ?? "") ? params.account : undefined;
   const pages = params.pages;
+  const focusId = UUID.test(params.tx ?? "") ? params.tx : undefined;
   // One account: its whole history, so the running total starts at the
   // beginning. All accounts: the newest `pages` pages, with "Load older".
   const pageCount = Math.max(1, Math.floor(Number(pages)) || 1);
@@ -154,12 +155,13 @@ interface RawTx {
         description="Your bank feed, checkbook-style: mark transactions cleared, categorize or split the new ones."
       />
       <TransactionRegister
-        key={`${account ?? "all"}-${pageCount}`}
+        key={`${account ?? "all"}-${pageCount}-${focusId ?? ""}`}
         transactions={transactions}
         accounts={accounts}
         canWrite={canWrite(role)}
         account={account}
         olderHref={hasOlder ? `/register?pages=${pageCount + 1}` : null}
+        focusId={focusId}
       />
     </div>
   );

@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentOrgId, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
-import { fetchTaxLineAccounts } from "@/lib/reports";
+import { fetchAccountLedger, fetchTaxLineAccounts } from "@/lib/reports";
+import { entryHrefs } from "@/lib/reports/entry-links";
+import { createClient } from "@/lib/supabase/server";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { bookToday } from "@/lib/org/book-clock";
 import { formatMoney } from "@/lib/money";
@@ -41,6 +43,27 @@ export default async function TaxLineAccountsPage({ searchParams }: PageProps) {
   ]);
 
   const total = rows.reduce((sum, r) => sum + r.amount, 0);
+
+  // Each account's transactions in the period, signed the way the tax line
+  // adds them up. ponytail: one ledger read per account; fine for the
+  // handful of accounts a tax line has.
+  const supabase = await createClient();
+  const sections = await Promise.all(
+    rows.map(async (r) => {
+      const [ledger, hrefFor] = await Promise.all([
+        fetchAccountLedger(orgId, r.account_id, start, end),
+        entryHrefs(supabase, orgId, r.account_id),
+      ]);
+      return {
+        account: r,
+        lines: ledger.map((line) => ({
+          ...line,
+          amount: type === "expense" ? line.debit - line.credit : line.credit - line.debit,
+          href: hrefFor(line.entry_id),
+        })),
+      };
+    }),
+  );
 
   const reportBackParams = new URLSearchParams({ report: "tax-line-items", start, end });
 
@@ -103,6 +126,36 @@ export default async function TaxLineAccountsPage({ searchParams }: PageProps) {
           </table>
         </div>
       </div>
+
+      {sections.map(({ account, lines }) => (
+        <section
+          key={account.account_id}
+          aria-label={formatAccountLabel(account, showAccountCodes)}
+          className="rounded-lg border border-slate-200 bg-white shadow-sm"
+        >
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+            <h2 className="text-sm font-semibold text-slate-900">{formatAccountLabel(account, showAccountCodes)}</h2>
+            <span className="text-sm font-semibold text-slate-900">{formatCurrency(account.amount)}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody>
+                {lines.map((line, i) => (
+                  <tr key={`${line.entry_id}-${i}`} className="border-b border-slate-100 last:border-0">
+                    <td className="px-5 py-2 text-slate-600 whitespace-nowrap">{line.entry_date}</td>
+                    <td className="px-5 py-2 text-slate-900">
+                      <Link href={line.href} className="hover:underline">
+                        {line.memo ?? line.description ?? "—"}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-2 text-right text-slate-900">{formatCurrency(line.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
