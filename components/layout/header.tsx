@@ -36,6 +36,9 @@ export function Header({ organizations, currentOrgId, role }: HeaderProps) {
             )}
             <form action={switchOrganization} className="relative">
               <select
+                // Remounted when the book changes, so it shows the new one
+                // after a switch that lands on another page (a drill-down).
+                key={currentOrgId ?? ""}
                 name="organizationId"
                 defaultValue={currentOrgId ?? ""}
                 onChange={(e) => {

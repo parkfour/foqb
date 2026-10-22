@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_ORG_COOKIE } from "@/lib/org/current";
+import { safeNextPath } from "@/lib/http/proxy-headers";
 import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/org/default-accounts";
 import { isValidTimezone } from "@/lib/time/book-time";
 
@@ -138,5 +139,7 @@ export async function switchOrganization(formData: FormData): Promise<void> {
     maxAge: 60 * 60 * 24 * 365,
   });
 
-  redirect("/");
+  // Where to land in the book switched to: its dashboard, or a page on this
+  // site the form names (a drill-down into another book).
+  redirect(safeNextPath(formData.get("next") as string | null));
 }

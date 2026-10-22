@@ -68,6 +68,13 @@ describe("Header org switcher", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
+  it("shows the book switched to when the page re-renders after a switch", () => {
+    const { rerender } = render(<Header organizations={organizations} currentOrgId="org-1" role="owner" />);
+    rerender(<Header organizations={organizations} currentOrgId="org-2" role="owner" />);
+
+    expect((screen.getByLabelText("Switch organization") as HTMLSelectElement).value).toBe("org-2");
+  });
+
   it("shows 'No organization' with no switcher when the user has none", () => {
     render(<Header organizations={[]} currentOrgId={null} role={null} />);
 

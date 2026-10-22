@@ -1,19 +1,9 @@
 import Link from "next/link";
 import { fetchTaxLineReport, type TaxLineReportRow } from "@/lib/reports";
+import { taxLineAccountsHref as accountsHref } from "@/lib/reports/tax-line-links";
 import { FORM_NAMES } from "@/lib/tax/forms";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
-
-function accountsHref(row: TaxLineReportRow, start: string, end: string): string {
-  const params = new URLSearchParams({ start, end, type: row.account_type });
-  if (row.tax_line_id) {
-    params.set("taxLineId", row.tax_line_id);
-    if (row.property_id) params.set("propertyId", row.property_id);
-  } else {
-    params.set("unassigned", "true");
-  }
-  return `/reports/tax-line/accounts?${params.toString()}`;
-}
 
 // A line's name, with its form when the report spans several and its
 // property when it's kept per rental.
