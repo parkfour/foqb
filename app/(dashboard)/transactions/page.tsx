@@ -1,16 +1,19 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReadOnlyNotice } from "@/components/ui/read-only-notice";
 import { DownloadButton } from "@/components/ui/download-button";
 import { JournalEntryForm } from "@/components/transactions/journal-entry-form";
 import { CsvImportForm } from "@/components/csv/import-form";
+import { SplitBankTransactionButton } from "@/components/transactions/split-bank-transaction-button";
 import { createClient } from "@/lib/supabase/server";
-import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
+import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes, getWorkspaceType } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { pairTransfers } from "@/lib/bank/transfers";
 import {
   bookTransfer,
   categorizeBankTransaction,
+  deleteBankTransaction,
   dismissBankChange,
   ignoreBankTransaction,
   recategorizeBankTransaction,
@@ -24,6 +27,28 @@ interface AccountOption {
   id: string;
   account_number: string;
   name: string;
+  type: string;
+  has_bank_feed: boolean;
+}
+
+const PAGE_SIZE = 100;
+const STATUSES = ["unreconciled", "matched", "ignored"] as const;
+
+interface Filters {
+  q?: string;
+  account?: string;
+  status?: string;
+  page?: string;
+}
+
+// This page's URL with the filters kept and the given ones changed.
+function hrefWith(filters: Filters, changes: Filters): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries({ ...filters, ...changes })) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `/transactions?${query}` : "/transactions";
 }
 
 interface BankTransactionRow {
@@ -33,6 +58,7 @@ interface BankTransactionRow {
   name: string | null;
   amount: number;
   status: "unreconciled" | "matched" | "ignored";
+  accounts: { name: string } | null;
   // What the bank now reports for a matched transaction, held for review.
   bank_change: { amount: number; date: string } | null;
   // Why the change can't be applied automatically, or null if it can.
@@ -57,7 +83,11 @@ interface JournalEntryRow {
   journal_lines: { debit: number }[];
 }
 
-export default async function TransactionsPage() {
+export default async function TransactionsPage({ searchParams }: { searchParams: Promise<Filters> }) {
+  const filters = await searchParams;
+  const search = filters.q?.trim() ?? "";
+  const status = STATUSES.find((value) => value === filters.status);
+  const page = Math.max(1, Math.floor(Number(filters.page)) || 1);
   const orgId = await getCurrentOrgId();
   const currency = await getBookCurrency(orgId);
   const formatCurrency = (value: number) => formatMoney(value, currency);
@@ -73,26 +103,36 @@ export default async function TransactionsPage() {
 
   const supabase = await createClient();
 
+  let feedQuery = supabase
+    .from("bank_transactions")
+    .select(
+      "id, account_id, date, name, amount, status, bank_change, reopen_blocker, recategorize_blocker, accounts(name), journal_entries(journal_lines(account_id))",
+      { count: "exact" },
+    )
+    .eq("organization_id", orgId);
+  if (search) feedQuery = feedQuery.ilike("name", `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+  if (filters.account) feedQuery = feedQuery.eq("account_id", filters.account);
+  if (status) feedQuery = feedQuery.eq("status", status);
+
   const [
     { data: accountsData },
-    { data: transactionsData },
+    { data: transactionsData, count: transactionCount },
     { data: journalEntriesData },
     role,
     showAccountCodes,
     { data: openData },
+    workspaceType,
   ] = await Promise.all([
       supabase
         .from("accounts")
-        .select("id, account_number, name")
+        .select("id, account_number, name, type, has_bank_feed")
         .eq("organization_id", orgId)
         .eq("is_active", true)
         .order("account_number"),
-      supabase
-        .from("bank_transactions")
-        .select("id, account_id, date, name, amount, status, bank_change, reopen_blocker, recategorize_blocker, journal_entries(journal_lines(account_id))")
-        .eq("organization_id", orgId)
+      feedQuery
         .order("date", { ascending: false })
-        .limit(50),
+        .order("id")
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
       supabase
         .from("journal_entries")
         .select("id, entry_date, memo, status, journal_lines(debit)")
@@ -103,19 +143,27 @@ export default async function TransactionsPage() {
       getCurrentUserRole(orgId),
       getUseAccountCodes(orgId),
       // Every uncategorized row, so a transfer's other side is found even
-      // when it's older than the 50 listed.
+      // when it isn't on this page.
       supabase
         .from("bank_transactions")
         .select("id, account_id, date, amount, accounts(name)")
         .eq("organization_id", orgId)
         .eq("status", "unreconciled")
         .limit(1000),
+      getWorkspaceType(orgId),
     ]);
 
   const accounts = (accountsData as AccountOption[] | null) ?? [];
   const transactions = (transactionsData as BankTransactionRow[] | null) ?? [];
   const journalEntries = (journalEntriesData as JournalEntryRow[] | null) ?? [];
   const userCanWrite = canWrite(role);
+  // A household keeps its journal entries on /journal.
+  const isHousehold = workspaceType === "household";
+  const bankAccounts = accounts.filter((account) => account.has_bank_feed);
+  const total = transactionCount ?? 0;
+  const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(page * PAGE_SIZE, total);
+  const isFiltered = Boolean(search || filters.account || status);
   const transfers = pairTransfers(
     ((openData as unknown as { id: string; account_id: string | null; date: string; amount: number; accounts: { name: string } | null }[] | null) ?? []).map(
       (row) => ({ ...row, amount: Number(row.amount) }),
@@ -128,6 +176,7 @@ export default async function TransactionsPage() {
       <TimezoneChangeNotice from={listedDates[0]} to={listedDates.at(-1)} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader title="Bank Transactions" description="Bank feed and reconciliation table." />
+        {!isHousehold && (
         <div className="flex flex-wrap items-center gap-3">
           <DownloadButton
             href="/api/export/journal-entries"
@@ -136,23 +185,73 @@ export default async function TransactionsPage() {
           />
           {userCanWrite && <CsvImportForm action="/api/import/journal-entries" label="Import CSV" />}
         </div>
+        )}
       </div>
 
-      {userCanWrite ? (
-        <JournalEntryForm organizationId={orgId} accounts={accounts} showAccountCodes={showAccountCodes} />
-      ) : (
+      {!userCanWrite ? (
         <ReadOnlyNotice />
+      ) : (
+        !isHousehold && (
+          <JournalEntryForm organizationId={orgId} accounts={accounts} showAccountCodes={showAccountCodes} />
+        )
       )}
 
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Bank Feed</h2>
+          <form className="flex flex-wrap items-center gap-2">
+            <input
+              name="q"
+              defaultValue={search}
+              placeholder="Search descriptions"
+              aria-label="Search descriptions"
+              className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+            <select
+              name="account"
+              defaultValue={filters.account ?? ""}
+              aria-label="Bank account"
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">All accounts</option>
+              {bankAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {formatAccountLabel(account, showAccountCodes)}
+                </option>
+              ))}
+            </select>
+            <select
+              name="status"
+              defaultValue={status ?? ""}
+              aria-label="Status"
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">Any status</option>
+              {STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Filter
+            </button>
+            {isFiltered && (
+              <Link href="/transactions" className="text-sm text-slate-500 hover:text-slate-900">
+                Clear
+              </Link>
+            )}
+          </form>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-3 font-medium">Date</th>
+                <th className="px-5 py-3 font-medium">Account</th>
                 <th className="px-5 py-3 font-medium">Description</th>
                 <th className="px-5 py-3 font-medium">Amount</th>
                 <th className="px-5 py-3 font-medium">Status</th>
@@ -162,14 +261,15 @@ export default async function TransactionsPage() {
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-6 text-center text-slate-500">
-                    No bank transactions yet.
+                  <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
+                    {isFiltered ? "No bank transactions match." : "No bank transactions yet."}
                   </td>
                 </tr>
               ) : (
                 transactions.map((tx) => (
                   <tr key={tx.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-5 py-3 text-slate-600">{tx.date}</td>
+                    <td className="px-5 py-3 text-slate-600">{tx.accounts?.name ?? "—"}</td>
                     <td className="px-5 py-3 text-slate-900">
                       {tx.name ?? "—"}
                       {tx.bank_change && (
@@ -267,12 +367,24 @@ export default async function TransactionsPage() {
                         </div>
                       )}
                       {userCanWrite && tx.status === "ignored" && (
-                        <form action={reopenBankTransaction}>
-                          <input type="hidden" name="id" value={tx.id} />
-                          <button type="submit" className="text-sm text-slate-400 hover:text-slate-900">
-                            Restore
-                          </button>
-                        </form>
+                        <div className="flex items-center justify-end gap-3">
+                          <form action={reopenBankTransaction}>
+                            <input type="hidden" name="id" value={tx.id} />
+                            <button type="submit" className="text-sm text-slate-400 hover:text-slate-900">
+                              Restore
+                            </button>
+                          </form>
+                          <form action={deleteBankTransaction}>
+                            <input type="hidden" name="id" value={tx.id} />
+                            <button
+                              type="submit"
+                              title="Delete this row for good (a duplicate, say)"
+                              className="text-sm text-slate-400 hover:text-red-600"
+                            >
+                              Delete
+                            </button>
+                          </form>
+                        </div>
                       )}
                       {userCanWrite && tx.status === "unreconciled" && transfers.get(tx.id) && (
                         <form action={bookTransfer} className="mb-2 flex justify-end">
@@ -313,6 +425,7 @@ export default async function TransactionsPage() {
                               Post
                             </button>
                           </form>
+                          <SplitBankTransactionButton transaction={tx} accounts={accounts} />
                           <form action={ignoreBankTransaction}>
                             <input type="hidden" name="id" value={tx.id} />
                             <button
@@ -333,6 +446,27 @@ export default async function TransactionsPage() {
         </div>
       </div>
 
+      <div className="-mt-3 flex items-center justify-between text-sm text-slate-600">
+        {page > 1 ? (
+          <Link href={hrefWith(filters, { page: String(page - 1) })} className="hover:text-slate-900">
+            ← Newer
+          </Link>
+        ) : (
+          <span />
+        )}
+        <span className="text-slate-500">
+          {firstShown}–{lastShown} of {total}
+        </span>
+        {lastShown < total ? (
+          <Link href={hrefWith(filters, { page: String(page + 1) })} className="hover:text-slate-900">
+            Older →
+          </Link>
+        ) : (
+          <span />
+        )}
+      </div>
+
+      {!isHousehold && (
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Recent Journal Entries</h2>
@@ -400,6 +534,7 @@ export default async function TransactionsPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

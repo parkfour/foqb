@@ -93,6 +93,7 @@ const BASE_NAV_ENTRIES: NavEntry[] = [
 const HOUSEHOLD_NAV_ENTRIES: NavEntry[] = [
   { type: "link", href: "/", label: "Net Worth", icon: TrendingUp },
   { type: "link", href: "/register", label: "Register", icon: CreditCard },
+  { type: "link", href: "/transactions", label: "Bank Transactions", icon: Landmark },
   { type: "link", href: "/reconcile", label: "Reconcile", icon: ClipboardCheck },
   { type: "link", href: "/budget", label: "Budget", icon: PieChart },
   { type: "link", href: "/properties", label: "Properties & Assets", icon: Home },

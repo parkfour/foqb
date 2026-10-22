@@ -19,7 +19,7 @@ come from it.
 | | Business | Household |
 |---|---|---|
 | Home page | Business dashboard | Net worth |
-| Menu | Transactions, reconcile, customers, vendors, items, fixed assets, reports… | Register, reconcile, budget, properties & assets, cash flow, chart of accounts, journal entries, rules, audit log, and any enabled plugin's pages |
+| Menu | Transactions, reconcile, customers, vendors, items, fixed assets, reports… | Register, bank transactions, reconcile, budget, properties & assets, cash flow, chart of accounts, journal entries, rules, audit log, and any enabled plugin's pages |
 
 The business pages still work in a household if you go to them directly; the
 menu just leaves them out.

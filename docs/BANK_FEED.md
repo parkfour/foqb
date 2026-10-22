@@ -55,6 +55,13 @@ for business and household organizations alike.
   it's part of a bank reconciliation, an invoice or bill payment, or a
   locked period (`reopen_blocker`). An ignored transaction can be restored
   the same way.
+- **Finding and fixing.** Bank Transactions lists the whole feed, newest
+  first, 100 to a page, with a search on the description and filters for
+  account and status, so an old row can be found and fixed like a new
+  one: categorize, split, ignore, restore, re-open or change it. An
+  ignored row can also be deleted for good, for a duplicate that
+  shouldn't stay on record; a bank feed may send it again if the bank
+  later changes it. Households have it in the menu beside the Register.
 - **Transfers.** Money moving between two of your linked accounts, such as
   paying the card from checking, appears in both feeds. When the same amount
   leaves one account and arrives in another within 5 days, the row offers

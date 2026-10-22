@@ -8,6 +8,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import {
   categorizeBankTransaction,
+  deleteBankTransaction,
   dismissBankChange,
   ignoreBankTransaction,
   ignoreTransactionAction,
@@ -57,6 +58,19 @@ describe("transaction actions", () => {
     serverClientMock.mockResolvedValue(client);
 
     expect(await ignoreTransactionAction("bt-1")).toEqual({ success: true });
+  });
+
+  it("deletes only a transaction that's been ignored", async () => {
+    const { client, tables } = createSupabaseMock({
+      tables: { bank_transactions: { delete: ok(null) } },
+    });
+    serverClientMock.mockResolvedValue(client);
+
+    await deleteBankTransaction(formData({ id: "bt-1" }));
+
+    expect(tables.bank_transactions.delete).toHaveBeenCalled();
+    expect(tables.bank_transactions.eq).toHaveBeenCalledWith("id", "bt-1");
+    expect(tables.bank_transactions.eq).toHaveBeenCalledWith("status", "ignored");
   });
 
   it("categorizes by posting the entry and claiming the bank transaction in one RPC", async () => {

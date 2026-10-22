@@ -41,6 +41,13 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
   });
 
+  it("gives a household its register and Bank Transactions both", () => {
+    render(<Sidebar workspaceType="household" />);
+
+    expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute("href", "/register");
+    expect(screen.getByRole("link", { name: "Bank Transactions" })).toHaveAttribute("href", "/transactions");
+  });
+
   it("hides the Inventory link by default and shows it when enabled", () => {
     render(<Sidebar />);
     expect(screen.queryByRole("link", { name: "Inventory" })).not.toBeInTheDocument();

@@ -34,6 +34,20 @@ export async function ignoreTransactionAction(
   return { success: true };
 }
 
+// A duplicate, once ignored, can be deleted outright. Only an ignored row:
+// it has no entry, and ignoring it first is the confirmation.
+export async function deleteBankTransaction(formData: FormData): Promise<void> {
+  const id = formData.get("id") as string;
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("bank_transactions").delete().eq("id", id).eq("status", "ignored");
+  if (error) console.error(`Failed to delete bank transaction ${id}`, error);
+
+  revalidatePath("/transactions");
+  revalidatePath("/register");
+}
+
 export async function categorizeBankTransaction(formData: FormData): Promise<void> {
   const bankTransactionId = formData.get("bankTransactionId") as string;
   const targetAccountId = formData.get("targetAccountId") as string;
