@@ -110,14 +110,24 @@ export async function cleanUpStartup(): Promise<Result<{ moved: number; kept: nu
 }
 
 // Turns the assistant off for the book: its guard stops and the panel goes.
+// The net worth chart starts over from today: the points saved while the
+// accounts were half entered aren't the household's history.
 export async function finishStartup(): Promise<Result<null>> {
   const orgId = await writableOrg();
   if (!orgId) return { success: false, error: "You can't change this book" };
-  const { error } = await (await createClient())
+  const supabase = await createClient();
+  const { error } = await supabase
     .from("startup_assistant")
     .update({ finished_at: new Date().toISOString() })
     .eq("organization_id", orgId);
   if (error) return { success: false, error: error.message };
+  const { error: chartError } = await supabase
+    .from("net_worth_snapshots")
+    .delete()
+    .eq("organization_id", orgId)
+    .lt("date", await bookToday(orgId));
+  if (chartError) return { success: false, error: chartError.message };
   revalidatePath("/reconcile");
+  revalidatePath("/");
   return { success: true, value: null };
 }

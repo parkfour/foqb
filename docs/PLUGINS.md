@@ -407,4 +407,5 @@ before it, like another bank's old transfer to it, belongs to equity.
   number of months and rounded to whole dollars, is budgeted in each of
   those months. A month already budgeted for an account keeps its amount.
   To carry it into the current month, open that month on the Budget page
-  and click Copy Last Month.
+  and click Copy Last Month. A household's net worth chart starts over
+  that day: the points saved while accounts were being entered are cleared.
