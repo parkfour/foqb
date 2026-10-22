@@ -139,6 +139,12 @@ describe("processBankTransactions", () => {
     // Positive Plaid amount = expense.
     await processBankTransactions("org-1", "bank-account-1", [tx({ amount: 42.5 })]);
 
+    expect(client.rpc).toHaveBeenCalledWith("match_bank_transaction", {
+      p_org_id: "org-1",
+      p_description: "COFFEE SHOP",
+      p_amount: -42.5,
+      p_bank_account_id: "bank-account-1",
+    });
     expect(client.rpc).toHaveBeenCalledWith("post_journal_entry", {
       p_org_id: "org-1",
       p_entry_date: "2026-01-15",

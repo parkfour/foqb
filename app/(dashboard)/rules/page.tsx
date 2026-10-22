@@ -10,6 +10,7 @@ interface AccountOption {
   id: string;
   account_number: string;
   name: string;
+  type: string;
 }
 
 interface RuleRow {
@@ -22,7 +23,8 @@ interface RuleRow {
   max_amount: number | null;
   priority: number;
   is_active: boolean;
-  accounts: { account_number: string; name: string } | null;
+  target: { account_number: string; name: string } | null;
+  bank: { account_number: string; name: string } | null;
 }
 
 export default async function RulesPage() {
@@ -45,14 +47,14 @@ export default async function RulesPage() {
   const [{ data: accountsData }, { data: rulesData }, role, showAccountCodes] = await Promise.all([
     supabase
       .from("accounts")
-      .select("id, account_number, name")
+      .select("id, account_number, name, type")
       .eq("organization_id", orgId)
       .eq("is_active", true)
       .order("account_number"),
     supabase
       .from("categorization_rules")
       .select(
-        "id, rule_name, match_type, match_text, transaction_type, min_amount, max_amount, priority, is_active, accounts(account_number, name)",
+        "id, rule_name, match_type, match_text, transaction_type, min_amount, max_amount, priority, is_active, target:accounts!categorization_rules_target_account_id_fkey(account_number, name), bank:accounts!categorization_rules_bank_account_id_fkey(account_number, name)",
       )
       .eq("organization_id", orgId)
       .order("priority", { ascending: true }),
@@ -85,6 +87,7 @@ export default async function RulesPage() {
                 <th className="px-5 py-3 font-medium">Priority</th>
                 <th className="px-5 py-3 font-medium">Rule</th>
                 <th className="px-5 py-3 font-medium">Match</th>
+                <th className="px-5 py-3 font-medium">Bank account</th>
                 <th className="px-5 py-3 font-medium">Type</th>
                 <th className="px-5 py-3 font-medium">Amount range</th>
                 <th className="px-5 py-3 font-medium">Target account</th>
@@ -95,7 +98,7 @@ export default async function RulesPage() {
             <tbody>
               {rules.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-6 text-center text-slate-500">
+                  <td colSpan={9} className="px-5 py-6 text-center text-slate-500">
                     No rules yet.
                   </td>
                 </tr>
@@ -107,12 +110,15 @@ export default async function RulesPage() {
                     <td className="px-5 py-3 text-slate-600">
                       {rule.match_type}: &ldquo;{rule.match_text}&rdquo;
                     </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {rule.bank ? formatAccountLabel(rule.bank, showAccountCodes) : "Any"}
+                    </td>
                     <td className="px-5 py-3 text-slate-600">{rule.transaction_type}</td>
                     <td className="px-5 py-3 text-slate-600">
                       {rule.min_amount ?? "—"} – {rule.max_amount ?? "—"}
                     </td>
                     <td className="px-5 py-3 text-slate-600">
-                      {rule.accounts ? formatAccountLabel(rule.accounts, showAccountCodes) : "—"}
+                      {rule.target ? formatAccountLabel(rule.target, showAccountCodes) : "—"}
                     </td>
                     <td className="px-5 py-3">
                       <span

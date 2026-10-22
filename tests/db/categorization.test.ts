@@ -11,6 +11,7 @@ interface RuleOverrides {
   priority: number;
   isActive: boolean;
   ruleName: string;
+  bankAccountId: string | null;
 }
 
 async function addRule(
@@ -21,8 +22,8 @@ async function addRule(
 ): Promise<void> {
   await client.query(
     `insert into categorization_rules
-      (organization_id, target_account_id, rule_name, match_type, match_text, transaction_type, min_amount, max_amount, priority, is_active)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      (organization_id, target_account_id, rule_name, match_type, match_text, transaction_type, min_amount, max_amount, priority, is_active, bank_account_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       orgId,
       accountId,
@@ -34,6 +35,7 @@ async function addRule(
       overrides.maxAmount ?? null,
       overrides.priority ?? 10,
       overrides.isActive ?? true,
+      overrides.bankAccountId ?? null,
     ],
   );
 }
@@ -58,14 +60,56 @@ describe("match_bank_transaction", () => {
     await client.query("ROLLBACK");
   });
 
-  async function match(orgId: string, description: string, amount: number): Promise<string | null> {
-    const { rows } = await client.query("select match_bank_transaction($1, $2, $3) as account_id", [
+  async function match(
+    orgId: string,
+    description: string,
+    amount: number,
+    bankAccountId: string | null = null,
+  ): Promise<string | null> {
+    const { rows } = await client.query("select match_bank_transaction($1, $2, $3, $4) as account_id", [
       orgId,
       description,
       amount,
+      bankAccountId,
     ]);
     return rows[0].account_id;
   }
+
+  it("applies a rule limited to a bank account only to that account's transactions", async () => {
+    const orgId = await createOrg(client);
+    const roth = await createAccount(client, orgId, { name: "Roth" });
+    const taxable = await createAccount(client, orgId, { name: "Taxable" });
+    const rothGains = await createAccount(client, orgId, { name: "Roth gains" });
+    const taxableGains = await createAccount(client, orgId, { name: "Taxable gains" });
+    await addRule(client, orgId, rothGains, { matchText: "Change in Investment Value", bankAccountId: roth });
+    await addRule(client, orgId, taxableGains, { matchText: "Change in Investment Value", bankAccountId: taxable });
+
+    expect(await match(orgId, "Change in Investment Value", 10, roth)).toBe(rothGains);
+    expect(await match(orgId, "Change in Investment Value", 10, taxable)).toBe(taxableGains);
+    expect(await match(orgId, "Change in Investment Value", 10)).toBeNull();
+  });
+
+  it("tries a rule for the account before one for any account at the same priority", async () => {
+    const orgId = await createOrg(client);
+    const checking = await createAccount(client, orgId);
+    const general = await createAccount(client, orgId);
+    const specific = await createAccount(client, orgId);
+    await addRule(client, orgId, general, { matchText: "ZELLE" });
+    await addRule(client, orgId, specific, { matchText: "ZELLE", bankAccountId: checking });
+
+    expect(await match(orgId, "ZELLE FROM PAT", 50, checking)).toBe(specific);
+    expect(await match(orgId, "ZELLE FROM PAT", 50, general)).toBe(general);
+  });
+
+  it("refuses a rule limited to another organization's account", async () => {
+    const orgId = await createOrg(client);
+    const otherOrg = await createOrg(client);
+    const target = await createAccount(client, orgId);
+    const foreign = await createAccount(client, otherOrg);
+    await client.query("savepoint s");
+    await expect(addRule(client, orgId, target, { bankAccountId: foreign })).rejects.toThrow(/same organization/);
+    await client.query("rollback to savepoint s");
+  });
 
   it("matches 'contains' rules case-insensitively", async () => {
     const orgId = await createOrg(client);

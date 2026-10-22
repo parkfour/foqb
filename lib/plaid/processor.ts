@@ -141,6 +141,7 @@ export async function categorizeByRules(
     p_org_id: organizationId,
     p_description: row.name,
     p_amount: row.amount,
+    p_bank_account_id: bankAccountId,
   });
 
   if (matchError) {

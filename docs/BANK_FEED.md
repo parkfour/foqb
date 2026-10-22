@@ -31,7 +31,10 @@ for business and household organizations alike.
 ## Categorizing
 
 - **Rules** (`/rules`) categorize matching transactions as they arrive.
-  The rest wait in Bank Transactions (`/transactions`), or in the Register
+  A rule can be limited to one bank account, for a description that means
+  different things in different accounts (investment gains in a Roth and
+  in a taxable account, say). At the same priority, a rule for the account
+  is tried before a rule for any account. The rest wait in Bank Transactions (`/transactions`), or in the Register
   for a household, which offers a "contains" payee rule after each one you
   categorize.
 - **Opening balances.** Once the bank reports a balance, each linked

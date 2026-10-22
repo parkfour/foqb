@@ -57,7 +57,7 @@ describe("household budgets and backups", () => {
     await refused(insertBudget, [org, mine, "2026-13"], /check constraint/);
   });
 
-  it("restores a household backup with its properties, budgets, history, cleared marks and plugin data", async () => {
+  it("restores a household backup with its properties, budgets, history, cleared marks, rules and plugin data", async () => {
     const orgId = newId();
     const home = newId();
     const cash = newId();
@@ -91,7 +91,11 @@ describe("household budgets and backups", () => {
       ],
       customers: [], vendors: [], invoices: [], bills: [], invoice_payments: [], bill_payments: [], items: [],
       inventory_items: [], fixed_assets: [], recurring_invoices: [], recurring_bills: [],
-      bank_reconciliations: [], categorization_rules: [],
+      bank_reconciliations: [],
+      categorization_rules: [
+        { id: newId(), target_account_id: groceries, bank_account_id: cash, rule_name: "Market", match_type: "contains",
+          match_text: "Market", transaction_type: "any", priority: 10, is_active: true },
+      ],
       plugin_data: [{ id: newId(), plugin_id: "example", key: "settings", value: { year: 2026 } }],
     };
 
@@ -108,6 +112,7 @@ describe("household budgets and backups", () => {
     expect((await client.query("select cleared from journal_lines where id = $1", [cashLine])).rows[0]).toEqual({ cleared: true });
     expect((await client.query("select cleared from bank_transactions where id = $1", [bankTx])).rows[0]).toEqual({ cleared: true });
     expect((await client.query("select property_id from accounts where id = $1", [groceries])).rows[0]).toEqual({ property_id: home });
+    expect(await one("select bank_account_id from categorization_rules where organization_id = $1")).toEqual({ bank_account_id: cash });
     expect(await one("select value from plugin_data where organization_id = $1")).toEqual({ value: { year: 2026 } });
   });
 });

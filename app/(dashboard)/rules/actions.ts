@@ -10,6 +10,7 @@ export async function createRule(
 ): Promise<ActionState> {
   const organizationId = formData.get("organizationId") as string;
   const targetAccountId = formData.get("targetAccountId") as string;
+  const bankAccountId = (formData.get("bankAccountId") as string) || null;
   const ruleName = (formData.get("ruleName") as string)?.trim();
   const matchType = formData.get("matchType") as string;
   const matchText = (formData.get("matchText") as string)?.trim();
@@ -26,6 +27,7 @@ export async function createRule(
   const { error } = await supabase.from("categorization_rules").insert({
     organization_id: organizationId,
     target_account_id: targetAccountId,
+    bank_account_id: bankAccountId,
     rule_name: ruleName,
     match_type: matchType,
     match_text: matchText,
