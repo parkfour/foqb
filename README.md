@@ -42,7 +42,7 @@ comparison for a general-ledger product like this).
 | File attachments (receipts) | ❌ — not built | ❌ (Pro only) | ✅ |
 | CSV import/export | ✅ | limited | ✅ |
 | Offline support (PWA) | ✅ | ❌ | ❌ |
-| Multi-currency | ❌ | ❌ | ❌ (Essentials+) |
+| Multi-currency | partial (one currency per book, no conversion) | ❌ | ❌ (Essentials+) |
 | Mileage / time tracking / 1099s | ❌ | ❌ | ✅ |
 | Online payment collection | ❌ | ✅ (2.9%+$0.60/txn) | ✅ |
 | Self-hosted / open source | ✅ | ❌ | ❌ |
@@ -50,8 +50,9 @@ comparison for a general-ledger product like this).
 
 The biggest current gap versus both competitors is **file attachments**: the
 receipt-scanning plugin fills in a bill from a photo, but the photo isn't
-kept with it. Online payment collection and multi-currency aren't built
-either.
+kept with it. Online payment collection isn't built either, and currency is
+per book: a book can be kept in KRW or JPY, but one book can't hold accounts
+in several currencies or convert between them.
 
 ## Households
 
