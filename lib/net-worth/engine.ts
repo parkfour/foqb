@@ -44,7 +44,7 @@ export function computeNetWorth(assets: number, liabilities: number): number {
 // accounts has no finer type than asset/liability. An account whose name
 // doesn't say is cash, or a credit card if owed, when a bank feeds it.
 const CASH = /\b(cash|checking|savings|money market)\b/i;
-const INVESTMENTS = /\b(invest\w*|brokerage|401\(?k\)?|ira|roth|stocks?|bonds?)\b/i;
+const INVESTMENTS = /\b(invest\w*|brokerage|ira|roth|hsa|stocks?|bonds?)\b|\b(401|403|457) ?\(?[kb]\)?/i;
 const REAL_ESTATE = /\b(real estate|property|properties|home|house)\b/i;
 const CREDIT_CARDS = /\b(credit|cards?)\b/i;
 const MORTGAGES = /\bmortgages?\b/i;

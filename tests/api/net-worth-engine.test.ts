@@ -19,6 +19,7 @@ describe("calculateHouseholdNetWorth", () => {
           row("Bank Sacings", "asset", 600),
           row("Airline", "liability", 70),
           row("Brokerage ••1234", "asset", 900),
+          row("Fidelity 403(b) ••5678", "asset", 100),
           row("Car loan", "liability", 8000),
           row("Family home", "asset", 300000),
           row("IOU to a friend", "liability", 50),
@@ -27,7 +28,7 @@ describe("calculateHouseholdNetWorth", () => {
       tables: {
         properties: { select: ok([]) },
         accounts: {
-          select: ok([{ id: "id-Bank home" }, { id: "id-Bank Sacings" }, { id: "id-Airline" }, { id: "id-Brokerage ••1234" }, { id: "id-Car loan" }]),
+          select: ok([{ id: "id-Bank home" }, { id: "id-Bank Sacings" }, { id: "id-Airline" }, { id: "id-Brokerage ••1234" }, { id: "id-Fidelity 403(b) ••5678" }, { id: "id-Car loan" }]),
         },
         net_worth_snapshots: { select: ok(null), upsert: ok(null) },
       },
@@ -37,7 +38,7 @@ describe("calculateHouseholdNetWorth", () => {
 
     expect(breakdown).toMatchObject({
       cash: 1000,
-      investments: 900,
+      investments: 1000,
       real_estate: 300000,
       credit_cards: 70,
       loans: 8000,

@@ -32,7 +32,7 @@ menu just leaves them out.
   function the balance sheet report uses, so every posted entry counts.
 - **Buckets** are picked from the account's name, since the chart of accounts
   only knows asset and liability: cash (cash, checking, savings, money
-  market, or a number starting `10`), investments (brokerage, IRA, 401k,
+  market, or a number starting `10`), investments (brokerage, IRA, 401k, 403b, 457b, HSA,
   stock…), real estate (home, house, property…), and everything else under
   "Vehicles & Other". Debts split into mortgages, credit cards, loans and
   other. An account with a bank feed (linked through Plaid, or with
