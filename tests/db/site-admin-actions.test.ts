@@ -67,6 +67,27 @@ describe("site admin action logging", () => {
     expect(rows[0].organization_id).toBeNull();
   });
 
+  it("deletes an organization that has a mortgage note", async () => {
+    const orgId = await createOrg(client, "Lender Org");
+    const accounts = [];
+    for (const type of ["asset", "revenue"]) accounts.push(await createAccount(client, orgId, { type }));
+    await client.query(
+      `insert into mortgage_notes (organization_id, name, borrower_name, origination_date, original_principal, annual_rate,
+         term_months, first_payment_date, payment_amount, match_text, note_account_id, interest_account_id)
+       values ($1, 'Elm St', 'Pat', '2024-01-01', 100000, 6, 360, '2024-02-01', 599.55, 'PAT', $2, $3)`,
+      [orgId, accounts[0], accounts[1]],
+    );
+    const admin = await createUser(client, "admin-notes@example.com");
+    await makeSiteAdmin(client, admin);
+
+    await asUser(client, admin);
+    await client.query("select delete_organization($1)", [orgId]);
+    await client.query("RESET ROLE");
+
+    const { rows } = await client.query("select count(*)::int as n from organizations where id = $1", [orgId]);
+    expect(rows[0].n).toBe(0);
+  });
+
   it("logs promote and demote via the site_admins trigger", async () => {
     const admin = await createUser(client, "admin3@example.com");
     await makeSiteAdmin(client, admin);
