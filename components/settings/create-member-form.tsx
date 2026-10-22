@@ -32,7 +32,7 @@ export function CreateMemberForm({ organizationId }: { organizationId: string })
           <input type="hidden" name="organizationId" value={organizationId} />
           <div className="flex flex-col gap-1">
             <label htmlFor="newMemberEmail" className="text-xs font-medium text-slate-700">
-              New member&rsquo;s email
+              Member&rsquo;s email
             </label>
             <input
               type="email"
@@ -57,9 +57,15 @@ export function CreateMemberForm({ organizationId }: { organizationId: string })
             disabled={isPending}
             className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {isPending ? "Creating…" : "Create account"}
+            {isPending ? "Adding…" : "Add member"}
           </button>
         </form>
+      )}
+      {state.added && (
+        <p className="text-sm text-emerald-700">
+          {state.added} already had a login and is now a member of this book. They sign in as before and
+          can switch to it from the book menu.
+        </p>
       )}
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
     </div>

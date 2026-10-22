@@ -19,6 +19,8 @@ const MEMBER_CREATE_LIMIT = 20;
 export interface MemberCredentialsState {
   error: string | null;
   credentials?: { email: string; password: string };
+  // Someone who already had a login, now a member of this book.
+  added?: string;
 }
 
 export async function disconnectEnrollment(formData: FormData): Promise<void> {
@@ -91,15 +93,34 @@ export async function createMemberAccount(
     return { error: "Only an owner can create member accounts" };
   }
 
-  // Anyone can become an owner (sign up, create an org), and creating an
-  // account for an already-registered email necessarily fails — so cap how
-  // fast one person can use that to probe which emails have accounts.
+  // Anyone can become an owner (sign up, create an org), and what happens
+  // here says whether an email already has an account — so cap how fast one
+  // person can use that to probe which emails do.
   if (!(await checkRateLimit("member-create:user", user.id, MEMBER_CREATE_LIMIT, 60 * 60))) {
     return { error: "Too many accounts created recently. Please try again later." };
   }
 
-  const password = generatePassword();
   const admin = createAdminClient();
+
+  // Already has a login (a member of another book, say): add it to this one.
+  const { data: existingId, error: lookupError } = await admin.rpc("find_user_id_by_email", { p_email: email });
+  if (lookupError) {
+    return { error: "Couldn't check that email" };
+  }
+  if (existingId) {
+    const { error: addError } = await admin.from("organization_members").insert({
+      organization_id: organizationId,
+      user_id: existingId as string,
+      role,
+    });
+    if (addError) {
+      return { error: addError.code === "23505" ? `${email} is already a member` : addError.message };
+    }
+    revalidatePath("/settings");
+    return { error: null, added: email };
+  }
+
+  const password = generatePassword();
 
   const { data: created, error: createError } = await adminCreateUser(admin, {
     email,

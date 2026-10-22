@@ -120,6 +120,9 @@ Auth directly with the public anon key. Site Admins and organization owners
 can still create accounts for people. The server gives each such account a
 one-time exemption (`lib/auth/admin-create-user.ts`,
 `supabase/migrations/20260101000043_site_settings_signups.sql`).
+An owner adds someone who already has a login to another book with the
+same form (Settings → Members): it adds that login rather than making a
+new one.
 
 **Allow connecting banks**, under the same Site Settings, turns off Plaid
 Link for every organization. Each organization's owners have the same

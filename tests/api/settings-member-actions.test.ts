@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createSupabaseMock, ok } from "./supabase-mock";
+import { createSupabaseMock, fail, ok } from "./supabase-mock";
 
 const { serverClientMock, adminClientMock, checkRateLimitMock } = vi.hoisted(() => ({
   serverClientMock: vi.fn(),
@@ -138,6 +138,46 @@ describe("createMemberAccount owner gate", () => {
     expect(createUser).toHaveBeenCalledWith(
       expect.objectContaining({ email: "new@example.com", password: result.credentials?.password }),
     );
+  });
+  it("adds someone who already has a login, without making a new account", async () => {
+    mockCallerRole("owner");
+    const createUser = vi.fn();
+    const { client: admin, tables } = createSupabaseMock({
+      tables: { organization_members: { insert: ok(null) } },
+      rpcs: { find_user_id_by_email: ok("existing-user-1") },
+      authAdmin: { createUser },
+    });
+    adminClientMock.mockReturnValue(admin);
+
+    const result = await createMemberAccount(
+      { error: null },
+      formData({ organizationId: "org-1", email: "Member@Example.com", role: "accountant" }),
+    );
+
+    expect(result).toEqual({ error: null, added: "member@example.com" });
+    expect(admin.rpc).toHaveBeenCalledWith("find_user_id_by_email", { p_email: "member@example.com" });
+    expect(tables.organization_members.insert).toHaveBeenCalledWith({
+      organization_id: "org-1",
+      user_id: "existing-user-1",
+      role: "accountant",
+    });
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
+  it("says so when that login is already a member", async () => {
+    mockCallerRole("owner");
+    const { client: admin } = createSupabaseMock({
+      tables: { organization_members: { insert: fail("duplicate key", "23505") } },
+      rpcs: { find_user_id_by_email: ok("existing-user-1") },
+    });
+    adminClientMock.mockReturnValue(admin);
+
+    const result = await createMemberAccount(
+      { error: null },
+      formData({ organizationId: "org-1", email: "member@example.com", role: "viewer" }),
+    );
+
+    expect(result.error).toBe("member@example.com is already a member");
   });
 });
 

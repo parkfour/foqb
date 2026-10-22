@@ -17,7 +17,7 @@ describe("CreateMemberForm", () => {
   it("renders the email field and every role option", () => {
     render(<CreateMemberForm organizationId="org-1" />);
 
-    const email = screen.getByLabelText(/new member.s email/i);
+    const email = screen.getByLabelText(/member.s email/i);
     expect(email).toHaveAttribute("type", "email");
     expect(email).toHaveAttribute("required");
     expect(screen.getByRole("option", { name: "Owner" })).toBeInTheDocument();
