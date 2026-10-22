@@ -3,7 +3,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { DownloadButton } from "@/components/ui/download-button";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrgId, getCurrentUserRole, getOrgStatus, getUserOrganizations } from "@/lib/org/current";
+import { canWrite, getCurrentOrgId, getCurrentUserRole, getOrgStatus, getUserOrganizations } from "@/lib/org/current";
 import { isSiteAdmin } from "@/lib/org/site-admin";
 import { requireCurrentPolicyAcceptance } from "@/lib/legal/policy";
 import { getSourceCodeUrl } from "@/lib/legal/source-code";
@@ -14,6 +14,7 @@ import { getBookCurrency } from "@/lib/org/book-currency";
 import { EnabledPluginsProvider } from "@/components/plugins/plugin-slot";
 import { enabledPluginIds } from "@/lib/plugins/loader";
 import { pluginPageLinks } from "@/lib/plugins/pages";
+import { UncategorizedToast } from "@/components/layout/uncategorized-toast";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   await requireCurrentPolicyAcceptance();
@@ -82,6 +83,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               <EnabledPluginsProvider ids={enabledPluginIds()}>{children}</EnabledPluginsProvider>
             </BookCurrencyProvider>
           </BookClockProvider>
+          {canWrite(role) && <UncategorizedToast />}
         </main>
       </div>
     </div>

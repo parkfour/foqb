@@ -288,3 +288,15 @@ export async function savePayeeRuleAction(
   revalidatePath("/rules");
   return { success: true, categorizedIds };
 }
+
+// How many of the book's bank transactions are waiting to be categorized.
+export async function countUncategorized(): Promise<number> {
+  const orgId = await getCurrentOrgId();
+  if (!orgId) return 0;
+  const { count } = await (await createClient())
+    .from("bank_transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .eq("status", "unreconciled");
+  return count ?? 0;
+}
