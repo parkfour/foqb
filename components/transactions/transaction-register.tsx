@@ -3,12 +3,13 @@
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Filter, Search, SlidersHorizontal, Split as SplitIcon } from "lucide-react";
+import { EyeOff, Filter, Search, SlidersHorizontal, Split as SplitIcon } from "lucide-react";
 import { SplitTransactionModal } from "./split-transaction-modal";
 import type { SplitLineInput } from "@/lib/transactions/split";
 import {
   bookAllTransfersAction,
   bookTransferAction,
+  ignoreTransactionAction,
   reopenTransactionAction,
   recategorizeTransactionAction,
   savePayeeRuleAction,
@@ -34,6 +35,8 @@ export interface RegisterTransaction {
   // Already booked to an account. Only uncategorized transactions can be
   // categorized or split here.
   categorized: boolean;
+  // Set aside without booking (a duplicate, say). Left out of the balance.
+  ignored?: boolean;
   journal_entry_id?: string | null;
   // Why a categorized row can't be re-opened (payment, reconciliation,
   // locked period), or null if it can.
@@ -68,6 +71,7 @@ export interface TransactionRegisterProps {
   onClearedToggle?: (id: string, cleared: boolean) => Promise<ActionResult>;
   onSplitSave?: (transactionId: string, splits: SplitLineInput[]) => Promise<ActionResult>;
   onReopen?: (transactionId: string) => Promise<ActionResult>;
+  onIgnore?: (transactionId: string) => Promise<ActionResult>;
   onRecategorize?: (transactionId: string, accountId: string) => Promise<ActionResult & { journalEntryId?: string }>;
   onTransfer?: (transactionId: string, otherAccountId: string) => Promise<ActionResult>;
   onBookAllTransfers?: () => Promise<ActionResult & { bookedIds?: string[] }>;
@@ -113,6 +117,7 @@ export function TransactionRegister({
   onClearedToggle = setRegisterClearedAction,
   onSplitSave = splitBankTransactionAction,
   onReopen = reopenTransactionAction,
+  onIgnore = ignoreTransactionAction,
   onRecategorize = recategorizeTransactionAction,
   onTransfer = bookTransferAction,
   onBookAllTransfers = bookAllTransfersAction,
@@ -172,6 +177,10 @@ export function TransactionRegister({
     const balanceMap = new Map<string, number>();
 
     for (const tx of sorted) {
+      if (tx.ignored) {
+        balanceMap.set(tx.id, running);
+        continue;
+      }
       const outflow = tx.amount < 0 ? Math.abs(tx.amount) : 0;
       const inflow = tx.amount > 0 ? tx.amount : 0;
       running += inflow - outflow;
@@ -345,9 +354,18 @@ export function TransactionRegister({
   async function handleReopen(tx: RegisterTransaction) {
     const reopened = (t: RegisterTransaction): RegisterTransaction =>
       t.id === tx.id || (tx.journal_entry_id && t.journal_entry_id === tx.journal_entry_id)
-        ? { ...t, categorized: false, is_split: false, category_id: null, category_name: "Uncategorized", journal_entry_id: null }
+        ? { ...t, categorized: false, ignored: false, is_split: false, category_id: null, category_name: "Uncategorized", journal_entry_id: null }
         : t;
     await runAndUpdate(() => onReopen(tx.id), reopened);
+  }
+
+  async function handleIgnore(tx: RegisterTransaction) {
+    if (!canWrite || tx.categorized) return;
+    await applyChange(
+      tx,
+      { ...tx, categorized: true, ignored: true, transfer: undefined, category_id: null, category_name: "Ignored" },
+      () => onIgnore(tx.id),
+    );
   }
 
   async function handleTransfer(tx: RegisterTransaction) {
@@ -670,6 +688,20 @@ export function TransactionRegister({
                           aria-label={`Split ${tx.name || "transaction"}`}
                         >
                           <SplitIcon className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {canWrite && !tx.categorized && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleIgnore(tx);
+                          }}
+                          className="rounded p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700"
+                          title="Ignore: leave it out of the books (a duplicate, say). Re-open brings it back."
+                          aria-label={`Ignore ${tx.name || "transaction"}`}
+                        >
+                          <EyeOff className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </td>

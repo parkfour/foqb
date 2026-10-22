@@ -131,6 +131,7 @@ interface RawTx {
       is_split: isSplit,
       status,
       categorized: t.status !== "unreconciled",
+      ignored: t.status === "ignored",
       journal_entry_id: t.journal_entry_id,
       reopen_blocker: t.reopen_blocker ?? null,
       recategorize_blocker: t.recategorize_blocker ?? null,

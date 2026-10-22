@@ -307,6 +307,33 @@ describe("TransactionRegister", () => {
     expect(screen.queryByText("Employer Payroll")).not.toBeInTheDocument();
   });
 
+  it("ignores an uncategorized transaction and leaves it out of the running total", async () => {
+    const onIgnore = vi.fn().mockResolvedValue({ success: true });
+    render(<TransactionRegister transactions={mockTransactions} accounts={mockAccounts} onIgnore={onIgnore} />);
+    fireEvent.change(screen.getByLabelText(/filter by account/i), { target: { value: "acc-checking" } });
+
+    expect(screen.queryByRole("button", { name: /ignore whole foods/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /ignore target store/i }));
+
+    await waitFor(() => expect(onIgnore).toHaveBeenCalledWith("tx-3"));
+    const row = screen.getByText("Target Store").closest("tr")!;
+    expect(within(row).getByText("Ignored")).toBeInTheDocument();
+    // 3,000.00 less 120.50; the ignored 85.25 isn't taken off.
+    expect(screen.getAllByText("$2,879.50")).toHaveLength(2);
+    expect(screen.queryByText("$2,794.25")).not.toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Re-open" })).toBeInTheDocument();
+  });
+
+  it("puts an ignored row back when ignoring fails", async () => {
+    const onIgnore = vi.fn().mockResolvedValue({ success: false, error: "Only an uncategorized transaction can be ignored" });
+    render(<TransactionRegister transactions={mockTransactions} accounts={mockAccounts} onIgnore={onIgnore} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /ignore target store/i }));
+
+    expect(await screen.findByText("Only an uncategorized transaction can be ignored")).toBeInTheDocument();
+    expect(screen.getByLabelText("Category for Target Store")).toBeInTheDocument();
+  });
+
   it("offers Split only on uncategorized transactions, and opens the modal", () => {
     render(<TransactionRegister transactions={mockTransactions} accounts={mockAccounts} />);
 

@@ -70,7 +70,9 @@ when you pick an account.
 - **Changing it**: a categorized transaction's category stays a dropdown,
   even once reconciled; the bank side and its reconciliation are kept.
   "Re-open" sends it back to be categorized or split again, unless it's
-  reconciled or otherwise locked. Ignored transactions show "Ignored". See
+  reconciled or otherwise locked. The eye button ignores an uncategorized
+  transaction, a duplicate say: it shows "Ignored", stays out of the
+  running balance, and "Re-open" brings it back. See
   [BANK_FEED.md](BANK_FEED.md#categorizing).
 - **Transfers**: money moving between two of your linked accounts, such as
   paying the card from checking, offers "Transfer to …", booking both sides

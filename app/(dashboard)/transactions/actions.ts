@@ -10,17 +10,28 @@ import { getCurrentOrgId } from "@/lib/org/current";
 export async function ignoreBankTransaction(formData: FormData): Promise<void> {
   const id = formData.get("id") as string;
   if (!id) return;
+  await ignoreTransactionAction(id);
+}
 
+// Set aside without booking (a duplicate, say); Re-open brings it back.
+export async function ignoreTransactionAction(
+  bankTransactionId: string,
+): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
   // Only an unreconciled transaction can be ignored — a matched one is
   // backed by a posted entry, and "ignored" would hide that link.
-  await supabase
+  const { data, error } = await supabase
     .from("bank_transactions")
     .update({ status: "ignored" })
-    .eq("id", id)
-    .eq("status", "unreconciled");
+    .eq("id", bankTransactionId)
+    .eq("status", "unreconciled")
+    .select("id");
+  if (error) return { success: false, error: error.message };
+  if (!data?.length) return { success: false, error: "Only an uncategorized transaction can be ignored" };
 
   revalidatePath("/transactions");
+  revalidatePath("/register");
+  return { success: true };
 }
 
 export async function categorizeBankTransaction(formData: FormData): Promise<void> {

@@ -10,6 +10,7 @@ import {
   categorizeBankTransaction,
   dismissBankChange,
   ignoreBankTransaction,
+  ignoreTransactionAction,
   reopenBankTransaction,
 } from "@/app/(dashboard)/transactions/actions";
 
@@ -35,6 +36,27 @@ describe("transaction actions", () => {
     expect(tables.bank_transactions.update).toHaveBeenCalledWith({ status: "ignored" });
     expect(tables.bank_transactions.eq).toHaveBeenCalledWith("id", "bt-1");
     expect(tables.bank_transactions.eq).toHaveBeenCalledWith("status", "unreconciled");
+  });
+
+  it("says so when there was no uncategorized transaction to ignore", async () => {
+    const { client } = createSupabaseMock({
+      tables: { bank_transactions: { update: ok([]) } },
+    });
+    serverClientMock.mockResolvedValue(client);
+
+    expect(await ignoreTransactionAction("bt-1")).toEqual({
+      success: false,
+      error: "Only an uncategorized transaction can be ignored",
+    });
+  });
+
+  it("ignores from the register", async () => {
+    const { client } = createSupabaseMock({
+      tables: { bank_transactions: { update: ok([{ id: "bt-1" }]) } },
+    });
+    serverClientMock.mockResolvedValue(client);
+
+    expect(await ignoreTransactionAction("bt-1")).toEqual({ success: true });
   });
 
   it("categorizes by posting the entry and claiming the bank transaction in one RPC", async () => {
