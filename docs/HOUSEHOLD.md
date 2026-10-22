@@ -46,9 +46,13 @@ menu just leaves them out.
 - **Business equity**: if you own business organizations in FOQB, their book
   equity (assets − liabilities) is listed, and you can tick "Include in Net
   Worth". Each business counts in full, not by your ownership share.
-- **History**: each day a writer opens the page, that day's figures are saved
-  to `net_worth_snapshots` for the chart and the 30-day change. Days nobody
-  looked at have no point. Household figures only, without business equity.
+- **History**: the chart and the 30-day change are worked out from the
+  books (`get_net_worth_series`): a point for every day of the last six
+  months (1M, 6M) and for each month-end back to the first entry (1Y,
+  All-time). Properties count at today's estimated value from their
+  purchase date on, and an investment account moves only where a statement
+  is booked, so daily points step at statement ends. Household figures
+  only, without business equity.
 
 ![Assets and debts by kind, and the equity of a business the household owns](screenshots/household-net-worth-breakdown.jpg)
 

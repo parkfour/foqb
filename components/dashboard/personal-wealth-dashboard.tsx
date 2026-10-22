@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Building, Home, Landmark, LineChart, Wallet } from "lucide-react";
 import type { NetWorthBucket, NetWorthSnapshotData } from "@/lib/net-worth/engine";
 import { BreakdownDialog, type Breakdown, type BreakdownLine } from "./breakdown-dialog";
+import { addDays, isMonthEnd } from "@/lib/time/book-time";
 import { useMoney } from "@/components/providers/book-currency-provider";
 
 interface WealthDashboardProps {
@@ -30,21 +31,20 @@ export function PersonalWealthDashboard({
     if (history.length === 0) {
       return [{ date: data.date, net_worth: data.netWorth, total_assets: data.totalAssets, total_liabilities: data.totalLiabilities }];
     }
-    const baseTime = new Date(data.date).getTime();
-    let days = 365;
-    if (timeframe === "1M") days = 30;
-    else if (timeframe === "6M") days = 180;
-    else if (timeframe === "ALL") return history;
-
-    const cutoff = new Date(baseTime - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const subset = history.filter((h) => h.date >= cutoff);
-    return subset.length > 0 ? subset : history.slice(-5);
+    // Daily points for 1M and 6M; month-ends (and today) for 1Y and ALL.
+    if (timeframe === "1M" || timeframe === "6M") {
+      const cutoff = addDays(data.date, timeframe === "1M" ? -30 : -180);
+      return history.filter((h) => h.date >= cutoff);
+    }
+    const monthly = history.filter((h) => isMonthEnd(h.date) || h.date === data.date);
+    return timeframe === "ALL" ? monthly : monthly.filter((h) => h.date >= addDays(data.date, -365));
   }, [history, timeframe, data]);
 
   const effectiveBusinessEquity = includeBusiness ? (businessEquity?.total ?? 0) : 0;
   const currentAssets = data.totalAssets + effectiveBusinessEquity;
   const currentNetWorth = currentAssets - data.totalLiabilities;
-  const delta = data.thirtyDayDelta ?? 0;
+  const monthAgo = history.find((h) => h.date === addDays(data.date, -30));
+  const delta = monthAgo ? data.netWorth - monthAgo.net_worth : 0;
 
   // What's behind each figure, for its popup.
   const items = data.items ?? [];

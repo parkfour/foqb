@@ -101,7 +101,7 @@ export default async function DashboardPage() {
     const today = await bookToday(orgId);
     const [netWorthData, history, businessEquityRollup] = await Promise.all([
       calculateHouseholdNetWorth(orgId, today, supabase),
-      fetchNetWorthHistory(orgId, "1Y", today, supabase),
+      fetchNetWorthHistory(orgId, today, supabase),
       user?.id ? calculateUserBusinessEquity(user.id, supabase, currency) : Promise.resolve({ businesses: [], totalBusinessEquity: 0 }),
     ]);
 

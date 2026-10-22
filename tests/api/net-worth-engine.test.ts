@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSupabaseMock, ok } from "./supabase-mock";
-import { calculateHouseholdNetWorth, withTodaysPoint } from "@/lib/net-worth/engine";
+import { calculateHouseholdNetWorth, fetchNetWorthHistory, historyDates, withTodaysPoint } from "@/lib/net-worth/engine";
 
 const row = (name: string, type: string, balance: number, account_number = "2000") => ({
   account_id: `id-${name}`,
@@ -119,5 +119,57 @@ describe("withTodaysPoint", () => {
       history[0],
       { date: "2026-10-18", net_worth: 110, total_assets: 160, total_liabilities: 50 },
     ]);
+  });
+});
+
+describe("historyDates", () => {
+  it("asks for each month-end from the first entry, then every day of the last six months, through today", () => {
+    const dates = historyDates("2025-01-15", "2026-10-22");
+
+    expect(dates[0]).toBe("2025-01-31");
+    expect(dates).toContain("2025-02-28");
+    expect(dates).toContain("2026-03-31");
+    expect(dates).not.toContain("2025-06-15");
+    expect(dates).toContain("2026-04-22"); // 183 days back: daily from here
+    expect(dates).toContain("2026-10-21");
+    expect(dates.at(-1)).toBe("2026-10-22");
+    expect(new Set(dates).size).toBe(dates.length);
+    expect([...dates].sort()).toEqual(dates);
+  });
+
+  it("starts no earlier than the first entry", () => {
+    expect(historyDates("2026-10-20", "2026-10-22")).toEqual(["2026-10-20", "2026-10-21", "2026-10-22"]);
+  });
+});
+
+describe("fetchNetWorthHistory", () => {
+  it("adds a property's value from its purchase date on to what the ledger holds", async () => {
+    const { client } = createSupabaseMock({
+      rpcs: {
+        get_net_worth_series: ok([
+          { as_of: "2026-08-31", total_assets: "1000", total_liabilities: "200" },
+          { as_of: "2026-09-30", total_assets: "1500", total_liabilities: "200" },
+        ]),
+      },
+      tables: {
+        journal_entries: { select: ok({ entry_date: "2026-08-02" }) },
+        properties: {
+          select: ok([{ estimated_value: 300000, purchase_price: 250000, purchase_date: "2026-09-15" }]),
+        },
+      },
+    });
+
+    expect(await fetchNetWorthHistory("org-1", "2026-10-22", client as never)).toEqual([
+      { date: "2026-08-31", net_worth: 800, total_assets: 1000, total_liabilities: 200 },
+      { date: "2026-09-30", net_worth: 301300, total_assets: 301500, total_liabilities: 200 },
+    ]);
+  });
+
+  it("has no history before anything's booked", async () => {
+    const { client } = createSupabaseMock({
+      tables: { journal_entries: { select: ok(null) }, properties: { select: ok([]) } },
+    });
+
+    expect(await fetchNetWorthHistory("org-1", "2026-10-22", client as never)).toEqual([]);
   });
 });

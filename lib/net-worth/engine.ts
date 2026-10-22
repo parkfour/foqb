@@ -31,7 +31,6 @@ export interface NetWorthSnapshotData {
   totalLiabilities: number;
   netWorth: number;
   breakdown: NetWorthBreakdown;
-  thirtyDayDelta?: number;
   // What's in each bucket (not stored with the snapshot).
   items?: NetWorthItem[];
 }
@@ -141,18 +140,6 @@ export async function calculateHouseholdNetWorth(
     { onConflict: "organization_id,date" },
   );
 
-  const thirtyDaysAgo = addDays(today, -30);
-  const { data: pastSnapshot } = await supabase
-    .from("net_worth_snapshots")
-    .select("net_worth")
-    .eq("organization_id", orgId)
-    .lte("date", thirtyDaysAgo)
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const pastNetWorth = pastSnapshot ? Number(pastSnapshot.net_worth) : netWorth;
-
   return {
     organizationId: orgId,
     date: today,
@@ -160,43 +147,85 @@ export async function calculateHouseholdNetWorth(
     totalLiabilities,
     netWorth,
     breakdown,
-    thirtyDayDelta: round(netWorth - pastNetWorth),
     items: items.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)),
   };
 }
 
+// Daily points cover this many days back; before that, month-ends.
+const DAILY_DAYS = 183;
+
+// The chart's dates: every month-end from the first entry's month, and
+// every day of the last six months, through today.
+export function historyDates(firstDate: string, today: string): string[] {
+  const dates = new Set<string>();
+  for (let end = addDays(nextMonthStart(firstDate), -1); end < today; end = addDays(nextMonthStart(addDays(end, 1)), -1)) {
+    dates.add(end);
+  }
+  for (let d = addDays(today, -DAILY_DAYS); d <= today; d = addDays(d, 1)) {
+    if (d >= firstDate) dates.add(d);
+  }
+  dates.add(today);
+  return [...dates].sort();
+}
+
+function nextMonthStart(date: string): string {
+  const [year, month] = date.split("-").map(Number);
+  return month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+}
+
+interface PropertyValue {
+  estimated_value: number | string | null;
+  purchase_price: number | string | null;
+  purchase_date: string | null;
+}
+
+// Net worth over time, worked out from the ledger (get_net_worth_series)
+// rather than from snapshots saved on visits. Properties count at today's
+// estimated value from their purchase date on; there's no history of
+// estimates. Investment accounts move only where statements are booked, so
+// their daily points step at statement ends.
 export async function fetchNetWorthHistory(
   orgId: string,
-  timeframe: "1M" | "6M" | "1Y" | "ALL",
   today: string,
   supabaseClient?: Awaited<ReturnType<typeof createClient>>,
 ): Promise<{ date: string; net_worth: number; total_assets: number; total_liabilities: number }[]> {
   const supabase = supabaseClient ?? (await createClient());
 
-  let query = supabase
-    .from("net_worth_snapshots")
-    .select("date, net_worth, total_assets, total_liabilities")
-    .eq("organization_id", orgId)
-    .order("date", { ascending: true });
+  const [{ data: first }, { data: properties }] = await Promise.all([
+    supabase
+      .from("journal_entries")
+      .select("entry_date")
+      .eq("organization_id", orgId)
+      .eq("status", "posted")
+      .order("entry_date", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("properties").select("estimated_value, purchase_price, purchase_date").eq("organization_id", orgId),
+  ]);
+  if (!first) return [];
 
-  if (timeframe === "1M") {
-    const d = addDays(today, -30);
-    query = query.gte("date", d);
-  } else if (timeframe === "6M") {
-    const d = addDays(today, -180);
-    query = query.gte("date", d);
-  } else if (timeframe === "1Y") {
-    const d = addDays(today, -365);
-    query = query.gte("date", d);
-  }
+  const { data, error } = await supabase.rpc("get_net_worth_series", {
+    p_org_id: orgId,
+    p_dates: historyDates((first as { entry_date: string }).entry_date, today),
+  });
+  if (error) throw new Error(`Failed to load net worth history: ${error.message}`);
 
-  const { data } = await query;
-  return (data ?? []).map((row: { date: string; net_worth: number | string; total_assets: number | string; total_liabilities: number | string }) => ({
-    date: row.date,
-    net_worth: Number(row.net_worth),
-    total_assets: Number(row.total_assets),
-    total_liabilities: Number(row.total_liabilities),
-  }));
+  const props = (properties ?? []) as PropertyValue[];
+  return ((data ?? []) as { as_of: string; total_assets: number | string; total_liabilities: number | string }[]).map(
+    (row) => {
+      const propertyValue = props
+        .filter((p) => !p.purchase_date || p.purchase_date <= row.as_of)
+        .reduce((sum, p) => sum + Number(p.estimated_value ?? p.purchase_price ?? 0), 0);
+      const totalAssets = round(Number(row.total_assets) + propertyValue);
+      const totalLiabilities = round(Number(row.total_liabilities));
+      return {
+        date: row.as_of,
+        net_worth: computeNetWorth(totalAssets, totalLiabilities),
+        total_assets: totalAssets,
+        total_liabilities: totalLiabilities,
+      };
+    },
+  );
 }
 
 type HistoryPoint = Awaited<ReturnType<typeof fetchNetWorthHistory>>[number];

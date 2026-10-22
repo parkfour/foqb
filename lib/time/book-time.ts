@@ -30,6 +30,10 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+export function isMonthEnd(date: string): boolean {
+  return addDays(date, 1).endsWith("-01");
+}
+
 // A moment, shown in the book's timezone with its abbreviation, e.g.
 // "Oct 17, 2026, 9:14 PM CDT".
 export function formatTimestamp(at: string | Date, timeZone: string): string {
