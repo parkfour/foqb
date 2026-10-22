@@ -149,6 +149,24 @@ export async function importStatement(
     return { success: false, error: `A ${statement.kind === "card" ? "card" : "bank"} statement goes in an ${expectedType} account` };
   }
 
+  // An account reconciled through the statement's end already holds it.
+  // Rows that look new then are the same money read differently (a reader
+  // that changed since), and adding them would count it twice.
+  const { data: later } = await supabase
+    .from("bank_reconciliations")
+    .select("statement_date")
+    .eq("account_id", accountId)
+    .eq("status", "completed")
+    .gte("statement_date", statement.periodEnd)
+    .order("statement_date", { ascending: false })
+    .limit(1);
+  if (later && later.length > 0) {
+    return {
+      success: false,
+      error: `This account is already reconciled through ${later[0].statement_date}, so this statement is in its books already. Nothing was added.`,
+    };
+  }
+
   // Rows already in the bank feed: each statement row claims at most one,
   // the same amount on the nearest date. Rows from statements aren't
   // candidates: a re-import is caught by the stable ids below, and a match
@@ -362,15 +380,6 @@ async function reconcileStatement(
   accountType: string,
   statement: ParsedStatement,
 ): Promise<{ reconciliationId?: string; reconciled: boolean }> {
-  const { data: later } = await supabase
-    .from("bank_reconciliations")
-    .select("id")
-    .eq("account_id", accountId)
-    .eq("status", "completed")
-    .gte("statement_date", statement.periodEnd)
-    .limit(1);
-  if (later && later.length > 0) return { reconciled: true }; // already reconciled past this statement
-
   let { data: rec } = await supabase
     .from("bank_reconciliations")
     .select("id")

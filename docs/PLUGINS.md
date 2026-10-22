@@ -269,7 +269,9 @@ statement's opening balance.
 - **No duplicates:** a statement transaction that's already in the
   register (the same amount, dated up to 3 days apart, as the bank feed
   sometimes dates things differently) is skipped, and importing the same
-  statement twice adds nothing the second time.
+  statement twice adds nothing the second time. A statement for an
+  account already reconciled through its end is refused: its money is in
+  the books, even if a reader now reads it into different rows.
 - **Booked like the bank feed:** new transactions go through the
   categorization rules and transfer matching, and the account's opening
   balance moves earlier if the statement goes back further than the feed.
