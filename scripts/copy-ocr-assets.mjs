@@ -16,7 +16,9 @@ const files = {
   "tesseract.js-core/tesseract-core-simd-lstm.wasm.js": "tesseract-core-simd-lstm.wasm.js",
   "tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js": "tesseract-core-relaxedsimd-lstm.wasm.js",
   "@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz": "eng.traineddata.gz",
-  "pdfjs-dist/build/pdf.worker.min.mjs": "pdf.worker.min.mjs",
+  // The legacy build, like the importers' pdf.js: Safari before 18.4 lacks
+  // the Iterator global the standard build expects.
+  "pdfjs-dist/legacy/build/pdf.worker.min.mjs": "pdf.worker.min.mjs",
   // pdf.js decodes some scanned images with WebAssembly it fetches from
   // wasmUrl: JBIG2 (black-and-white scans), JPEG 2000, and colour profiles.
   // Without them a scan's text layer silently doesn't draw.

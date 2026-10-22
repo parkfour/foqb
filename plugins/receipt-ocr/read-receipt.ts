@@ -36,7 +36,7 @@ async function ocr(image: File | HTMLCanvasElement, onProgress: (message: string
 }
 
 async function readPdf(file: File, onProgress: (message: string) => void): Promise<ReceiptText> {
-  const pdfjs = await import("pdfjs-dist");
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs"); // older Safari too
   pdfjs.GlobalWorkerOptions.workerSrc = `${OCR_ASSETS}/pdf.worker.min.mjs`;
   // wasmUrl: the decoders for scanned images (see scripts/copy-ocr-assets.mjs).
   const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), wasmUrl: `${OCR_ASSETS}/pdfjs-wasm/` });

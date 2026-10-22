@@ -18,7 +18,7 @@ async function ocrWorker(): Promise<Worker> {
 
 export async function readStatementLines(file: File, onProgress: (message: string) => void = () => {}): Promise<string[]> {
   if (file.type !== "application/pdf") throw new Error("Choose the statement's PDF.");
-  const pdfjs = await import("pdfjs-dist");
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs"); // older Safari too
   pdfjs.GlobalWorkerOptions.workerSrc = `${OCR_ASSETS}/pdf.worker.min.mjs`;
   const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), wasmUrl: `${OCR_ASSETS}/pdfjs-wasm/` });
   let worker: Worker | null = null;
