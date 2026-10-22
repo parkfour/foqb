@@ -297,7 +297,7 @@ cd docker && docker compose up -d
 
 `.env` points at the released images on GitHub's container registry
 (`ghcr.io/parkfour/foqb` and `ghcr.io/parkfour/foqb-migrate`). Pin a
-version (`:0.4.1`) instead of `:latest` if you want to choose when to
+version (`:0.4.2`) instead of `:latest` if you want to choose when to
 upgrade. To build from your own checkout, empty `FOQB_APP_IMAGE` and
 `FOQB_MIGRATE_IMAGE` and run `docker compose up -d --build` (the build also
 copies the receipt-scanning plugin's OCR files into `public/ocr`). Each version
