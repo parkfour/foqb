@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, LogOut, UserCircle, Wifi, WifiOff } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOnlineStatus } from "@/components/providers/online-status-provider";
 import { logout } from "@/app/logout/actions";
@@ -77,13 +78,14 @@ export function Header({ organizations, currentOrgId, role }: HeaderProps) {
           {isOnline ? "Online" : "Offline"}
         </span>
 
-        <button
-          type="button"
+        <Link
+          href="/settings#password"
           className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
-          aria-label="User menu"
+          aria-label="Your password and sign-in"
+          title="Your password and sign-in"
         >
           <UserCircle className="h-5 w-5" />
-        </button>
+        </Link>
 
         <form action={logout}>
           <button

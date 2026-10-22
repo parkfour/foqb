@@ -6,6 +6,7 @@ import { ReconnectBankButton } from "@/components/settings/reconnect-bank-button
 import { CreateMemberForm } from "@/components/settings/create-member-form";
 import { RegeneratePasswordButton } from "@/components/settings/regenerate-password-button";
 import { MfaSettings } from "@/components/settings/mfa-settings";
+import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
@@ -88,6 +89,7 @@ export default async function SettingsPage({
           description="Period locking, inventory tracking, and bank enrollment status."
         />
         {pageError && <p className="text-sm text-red-600">{pageError}</p>}
+        <ChangePasswordForm />
         <MfaSettings factor={mfaFactor} />
         <p className="text-sm text-slate-500">Create an organization first.</p>
       </div>
@@ -162,6 +164,8 @@ export default async function SettingsPage({
       />
 
       {pageError && <p className="text-sm text-red-600">{pageError}</p>}
+
+      <ChangePasswordForm />
 
       <MfaSettings factor={mfaFactor} />
 
