@@ -19,10 +19,16 @@ type Account = SlotContextMap["reconcile.header"]["accounts"][number];
 
 // The account a statement most likely belongs to: the right type, with the
 // statement's last four digits in its name (linked accounts are "Name ••1234").
+// A statement without an account number (a workplace plan's) is picked by hand.
 export function guessAccount(statement: ParsedStatement, accounts: Account[]): string {
   const type = statement.kind === "card" ? "liability" : "asset";
+  if (!statement.accountLast4) return "";
   return accounts.find((a) => a.type === type && a.name.includes(statement.accountLast4))?.id ?? "";
 }
+
+// "Name ••1234", or just the name when the statement shows no number.
+const labelOf = (statement: ParsedStatement) =>
+  statement.accountLast4 ? `${statement.accountName} ••${statement.accountLast4}` : statement.accountName;
 
 // A statement for an account the book doesn't have yet: created on import.
 const NEW_ACCOUNT = "__new__";
@@ -62,8 +68,9 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
       setFound(
         statements.map((statement) => ({
           statement,
-          accountId: guessAccount(statement, context.accounts) || NEW_ACCOUNT,
-          newName: `${statement.accountName} ••${statement.accountLast4}`,
+          // Without a number to go by, nothing is chosen, rather than a new account.
+          accountId: guessAccount(statement, context.accounts) || (statement.accountLast4 ? NEW_ACCOUNT : ""),
+          newName: labelOf(statement),
           settleBefore: false,
         })),
       );
@@ -141,7 +148,7 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
           <div key={i} className="mt-3 flex flex-col gap-2 rounded-md border border-slate-100 p-3 text-xs text-slate-800">
             <p>
               <strong>
-                {s.bank} {s.accountName} ••{s.accountLast4}
+                {s.bank} {labelOf(s)}
               </strong>
               , {s.periodStart} to {s.periodEnd}: {s.rows.length} transactions, from{" "}
               {formatCurrency(s.openingBalance)} to {formatCurrency(s.closingBalance)}

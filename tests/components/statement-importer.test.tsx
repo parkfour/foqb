@@ -11,7 +11,7 @@ vi.mock("@/plugins/statement-import/read-statement", () => ({ readStatementLines
 vi.mock("@/plugins/statement-import/actions", () => ({ importStatementAction: importMock }));
 vi.mock("@/app/(dashboard)/accounts/actions", () => ({ createAccountQuickAction: createAccountMock }));
 
-import { StatementImporter } from "@/plugins/statement-import/statement-importer";
+import { StatementImporter, guessAccount } from "@/plugins/statement-import/statement-importer";
 
 // A made-up Capital One statement for an account the book doesn't have.
 const statement = [
@@ -64,6 +64,12 @@ describe("StatementImporter", () => {
 
     expect(await screen.findByLabelText("Into")).toHaveValue("acc-checking");
     expect(screen.queryByLabelText("New account name")).toBeNull();
+  });
+
+  it("guesses no account for a statement without an account number", () => {
+    const noNumber = { bank: "Fidelity", kind: "deposit" as const, accountName: "Fidelity Example 403(b) Plan", accountLast4: "", periodStart: "2026-01-01", periodEnd: "2026-06-30", openingBalance: 0, closingBalance: 0, rows: [] };
+    expect(guessAccount(noNumber, accounts)).toBe("");
+    expect(guessAccount({ ...noNumber, accountLast4: "4321" }, accounts)).toBe("acc-checking");
   });
 
   it("passes on settling the history before the statement when ticked", async () => {
