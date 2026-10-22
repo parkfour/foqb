@@ -152,12 +152,13 @@ jobs:
 
   # The runner's jobs share the Docker daemon of the host they run on, so
   # these images land right where the public demo (docker/compose.yml)
-  # runs. Its 6-hourly reset (docker/reset-demo.sh) starts over on the
-  # newest ones.
+  # runs, as long as the job runs on the demo's host: its runner (and only
+  # its) has the "beachfour" label. The demo's 6-hourly reset
+  # (docker/reset-demo.sh) starts over on the newest images.
   demo-images:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.server_url != 'https://github.com'
-    runs-on: ubuntu-latest
+    runs-on: beachfour
     steps:
       - uses: actions/checkout@v4
 

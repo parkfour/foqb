@@ -13,7 +13,9 @@ const HOST_PORT = 55432;
 // the database container's network, so it's on the same localhost.
 const REST_CONTAINER_NAME = "foqb-test-rest";
 const REST_PORT = 55433;
-const REST_IMAGE = "public.ecr.aws/supabase/postgrest:v14.5";
+// Docker Hub's, like postgres:16-alpine and the demo's (docker/compose.yml):
+// AWS's public registry throttles anonymous pulls on a fresh CI runner.
+const REST_IMAGE = "postgrest/postgrest:v14.5";
 const JWT_SECRET = "foqb-test-jwt-secret-at-least-32-characters";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
@@ -213,6 +215,7 @@ export default async function setup(project: TestProject) {
 
     // Started once the schema is in, so its schema cache has it all.
     spawnSync("docker", ["rm", "-f", REST_CONTAINER_NAME], { stdio: "ignore" });
+    pullWithRetries(REST_IMAGE);
     execFileSync("docker", [
       "run", "-d", "--name", REST_CONTAINER_NAME,
       "--network", `container:${nested ? os.hostname() : CONTAINER_NAME}`,
@@ -237,6 +240,17 @@ export default async function setup(project: TestProject) {
   return async () => {
     spawnSync("docker", ["rm", "-f", REST_CONTAINER_NAME, CONTAINER_NAME], { stdio: "ignore" });
   };
+}
+
+// A registry's rate limit or a network blip shouldn't fail the suite.
+function pullWithRetries(image: string, attempts = 3): void {
+  if (spawnSync("docker", ["image", "inspect", image], { stdio: "ignore" }).status === 0) return;
+  for (let attempt = 1; ; attempt++) {
+    const result = spawnSync("docker", ["pull", "-q", image], { encoding: "utf-8" });
+    if (result.status === 0) return;
+    if (attempt >= attempts) throw new Error(`Couldn't pull ${image}: ${result.stderr}`);
+    spawnSync("sleep", [String(10 * attempt)]);
+  }
 }
 
 async function waitForRest(url: string): Promise<void> {
