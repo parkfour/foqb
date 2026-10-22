@@ -22,6 +22,14 @@ import {
 } from "./actions";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
+import {
+  containsPattern,
+  FEED_PAGE_SIZE,
+  FEED_STATUSES,
+  feedHref,
+  parseFeedFilters,
+  type FeedParams,
+} from "@/lib/bank/feed-filters";
 
 interface AccountOption {
   id: string;
@@ -29,26 +37,6 @@ interface AccountOption {
   name: string;
   type: string;
   has_bank_feed: boolean;
-}
-
-const PAGE_SIZE = 100;
-const STATUSES = ["unreconciled", "matched", "ignored"] as const;
-
-interface Filters {
-  q?: string;
-  account?: string;
-  status?: string;
-  page?: string;
-}
-
-// This page's URL with the filters kept and the given ones changed.
-function hrefWith(filters: Filters, changes: Filters): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries({ ...filters, ...changes })) {
-    if (value) params.set(key, value);
-  }
-  const query = params.toString();
-  return query ? `/transactions?${query}` : "/transactions";
 }
 
 interface BankTransactionRow {
@@ -83,11 +71,9 @@ interface JournalEntryRow {
   journal_lines: { debit: number }[];
 }
 
-export default async function TransactionsPage({ searchParams }: { searchParams: Promise<Filters> }) {
+export default async function TransactionsPage({ searchParams }: { searchParams: Promise<FeedParams> }) {
   const filters = await searchParams;
-  const search = filters.q?.trim() ?? "";
-  const status = STATUSES.find((value) => value === filters.status);
-  const page = Math.max(1, Math.floor(Number(filters.page)) || 1);
+  const { search, account: accountFilter, status, page, isFiltered } = parseFeedFilters(filters);
   const orgId = await getCurrentOrgId();
   const currency = await getBookCurrency(orgId);
   const formatCurrency = (value: number) => formatMoney(value, currency);
@@ -110,8 +96,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       { count: "exact" },
     )
     .eq("organization_id", orgId);
-  if (search) feedQuery = feedQuery.ilike("name", `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
-  if (filters.account) feedQuery = feedQuery.eq("account_id", filters.account);
+  if (search) feedQuery = feedQuery.ilike("name", containsPattern(search));
+  if (accountFilter) feedQuery = feedQuery.eq("account_id", accountFilter);
   if (status) feedQuery = feedQuery.eq("status", status);
 
   const [
@@ -132,7 +118,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       feedQuery
         .order("date", { ascending: false })
         .order("id")
-        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
+        .range((page - 1) * FEED_PAGE_SIZE, page * FEED_PAGE_SIZE - 1),
       supabase
         .from("journal_entries")
         .select("id, entry_date, memo, status, journal_lines(debit)")
@@ -161,9 +147,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const isHousehold = workspaceType === "household";
   const bankAccounts = accounts.filter((account) => account.has_bank_feed);
   const total = transactionCount ?? 0;
-  const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const lastShown = Math.min(page * PAGE_SIZE, total);
-  const isFiltered = Boolean(search || filters.account || status);
+  const firstShown = total === 0 ? 0 : (page - 1) * FEED_PAGE_SIZE + 1;
+  const lastShown = Math.min(page * FEED_PAGE_SIZE, total);
   const transfers = pairTransfers(
     ((openData as unknown as { id: string; account_id: string | null; date: string; amount: number; accounts: { name: string } | null }[] | null) ?? []).map(
       (row) => ({ ...row, amount: Number(row.amount) }),
@@ -209,7 +194,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             />
             <select
               name="account"
-              defaultValue={filters.account ?? ""}
+              defaultValue={accountFilter ?? ""}
               aria-label="Bank account"
               className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             >
@@ -227,7 +212,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             >
               <option value="">Any status</option>
-              {STATUSES.map((value) => (
+              {FEED_STATUSES.map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
@@ -448,7 +433,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
       <div className="-mt-3 flex items-center justify-between text-sm text-slate-600">
         {page > 1 ? (
-          <Link href={hrefWith(filters, { page: String(page - 1) })} className="hover:text-slate-900">
+          <Link href={feedHref(filters, { page: String(page - 1) })} className="hover:text-slate-900">
             ← Newer
           </Link>
         ) : (
@@ -458,7 +443,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
           {firstShown}–{lastShown} of {total}
         </span>
         {lastShown < total ? (
-          <Link href={hrefWith(filters, { page: String(page + 1) })} className="hover:text-slate-900">
+          <Link href={feedHref(filters, { page: String(page + 1) })} className="hover:text-slate-900">
             Older →
           </Link>
         ) : (

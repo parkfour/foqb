@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { PersonalWealthDashboard } from "@/components/dashboard/personal-wealth-dashboard";
 import type { NetWorthSnapshotData } from "@/lib/net-worth/engine";
+import { addDays, isMonthEnd } from "@/lib/time/book-time";
 
 // jsdom has <dialog> but not its modal methods.
 beforeAll(() => {
@@ -69,5 +70,35 @@ describe("PersonalWealthDashboard", () => {
     fireEvent.click(screen.getByLabelText("Include in Net Worth"));
     fireEvent.click(screen.getByText("Total Assets"));
     expect(dialog().getByText("Shop LLC (business equity)")).toBeInTheDocument();
+  });
+
+  it("draws daily points for 1M and 6M, and month-ends with today for 1Y and All-time", () => {
+    // As fetchNetWorthHistory gives it: month-ends from June 2024, then every
+    // day of the last six months, through today (2026-10-20).
+    const dates = new Set<string>();
+    for (let d = "2024-06-01"; d <= data.date; d = addDays(d, 1)) {
+      if (isMonthEnd(d) || d >= "2026-04-20") dates.add(d);
+    }
+    const history = [...dates].map((date, i) => ({ date, net_worth: i, total_assets: i, total_liabilities: 0 }));
+    render(<PersonalWealthDashboard data={data} history={history} />);
+    const drawn = () => [...document.querySelectorAll("svg path title")].map((t) => (t.textContent ?? "").split(":")[0]);
+
+    // 1Y, the default: the month-ends of the last year, then today.
+    expect(drawn()).toEqual([
+      "2025-10-31", "2025-11-30", "2025-12-31", "2026-01-31", "2026-02-28", "2026-03-31",
+      "2026-04-30", "2026-05-31", "2026-06-30", "2026-07-31", "2026-08-31", "2026-09-30", "2026-10-20",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "6M" }));
+    expect(drawn()[0]).toBe("2026-04-23");
+    expect(drawn()).toHaveLength(181);
+
+    fireEvent.click(screen.getByRole("button", { name: "1M" }));
+    expect(drawn()[0]).toBe("2026-09-20");
+    expect(drawn()).toHaveLength(31);
+
+    fireEvent.click(screen.getByRole("button", { name: "All-time" }));
+    expect(drawn()[0]).toBe("2024-06-30");
+    expect(drawn().every((d) => isMonthEnd(d) || d === data.date)).toBe(true);
   });
 });
