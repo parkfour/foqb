@@ -48,8 +48,9 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   // transactions categorized to it, splits included, rather than none.
   const byCategory = Boolean(account) && rawAccounts?.find((a) => a.id === account)?.has_bank_feed === false;
 
-  // Read one row past maxRows, to know whether there are older ones.
-  const txnRows = await readAllRows<unknown>((from, to) => {
+  // Up to maxRows, a page at a time; reading past it (to see whether there
+  // are older rows) would read a whole extra page of joins and checks.
+  const rawTxns = await readAllRows<unknown>((from, to) => {
     let query = supabase
       .from("bank_transactions")
       .select(byCategory ? `${TXN_COLUMNS}, category:journal_entries!inner(journal_lines!inner(account_id))` : TXN_COLUMNS)
@@ -57,9 +58,19 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
     if (byCategory) query = query.eq("category.journal_lines.account_id", account!);
     else if (account) query = query.eq("account_id", account);
     return query.order("date", { ascending: false }).order("id").range(from, to);
-  }, maxRows);
-  const hasOlder = txnRows.length > maxRows;
-  const rawTxns = hasOlder ? txnRows.slice(0, maxRows) : txnRows;
+  }, maxRows - 1);
+  // Older rows, for "Load older": the next one's id is enough to tell.
+  const { data: next } =
+    rawTxns.length >= maxRows
+      ? await supabase
+          .from("bank_transactions")
+          .select("id")
+          .eq("organization_id", orgId)
+          .order("date", { ascending: false })
+          .order("id")
+          .range(maxRows, maxRows)
+      : { data: [] };
+  const hasOlder = (next ?? []).length > 0;
 
   const accounts: RegisterAccount[] = (rawAccounts ?? []).map((a) => ({
     id: a.id,

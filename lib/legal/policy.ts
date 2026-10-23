@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/current-user";
 
 import { POLICY_VERSION } from "./policy-version";
 
@@ -9,11 +10,9 @@ export const ACCEPT_TERMS_PATH = "/accept-terms";
 
 // Whether the signed-in user has accepted the current policy version.
 export async function hasAcceptedCurrentPolicies(): Promise<boolean> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return false;
+  const supabase = await createClient();
 
   const { data } = await supabase
     .from("policy_acceptances")

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getAuthUser } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { fetchIncomeStatement, fetchBalanceSheet } from "@/lib/reports";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getWorkspaceType } from "@/lib/org/current";
@@ -94,11 +95,7 @@ export default async function DashboardPage() {
 
   if (workspaceType === "household") {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const today = await bookToday(orgId);
+    const [user, today] = await Promise.all([getAuthUser(), bookToday(orgId)]);
     const [netWorthData, history, businessEquityRollup] = await Promise.all([
       calculateHouseholdNetWorth(orgId, today, supabase),
       fetchNetWorthHistory(orgId, today, supabase),

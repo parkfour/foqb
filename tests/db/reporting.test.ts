@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 import { Client } from "pg";
-import { createAccount, createOrg, newId } from "./helpers";
+import { addMember, asUser, createAccount, createOrg, createUser, newId } from "./helpers";
 
 interface JournalLineInput {
   accountId: string;
@@ -316,5 +316,28 @@ describe("financial reporting RPCs", () => {
       [orgId, cash, "2026-01-10", "2026-01-31"],
     );
     expect(rows).toHaveLength(2); // Jan-5 entry falls before the start date
+  });
+
+  it("gives a book's reports to its members only, and none to a visitor who isn't signed in", async () => {
+    const orgId = await createOrg(client);
+    const member = await createUser(client, "report-member@example.com");
+    const outsider = await createUser(client, "report-outsider@example.com");
+    await addMember(client, orgId, member, "viewer");
+    await createAccount(client, orgId, { type: "asset" });
+
+    await client.query("SAVEPOINT s");
+    await asUser(client, member);
+    await client.query("select * from get_balance_sheet($1, '2026-12-31')", [orgId]);
+    await client.query("RESET ROLE");
+
+    await asUser(client, outsider);
+    await expect(client.query("select * from get_income_statement($1, '2026-01-01', '2026-12-31')", [orgId])).rejects.toThrow(
+      /Not one of your books/,
+    );
+    await client.query("ROLLBACK TO SAVEPOINT s");
+
+    await client.query("SET LOCAL ROLE anon");
+    await expect(client.query("select * from get_trial_balance($1, '2026-12-31')", [orgId])).rejects.toThrow(/permission denied/);
+    await client.query("ROLLBACK TO SAVEPOINT s");
   });
 });
