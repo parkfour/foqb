@@ -52,17 +52,20 @@ describe("bank change review (reopen_blocker / reopen_bank_transaction)", () => 
     return { orgId, userId, bank, bankTxId: bt[0].id as string, entryId: entry[0].id as string };
   }
 
-  async function blocker(bankTxId: string): Promise<string | null> {
+  // As the book's user, as the app asks it (it answers only for their books).
+  async function blocker(s: { userId: string; bankTxId: string }): Promise<string | null> {
+    await asUser(client, s.userId);
     const { rows } = await client.query(
       "select reopen_blocker(bt) as reason from bank_transactions bt where bt.id = $1",
-      [bankTxId],
+      [s.bankTxId],
     );
+    await client.query("RESET ROLE");
     return rows[0].reason as string | null;
   }
 
   it("re-opens a bank-feed-only entry: voids it and applies the bank's new amount/date", async () => {
     const s = await matchedWithChange();
-    expect(await blocker(s.bankTxId)).toBeNull();
+    expect(await blocker(s)).toBeNull();
 
     await asUser(client, s.userId);
     await client.query("select reopen_bank_transaction($1)", [s.bankTxId]);
@@ -83,6 +86,18 @@ describe("bank change review (reopen_blocker / reopen_bank_transaction)", () => 
     expect(je[0].status).toBe("void");
   });
 
+  it("answers only for a row in the asker's own books", async () => {
+    const s = await matchedWithChange();
+    const outsider = await createUser(client, "outsider@example.com");
+    // They can't read the row, but could hand the function one built by hand.
+    const { rows: copy } = await client.query("select bt::text as row from bank_transactions bt where bt.id = $1", [s.bankTxId]);
+
+    await asUser(client, outsider);
+    const { rows } = await client.query("select reopen_blocker($1::bank_transactions) as reason", [copy[0].row]);
+    await client.query("RESET ROLE");
+    expect(rows[0].reason).toBe("Not in one of your books");
+  });
+
   it("blocks re-opening an entry that's tied to an invoice payment", async () => {
     const s = await matchedWithChange();
     const revenue = await createAccount(client, s.orgId, { type: "revenue" });
@@ -100,7 +115,7 @@ describe("bank change review (reopen_blocker / reopen_bank_transaction)", () => 
       [s.orgId, invoiceId, s.bank, s.entryId],
     );
 
-    expect(await blocker(s.bankTxId)).toMatch(/invoice payment/);
+    expect(await blocker(s)).toMatch(/invoice payment/);
 
     await asUser(client, s.userId);
     await client.query("savepoint s");
@@ -120,7 +135,7 @@ describe("bank change review (reopen_blocker / reopen_bank_transaction)", () => 
     );
     await client.query("update journal_lines set reconciliation_id = $1 where journal_entry_id = $2", [rec[0].id, s.entryId]);
 
-    expect(await blocker(s.bankTxId)).toMatch(/reconciliation/);
+    expect(await blocker(s)).toMatch(/reconciliation/);
   });
 
   it("blocks re-opening when the new date falls in a locked period", async () => {
@@ -130,7 +145,7 @@ describe("bank change review (reopen_blocker / reopen_bank_transaction)", () => 
     ]);
     await client.query("update organizations set period_lock_date = '2025-12-31' where id = $1", [s.orgId]);
 
-    expect(await blocker(s.bankTxId)).toMatch(/locked period/);
+    expect(await blocker(s)).toMatch(/locked period/);
   });
 
   it("re-opens a categorized transaction with no bank change, keeping its amount and date", async () => {
