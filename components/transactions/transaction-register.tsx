@@ -75,6 +75,8 @@ export interface TransactionRegisterProps {
   // A transaction to open on (a drill-down's last step): highlighted and
   // scrolled into view.
   focusId?: string;
+  // Rows drawn at first and per "Show more" (ROWS_STEP).
+  rowsStep?: number;
   onClearedToggle?: (id: string, cleared: boolean) => Promise<ActionResult>;
   onSplitSave?: (transactionId: string, splits: SplitLineInput[]) => Promise<ActionResult>;
   onReopen?: (transactionId: string) => Promise<ActionResult>;
@@ -122,6 +124,7 @@ export function TransactionRegister({
   account = "all",
   olderHref = null,
   focusId,
+  rowsStep = ROWS_STEP,
   onClearedToggle = setRegisterClearedAction,
   onSplitSave = splitBankTransactionAction,
   onReopen = reopenTransactionAction,
@@ -146,7 +149,7 @@ export function TransactionRegister({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   // Enough to include the transaction a drill-down opens on.
   const [shownCount, setShownCount] = useState(() =>
-    Math.max(ROWS_STEP, initialTransactions.findIndex((t) => t.id === focusId) + 1 + ROWS_STEP / 4),
+    Math.max(rowsStep, initialTransactions.findIndex((t) => t.id === focusId) + 1 + Math.ceil(rowsStep / 4)),
   );
 
   useEffect(() => {
@@ -827,10 +830,10 @@ export function TransactionRegister({
       {rowsWithBalance.length > visibleRows.length && (
         <button
           type="button"
-          onClick={() => setShownCount((n) => n + ROWS_STEP)}
+          onClick={() => setShownCount((n) => n + rowsStep)}
           className="self-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
         >
-          Show {Math.min(ROWS_STEP, rowsWithBalance.length - visibleRows.length)} more of{" "}
+          Show {Math.min(rowsStep, rowsWithBalance.length - visibleRows.length)} more of{" "}
           {rowsWithBalance.length - visibleRows.length}
         </button>
       )}

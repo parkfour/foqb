@@ -346,27 +346,26 @@ describe("TransactionRegister", () => {
   });
 
   it("draws the newest rows first and more on request, always including the one it opens on", () => {
-    const many: RegisterTransaction[] = Array.from({ length: 450 }, (_, i) => ({
+    const many: RegisterTransaction[] = Array.from({ length: 12 }, (_, i) => ({
       ...mockTransactions[2],
       id: `row-${i}`,
       name: `Row ${i}`,
-      date: `2026-01-${String(28 - (i % 28)).padStart(2, "0")}`,
+      date: `2026-01-${String(28 - i).padStart(2, "0")}`,
     }));
     const rows = () => document.querySelectorAll("tbody tr[id^='tx-']").length;
 
-    render(<TransactionRegister transactions={many} accounts={mockAccounts} />);
-    expect(rows()).toBe(200);
-    fireEvent.click(screen.getByRole("button", { name: "Show 200 more of 250" }));
-    expect(rows()).toBe(400);
-    fireEvent.click(screen.getByRole("button", { name: "Show 50 more of 50" }));
-    expect(rows()).toBe(450);
+    render(<TransactionRegister transactions={many} accounts={mockAccounts} rowsStep={5} />);
+    expect(rows()).toBe(5);
+    fireEvent.click(screen.getByRole("button", { name: "Show 5 more of 7" }));
+    expect(rows()).toBe(10);
+    fireEvent.click(screen.getByRole("button", { name: "Show 2 more of 2" }));
+    expect(rows()).toBe(12);
     expect(screen.queryByRole("button", { name: /show .* more/i })).toBeNull();
 
     cleanup();
-    render(<TransactionRegister transactions={many} accounts={mockAccounts} focusId="row-300" />);
-    expect(document.getElementById("tx-row-300")).not.toBeNull();
-    // Hundreds of rows in jsdom take a while beside the other test files.
-  }, 20_000);
+    render(<TransactionRegister transactions={many} accounts={mockAccounts} rowsStep={5} focusId="row-9" />);
+    expect(document.getElementById("tx-row-9")).not.toBeNull();
+  });
 
   it("offers Split only on uncategorized transactions, and opens the modal", () => {
     render(<TransactionRegister transactions={mockTransactions} accounts={mockAccounts} />);
