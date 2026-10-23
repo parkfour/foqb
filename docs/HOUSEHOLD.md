@@ -60,7 +60,8 @@ menu just leaves them out.
 
 A checkbook-style list of the bank feed's transactions, newest first: the
 latest 1,000 with "Load older" for more, or one account's whole history
-when you pick an account.
+when you pick an account. It draws 200 rows at a time, with "Show more"
+for the rest; search, filters and running balances cover every row loaded.
 
 ![The register: categorized and uncategorized transactions, cleared and pending](screenshots/household-register.jpg)
 

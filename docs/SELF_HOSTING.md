@@ -193,7 +193,8 @@ codebase, and can be answered directly:
   Plaid's ES256 JWT signature against their published JWKS before
   processing anything).
 - Per-tenant data isolation enforced at the database layer via Postgres RLS,
-  not just application logic.
+  not just application logic. The report functions and the register's
+  checks run without it for speed and check membership themselves.
 - Automated testing gate before any deploy (§3's `verify` job).
 - Audit logging of account/org changes.
 - Optional TOTP two-factor authentication (Settings → Two-Factor

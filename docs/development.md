@@ -129,7 +129,7 @@ npm run verify:mfa       # end-to-end 2FA verification against a real local Supa
 
 ### Database integration tests (`npm run test:db`)
 
-The DB tests spin up their own ephemeral PostgreSQL container using Docker, run all migrations, execute tests against real Row Level Security policies, and tear down the container when finished. A working Docker CLI is required.
+The DB tests spin up their own ephemeral PostgreSQL container using Docker, run all migrations, execute tests against real Row Level Security policies, and tear down the container when finished. A working Docker CLI is required. Beside it they start PostgREST (`postgrest/postgrest`), the API Supabase puts in front of the database, so code that talks to the database through supabase-js can be tested as a signed-in user: see `tests/db/rest.ts`.
 
 ---
 

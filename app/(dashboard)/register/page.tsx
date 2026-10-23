@@ -7,7 +7,7 @@ import { registerRows, type RawTx } from "@/lib/register/rows";
 import { PAGE_SIZE, readAllRows } from "@/lib/supabase/read-all";
 
 const TXN_COLUMNS =
-  "id, date, name, amount, status, cleared, account_id, journal_entry_id, reopen_blocker, recategorize_blocker, accounts(name), journal_entries(status, journal_lines(id, account_id, description, debit, credit, reconciliation_id, accounts(name)))";
+  "id, date, name, amount, status, cleared, account_id, journal_entry_id, accounts(name), journal_entries(status, journal_lines(id, account_id, description, debit, credit, reconciliation_id, accounts(name)))";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -80,7 +80,25 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
     has_bank_feed: a.has_bank_feed,
   }));
 
-  const transactions = registerRows((rawTxns as unknown as RawTx[]) ?? []);
+  // Why each row can't be re-opened or re-categorized, asked once for all of
+  // them (bank_transaction_blockers) rather than as a column per row.
+  const raw = (rawTxns as unknown as RawTx[]) ?? [];
+  const { data: blockerRows, error: blockersError } = raw.length
+    ? await supabase.rpc("bank_transaction_blockers", { p_ids: raw.map((t) => t.id) })
+    : { data: [], error: null };
+  // Without them every row offers Re-open; the database still refuses one it
+  // can't do, with its reason.
+  if (blockersError) console.error("Couldn't read the register's blockers", blockersError);
+  const blockers = new Map(
+    ((blockerRows ?? []) as { id: string; reopen_blocker: string | null; recategorize_blocker: string | null }[]).map((b) => [b.id, b]),
+  );
+  const transactions = registerRows(
+    raw.map((t) => ({
+      ...t,
+      reopen_blocker: blockers.get(t.id)?.reopen_blocker ?? null,
+      recategorize_blocker: blockers.get(t.id)?.recategorize_blocker ?? null,
+    })),
+  );
 
   const listedDates = transactions.map((t) => t.date).sort();
 

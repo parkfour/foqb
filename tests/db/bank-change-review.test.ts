@@ -171,4 +171,29 @@ describe("bank change review (reopen_blocker / reopen_bank_transaction)", () => 
     // The viewer can see the row but the RLS-guarded void/update fail.
     await expect(client.query("select reopen_bank_transaction($1)", [s.bankTxId])).rejects.toThrow();
   });
+
+  it("answers for many rows at once as the per-row checks do, for the asker's books only", async () => {
+    const s = await matchedWithChange();
+    const outsider = await createUser(client, "blockers-outsider@example.com");
+    const ask = async (userId: string) => {
+      await asUser(client, userId);
+      const { rows } = await client.query("select * from bank_transaction_blockers($1::uuid[])", [[s.bankTxId]]);
+      await client.query("RESET ROLE");
+      return rows;
+    };
+
+    await asUser(client, s.userId);
+    const { rows: perRow } = await client.query(
+      "select bt.id, reopen_blocker(bt), recategorize_blocker(bt) from bank_transactions bt where bt.id = $1",
+      [s.bankTxId],
+    );
+    await client.query("RESET ROLE");
+    expect(await ask(s.userId)).toEqual(perRow);
+    expect(await ask(outsider)).toEqual([]);
+
+    await client.query("SAVEPOINT anon");
+    await client.query("SET LOCAL ROLE anon");
+    await expect(client.query("select * from bank_transaction_blockers($1::uuid[])", [[s.bankTxId]])).rejects.toThrow(/permission denied/);
+    await client.query("ROLLBACK TO SAVEPOINT anon");
+  });
 });

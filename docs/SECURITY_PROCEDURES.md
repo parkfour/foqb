@@ -88,7 +88,10 @@ what, how access is granted, authenticated, reviewed and removed.
   - Within each organization, owners grant roles (owner, accountant,
     viewer).
   - Isolation between organizations is enforced by the database
-    (Postgres row-level security), not only by application code.
+    (Postgres row-level security), not only by application code. The few
+    functions that skip it for speed (the reports, the register's per-row
+    checks) check the caller's membership themselves, with the same
+    two-factor rule, and are tested for it.
   - The operator's site-administrator actions on an organization are
     separately logged.
   - Connecting or reconnecting a bank (Plaid Link) requires the user to
