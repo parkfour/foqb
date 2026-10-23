@@ -52,6 +52,10 @@ export interface RegisterTransaction {
 
 type ActionResult = { success: boolean; error?: string };
 
+// Rows drawn at first and per "Show more": each draws its category list, so
+// a whole history at once made the page megabytes and slow to serve.
+const ROWS_STEP = 200;
+
 export interface RegisterAccount {
   id: string;
   account_number?: string;
@@ -140,6 +144,10 @@ export function TransactionRegister({
   const [accountFilter, setAccountFilter] = useState<string>(account);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  // Enough to include the transaction a drill-down opens on.
+  const [shownCount, setShownCount] = useState(() =>
+    Math.max(ROWS_STEP, initialTransactions.findIndex((t) => t.id === focusId) + 1 + ROWS_STEP / 4),
+  );
 
   useEffect(() => {
     if (focusId) document.getElementById(`tx-${focusId}`)?.scrollIntoView?.({ block: "center" });
@@ -202,6 +210,8 @@ export function TransactionRegister({
       running_balance: balanceMap.get(tx.id) ?? 0,
     }));
   }, [filtered]);
+
+  const visibleRows = useMemo(() => rowsWithBalance.slice(0, shownCount), [rowsWithBalance, shownCount]);
 
   // Optimistic: show the change at once, put the row back if it fails.
   async function applyChange(
@@ -399,21 +409,21 @@ export function TransactionRegister({
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTableSectionElement>) {
-    if (rowsWithBalance.length === 0) return;
+    if (visibleRows.length === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelectedIndex((prev) =>
-        prev === null || prev >= rowsWithBalance.length - 1 ? 0 : prev + 1,
+        prev === null || prev >= visibleRows.length - 1 ? 0 : prev + 1,
       );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIndex((prev) =>
-        prev === null || prev <= 0 ? rowsWithBalance.length - 1 : prev - 1,
+        prev === null || prev <= 0 ? visibleRows.length - 1 : prev - 1,
       );
     } else if (e.key === "Enter" && selectedIndex !== null) {
       e.preventDefault();
-      const current = rowsWithBalance[selectedIndex];
+      const current = visibleRows[selectedIndex];
       if (current) {
         setActiveSplitTx(current);
       }
@@ -543,7 +553,7 @@ export function TransactionRegister({
                 </td>
               </tr>
             ) : (
-              rowsWithBalance.map((tx, idx) => {
+              visibleRows.map((tx, idx) => {
                 const isSelected = selectedIndex === idx;
                 return (
                   <Fragment key={tx.id}>
@@ -814,7 +824,18 @@ export function TransactionRegister({
         </table>
       </div>
 
-      {olderHref && (
+      {rowsWithBalance.length > visibleRows.length && (
+        <button
+          type="button"
+          onClick={() => setShownCount((n) => n + ROWS_STEP)}
+          className="self-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+        >
+          Show {Math.min(ROWS_STEP, rowsWithBalance.length - visibleRows.length)} more of{" "}
+          {rowsWithBalance.length - visibleRows.length}
+        </button>
+      )}
+
+      {olderHref && rowsWithBalance.length === visibleRows.length && (
         <Link
           href={olderHref}
           scroll={false}
