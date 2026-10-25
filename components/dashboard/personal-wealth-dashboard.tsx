@@ -14,13 +14,15 @@ interface WealthDashboardProps {
   businessEquity?: {
     total: number;
     // equity: what's added, in the household's currency; null when a book
-    // in another currency has no exchange rate to add it at.
+    // in another currency has no exchange rate to add it at, or the
+    // business is suspended.
     businesses: {
       id: string;
       name: string;
       equity: number | null;
       currency: string;
       ownEquity: number;
+      suspended?: boolean;
       quote?: { rate: number; asOf: string; source: string };
     }[];
   };
@@ -66,7 +68,7 @@ export function PersonalWealthDashboard({
       )
     : [];
   const converted = (businessEquity?.businesses ?? []).filter((b) => b.quote);
-  const leftOut = (businessEquity?.businesses ?? []).filter((b) => b.equity === null);
+  const leftOut = (businessEquity?.businesses ?? []).filter((b) => b.equity === null && !b.suspended);
   const assetLines = [...linesIn("cash", "investments", "real_estate", "vehicles"), ...businessLines];
   const liabilityLines = linesIn("credit_cards", "mortgages", "loans", "other_liabilities");
   const show = (title: string, total: number, lines: BreakdownLine[]) => setBreakdown({ title, total, sections: [{ lines }] });
@@ -395,11 +397,13 @@ export function PersonalWealthDashboard({
 
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {businessEquity.businesses.map((b) => (
-              <div key={b.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 bg-slate-50/50">
+              <div key={b.id} className={`flex items-center justify-between rounded-lg border border-slate-200 p-3 bg-slate-50/50 ${b.suspended ? "opacity-50" : ""}`}>
                 <div>
-                  <p className="text-xs font-bold text-slate-900">{b.name}</p>
+                  <p className={`text-xs font-bold ${b.suspended ? "text-slate-500" : "text-slate-900"}`}>{b.name}</p>
                   <p className="text-[11px] text-slate-500">
-                    {b.quote
+                    {b.suspended
+                      ? `Book equity ${formatMoney(b.ownEquity, b.currency)}: suspended, not included`
+                      : b.quote
                       ? `Book equity ${formatMoney(b.ownEquity, b.currency)}, at ${b.quote.rate} (${b.quote.asOf})`
                       : b.equity === null
                         ? `Book equity ${formatMoney(b.ownEquity, b.currency)}: not included, no exchange rate`

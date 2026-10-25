@@ -3,7 +3,8 @@
 An organization can be a **household** instead of a business. It uses the
 same double-entry ledger, bank connections, roles and row-level security as a
 business; only the screens differ. You can belong to both kinds and switch
-between them from the header.
+between them from the header. For how it compares with other personal
+finance software, see [HOUSEHOLD_COMPARISON.md](HOUSEHOLD_COMPARISON.md).
 
 Choose the kind when you create the organization ("Small Business" or
 "Household"). It's stored in `organizations.workspace_type`.

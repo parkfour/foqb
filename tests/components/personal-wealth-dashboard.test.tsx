@@ -95,6 +95,26 @@ describe("PersonalWealthDashboard", () => {
     expect(dialog().queryByText(/Berlin GmbH/)).toBeNull();
   });
 
+  it("greys out a suspended business and leaves it out of the total", () => {
+    const businessEquity = {
+      total: 5000,
+      businesses: [
+        { id: "b1", name: "Shop LLC", equity: 5000, currency: "USD", ownEquity: 5000 },
+        { id: "s1", name: "Dormant Co", equity: null, currency: "USD", ownEquity: 9000, suspended: true },
+      ],
+    };
+    render(<PersonalWealthDashboard data={data} history={[]} businessEquity={businessEquity} />);
+
+    expect(screen.getByText(/suspended, not included/)).toBeInTheDocument();
+    expect(screen.getByText("Dormant Co").parentElement?.parentElement).toHaveClass("opacity-50");
+    expect(screen.queryByText(/kept in another currency/)).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("Include in Net Worth"));
+    fireEvent.click(screen.getByText("Total Assets"));
+    expect(dialog().getByText("Shop LLC (business equity)")).toBeInTheDocument();
+    expect(dialog().queryByText(/Dormant Co/)).toBeNull();
+  });
+
   it("draws daily points for 1M and 6M, and month-ends with today for 1Y and All-time", () => {
     // As fetchNetWorthHistory gives it: month-ends from June 2024, then every
     // day of the last six months, through today (2026-10-20).

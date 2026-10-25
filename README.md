@@ -62,7 +62,9 @@ checkbook-style register with split transactions, a monthly budget, a list
 of properties you value yourself, and accounts tagged with Form 1040 lines
 (Schedule E per rental). Run your
 business and your family finances side by side and switch between them from
-the header. See [docs/HOUSEHOLD.md](docs/HOUSEHOLD.md).
+the header. See [docs/HOUSEHOLD.md](docs/HOUSEHOLD.md), and
+[docs/HOUSEHOLD_COMPARISON.md](docs/HOUSEHOLD_COMPARISON.md) for how it
+compares with Firefly III, Actual, GnuCash, Quicken, Monarch, YNAB and others.
 
 ![Household net worth: accounts and the house by kind, with its history](docs/screenshots/household-net-worth.jpg)
 
@@ -144,6 +146,7 @@ For manual local development without Docker, running tests, or building from sou
 | [Developing FOQB](docs/development.md) | Manual local development (Node.js, local/hosted Supabase), running tests, and building |
 | [The bank feed](docs/BANK_FEED.md) | Bank history, updates, editing, transfers between your own accounts, reconciling, starting the books from statements |
 | [Households](docs/HOUSEHOLD.md) | Net worth, register and split transactions, budget, properties, journal entries, tax lines |
+| [Households compared](docs/HOUSEHOLD_COMPARISON.md) | A household book against Firefly III, Actual, GnuCash, KMyMoney, Quicken, Simplifi, Monarch, YNAB and Copilot |
 | [Drilling down](docs/DRILL_DOWN.md) | What each report figure opens, down to the transaction; opening one in the Register |
 | [Book timezones](docs/TIMEZONES.md) | What "today" means for each organization, and changing it |
 | [Book currency](docs/CURRENCY.md) | Each organization's currency, and why it's fixed once anything is booked |

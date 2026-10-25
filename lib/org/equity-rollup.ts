@@ -12,8 +12,11 @@ export interface BusinessEquityRollup {
   assets: number;
   liabilities: number;
   bookEquity: number;
+  // Suspended by a Site Admin: listed, greyed out, and not counted.
+  suspended: boolean;
   // What it adds to the household, in the household's currency: bookEquity
-  // itself, or converted at `quote`. Null when there's no quote to use.
+  // itself, or converted at `quote`. Null when there's no quote to use, or
+  // the business is suspended.
   counted: number | null;
   quote?: ExchangeRate;
 }
@@ -40,7 +43,7 @@ export async function calculateUserBusinessEquity(
   // Find business organizations owned by this user
   const { data: members, error: memError } = await supabase
     .from("organization_members")
-    .select("organization_id, role, organizations(id, name, workspace_type, timezone, currency)")
+    .select("organization_id, role, organizations(id, name, workspace_type, timezone, currency, status)")
     .eq("user_id", userId)
     .eq("role", "owner");
 
@@ -57,10 +60,11 @@ export async function calculateUserBusinessEquity(
       workspace_type?: string;
       timezone?: string | null;
       currency?: string;
+      status?: string;
     } | null;
   }
 
-  const businessOrgs: { id: string; name: string; timeZone: string; currency: string }[] = [];
+  const businessOrgs: { id: string; name: string; timeZone: string; currency: string; suspended: boolean }[] = [];
   for (const m of members as unknown as OrgMemberRecord[]) {
     if (
       m.organizations &&
@@ -72,6 +76,7 @@ export async function calculateUserBusinessEquity(
         // Each business's balances as of its own today.
         timeZone: m.organizations.timezone ?? instanceTimezone(),
         currency: m.organizations.currency ?? "USD",
+        suspended: m.organizations.status === "suspended",
       });
     }
   }
@@ -90,7 +95,7 @@ export async function calculateUserBusinessEquity(
       assets = Math.round(assets * 100) / 100;
       liabilities = Math.round(liabilities * 100) / 100;
       const bookEquity = computeBookEquity(assets, liabilities);
-      const quote = org.currency === currency ? null : await rateFor(org.currency, currency);
+      const quote = org.suspended || org.currency === currency ? null : await rateFor(org.currency, currency);
       return {
         organizationId: org.id,
         organizationName: org.name,
@@ -98,7 +103,8 @@ export async function calculateUserBusinessEquity(
         assets,
         liabilities,
         bookEquity,
-        counted: org.currency === currency ? bookEquity : quote ? Math.round(bookEquity * quote.rate * 100) / 100 : null,
+        suspended: org.suspended,
+        counted: org.suspended ? null : org.currency === currency ? bookEquity : quote ? Math.round(bookEquity * quote.rate * 100) / 100 : null,
         ...(quote ? { quote } : {}),
       };
     }),

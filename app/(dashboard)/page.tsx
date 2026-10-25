@@ -125,6 +125,7 @@ export default async function DashboardPage() {
             equity: b.counted,
             currency: b.currency,
             ownEquity: b.bookEquity,
+            suspended: b.suspended,
             ...(b.quote ? { quote: b.quote } : {}),
           })),
         }}
