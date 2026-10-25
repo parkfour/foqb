@@ -6,12 +6,16 @@ import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import type { TestProject } from "vitest/node";
 
-const CONTAINER_NAME = "foqb-test-db";
+// CI jobs running at once share the host's docker daemon, so inside a job
+// container the names carry that container's hostname: otherwise one job's
+// setup removes the other's database.
+const NAME_SUFFIX = isRunningInContainer() ? `-${os.hostname()}` : "";
+const CONTAINER_NAME = `foqb-test-db${NAME_SUFFIX}`;
 const HOST_PORT = 55432;
 // PostgREST, the API Supabase puts in front of the database, for tests of
 // code that talks to it through supabase-js (tests/db/rest.ts). It shares
 // the database container's network, so it's on the same localhost.
-const REST_CONTAINER_NAME = "foqb-test-rest";
+const REST_CONTAINER_NAME = `foqb-test-rest${NAME_SUFFIX}`;
 const REST_PORT = 55433;
 // Docker Hub's, like postgres:16-alpine and the demo's (docker/compose.yml):
 // AWS's public registry throttles anonymous pulls on a fresh CI runner.
