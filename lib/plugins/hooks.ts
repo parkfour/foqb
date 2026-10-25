@@ -7,7 +7,7 @@ type Handler<K extends HookEvent> = (payload: HookEventMap[K]) => void | Promise
 
 // One registry per runtime (the server, and each browser tab).
 const listeners = new Map<HookEvent, Set<Handler<HookEvent>>>();
-const slots = new Map<SlotName, SlotComponent<SlotName>[]>();
+const slots = new Map<SlotName, { pluginId?: string; component: SlotComponent<SlotName> }[]>();
 const plugins = new Map<string, FOQBPlugin>();
 
 // How long one handler may hold up the request that emitted the event.
@@ -45,12 +45,28 @@ export async function emitHook<K extends HookEvent>(event: K, payload: HookEvent
   );
 }
 
-export function registerSlot<K extends SlotName>(slot: K, component: SlotComponent<K>): void {
-  slots.set(slot, [...(slots.get(slot) ?? []), component as SlotComponent<SlotName>]);
+export function registerSlot<K extends SlotName>(
+  slot: K,
+  component: SlotComponent<K>,
+  pluginId?: string,
+): void {
+  slots.set(slot, [
+    ...(slots.get(slot) ?? []),
+    { pluginId, component } as { pluginId?: string; component: SlotComponent<SlotName> },
+  ]);
 }
 
-export function getSlotComponents<K extends SlotName>(slot: K): SlotComponent<K>[] {
-  return (slots.get(slot) ?? []) as SlotComponent<K>[];
+export function getSlotComponents<K extends SlotName>(
+  slot: K,
+  enabledPluginIds?: string[],
+): SlotComponent<K>[] {
+  const entries = slots.get(slot) ?? [];
+  if (!enabledPluginIds) {
+    return entries.map((e) => e.component) as SlotComponent<K>[];
+  }
+  return entries
+    .filter((e) => !e.pluginId || enabledPluginIds.includes(e.pluginId))
+    .map((e) => e.component) as SlotComponent<K>[];
 }
 
 export function registerPlugin(plugin: FOQBPlugin): void {
@@ -62,7 +78,7 @@ export function registerPlugin(plugin: FOQBPlugin): void {
     if (handler) on(event as HookEvent, handler as Handler<HookEvent>);
   }
   for (const [slot, component] of Object.entries(plugin.slots ?? {})) {
-    if (component) registerSlot(slot as SlotName, component as SlotComponent<SlotName>);
+    if (component) registerSlot(slot as SlotName, component as SlotComponent<SlotName>, id);
   }
 
   Promise.resolve()

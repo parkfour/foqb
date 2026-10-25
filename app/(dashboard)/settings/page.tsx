@@ -15,7 +15,12 @@ import { BANK_LINKING_OFF_ORG, BANK_LINKING_OFF_SITE } from "@/lib/plaid/bank-li
 import { formatTimestamp, formatTimestampDate } from "@/lib/time/book-time";
 import { getBookClock } from "@/lib/org/book-clock";
 import { TimezoneSetting } from "@/components/settings/timezone-setting";
+import { PluginSettingsSection } from "@/components/settings/plugin-settings-section";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
+import { getAllOrgPluginConfigs, getPluginSettingDefinitions } from "@/lib/plugins/settings";
+import { availablePlugins } from "@/plugins";
+import type { OrgPluginConfig } from "@/lib/plugins/types";
+import { isPluginEnabled } from "@/lib/plugins/loader";
 import {
   disconnectEnrollment,
   removeMember,
@@ -108,6 +113,7 @@ export default async function SettingsPage({
     showAccountCodes,
     { data: hasOwnerRemovalSecret },
     siteSettings,
+    pluginConfigsRaw,
   ] = await Promise.all([
     supabase
       .from("enrollments")
@@ -140,7 +146,25 @@ export default async function SettingsPage({
     getUseAccountCodes(orgId),
     supabase.rpc("has_owner_removal_secret", { p_org_id: orgId }),
     getSiteSettings(supabase),
+    getAllOrgPluginConfigs(supabase, orgId).catch(() => ({})),
   ]);
+
+  const pluginConfigs: Record<string, OrgPluginConfig> = pluginConfigsRaw;
+  const instancePlugins = availablePlugins.filter((p) =>
+    isPluginEnabled(p.manifest.id, p.manifest.enabledByDefault),
+  );
+  const pluginsData = instancePlugins.map((p) => {
+    const cfg = pluginConfigs[p.manifest.id];
+    return {
+      id: p.manifest.id,
+      name: p.manifest.name,
+      version: p.manifest.version,
+      description: p.manifest.description,
+      enabled: cfg?.enabled ?? (p.manifest.enabledByDefault ?? true),
+      settingsSchema: getPluginSettingDefinitions(p),
+      currentSettings: cfg?.settings ?? {},
+    };
+  });
 
   const enrollments = (data as EnrollmentRow[] | null) ?? [];
   const organization = orgData as OrganizationRow | null;
@@ -472,6 +496,12 @@ export default async function SettingsPage({
           />
         </div>
       )}
+
+      <PluginSettingsSection
+        organizationId={orgId}
+        isOwner={isOwner}
+        plugins={pluginsData}
+      />
 
       <PluginSlot name="settings.sections" context={{ organizationId: orgId }} className="flex flex-col gap-6" />
 

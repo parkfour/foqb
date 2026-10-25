@@ -10,6 +10,8 @@ import type { SlotComponent, SlotContextMap } from "@/lib/plugins/types";
 import { getPlugins } from "@/lib/plugins/hooks";
 import { parseStatement, statementDifference, type ParsedStatement } from "./parse";
 import { readStatementLines } from "./read-statement";
+import { inspectStatementDocument, type DocumentInspection } from "./inspect";
+import { StatementInspectionDialog } from "./statement-inspection-dialog";
 import { importStatementAction } from "./actions";
 import { createAccountQuickAction } from "@/app/(dashboard)/accounts/actions";
 import type { ImportResult } from "./import";
@@ -56,15 +58,26 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
   const [found, setFound] = useState<Found[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState<string | null>(null);
+  const [inspection, setInspection] = useState<DocumentInspection | null>(null);
+  const [cachedLines, setCachedLines] = useState<string[] | null>(null);
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setError(null);
     setFound([]);
+    setInspection(null);
     setReading("Reading…");
     try {
+      const lines = await readStatementLines(file, setReading);
+      setCachedLines(lines);
       const readers = getPlugins().flatMap((p) => p.statementReaders ?? []);
-      const statements = parseStatement(await readStatementLines(file, setReading), readers);
+      let statements: ParsedStatement[] = [];
+      try {
+        statements = parseStatement(lines, readers);
+      } catch (err) {
+        // No reader knew this layout: say so, and show what was read.
+        setError(err instanceof Error ? err.message : "Couldn't read that statement");
+      }
       setFound(
         statements.map((statement) => ({
           statement,
@@ -74,6 +87,7 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
           settleBefore: false,
         })),
       );
+      if (statements.length === 0) setInspection(inspectStatementDocument(lines));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't read that statement");
     } finally {
@@ -155,10 +169,21 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
               {s.kind === "card" ? " owed" : ""}.
             </p>
             {difference !== 0 ? (
-              <p role="alert" className="text-red-600">
-                The transactions read don&rsquo;t add up to the closing balance (off by {formatCurrency(difference)}),
-                so this statement can&rsquo;t be imported.
-              </p>
+              <div className="flex flex-col gap-1.5">
+                <p role="alert" className="text-red-600">
+                  The transactions read don&rsquo;t add up to the closing balance (off by {formatCurrency(difference)}),
+                  so this statement can&rsquo;t be imported automatically.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (cachedLines) setInspection(inspectStatementDocument(cachedLines));
+                  }}
+                  className="w-fit text-xs font-medium text-indigo-700 underline hover:text-indigo-900"
+                >
+                  Inspect document structure with entity tags
+                </button>
+              </div>
             ) : result?.success ? (
               <p role="status" className="text-emerald-700">
                 {resultText(result)}{" "}
@@ -223,6 +248,10 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
           </div>
         );
       })}
+
+      {inspection && (
+        <StatementInspectionDialog inspection={inspection} onClose={() => setInspection(null)} />
+      )}
     </div>
   );
 };

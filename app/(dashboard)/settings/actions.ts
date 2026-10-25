@@ -13,6 +13,9 @@ import { decryptToken } from "@/lib/crypto/token-encryption";
 import { MAX_LOGO_BYTES } from "@/lib/org/logo";
 import { instanceTimezone } from "@/lib/org/book-clock";
 import { isValidCurrency } from "@/lib/money";
+import { setOrgPluginConfig, getPluginSettingDefinitions } from "@/lib/plugins/settings";
+import { availablePlugins } from "@/plugins";
+import type { PluginSettingValue } from "@/lib/plugins/types";
 
 const MEMBER_CREATE_LIMIT = 20;
 
@@ -419,6 +422,59 @@ export async function removeOrganizationLogo(formData: FormData): Promise<void> 
 
   const supabase = await createClient();
   await supabase.from("organizations").update({ logo_data_url: null }).eq("id", organizationId);
+
+  revalidatePath("/settings");
+  revalidatePath("/", "layout");
+}
+
+export async function updatePluginSettings(formData: FormData): Promise<void> {
+  const organizationId = formData.get("organizationId") as string;
+  const pluginId = formData.get("pluginId") as string;
+  if (!organizationId || !pluginId) return;
+
+  if ((await getCurrentUserRole(organizationId)) !== "owner") {
+    redirect(
+      `/settings?error=${encodeURIComponent(
+        "Only an organization administrator can change plugin settings",
+      )}`,
+    );
+  }
+
+  const plugin = availablePlugins.find((p) => p.manifest.id === pluginId);
+  if (!plugin) {
+    redirect(`/settings?error=${encodeURIComponent(`Plugin "${pluginId}" not found`)}`);
+  }
+
+  // enabled can come from checkbox ("on") or hidden input ("true"/"false")
+  const enabledRaw = formData.get("enabled");
+  const enabled = enabledRaw === "on" || enabledRaw === "true";
+
+  // Only the plugin's own fields are read, so nothing else is stored.
+  const settings: Record<string, PluginSettingValue> = {};
+  for (const def of getPluginSettingDefinitions(plugin)) {
+    const fieldName = `setting_${def.key}`;
+    if (def.type === "multiselect") {
+      settings[def.key] = formData.getAll(fieldName).map(String);
+    } else if (def.type === "boolean") {
+      settings[def.key] = formData.get(fieldName) === "on" || formData.get(fieldName) === "true";
+    } else if (def.type === "number") {
+      const numVal = Number(formData.get(fieldName) || 0);
+      settings[def.key] = Number.isFinite(numVal) ? numVal : 0;
+    } else {
+      settings[def.key] = String(formData.get(fieldName) ?? "").trim();
+    }
+  }
+
+  const supabase = await createClient();
+  try {
+    await setOrgPluginConfig(supabase, organizationId, pluginId, {
+      enabled,
+      settings,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    redirect(`/settings?error=${encodeURIComponent(msg)}`);
+  }
 
   revalidatePath("/settings");
   revalidatePath("/", "layout");

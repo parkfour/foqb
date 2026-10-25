@@ -5,6 +5,39 @@ import type React from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { StatementReader } from "@/plugins/statement-import/parse";
 
+export type PluginSettingType =
+  | "text"
+  | "select"
+  | "multiselect"
+  | "boolean"
+  | "number";
+
+export type PluginSettingValue = string | number | boolean | string[];
+
+export interface PluginSettingOption {
+  value: string;
+  label: string;
+}
+
+export interface PluginSettingDefinition {
+  key: string;
+  label: string;
+  type: PluginSettingType;
+  description?: string;
+  defaultValue?: PluginSettingValue;
+  placeholder?: string;
+  options?: PluginSettingOption[];
+  required?: boolean;
+}
+
+// Settings are readable by every member of the book (plugin_data), so they
+// hold choices, never secrets.
+export interface OrgPluginConfig {
+  enabled: boolean;
+  settings: Record<string, PluginSettingValue>;
+  updatedAt?: string;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -17,6 +50,8 @@ export interface PluginManifest {
   // On unless FOQB_PLUGINS says otherwise. Default false: an instance only
   // runs a plugin its operator turned on.
   enabledByDefault?: boolean;
+  // Dynamic settings configurable by an organization administrator.
+  settings?: PluginSettingDefinition[];
 }
 
 // Events FOQB emits on the server, after the change has been saved. Each
@@ -140,6 +175,8 @@ export interface FOQBPlugin {
   // More bank layouts for the statement-import plugin, tried alongside its
   // own (see docs/PLUGINS.md). Run in the browser.
   statementReaders?: StatementReader[];
+  // Dynamic settings configurable by an organization administrator.
+  settings?: PluginSettingDefinition[];
 }
 
 // Background work, run off real traffic like FOQB's own maintenance (see

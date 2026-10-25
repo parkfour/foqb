@@ -2,7 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { PluginPageHost } from "@/components/plugins/plugin-page";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUserOrganizations, getWorkspaceType } from "@/lib/org/current";
+import { createClient } from "@/lib/supabase/server";
 import { enabledPluginIds } from "@/lib/plugins/loader";
+import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
 import { findPluginPage } from "@/lib/plugins/pages";
 
 export default async function PluginPageRoute({ params }: { params: Promise<{ pluginId: string; slug: string }> }) {
@@ -10,12 +12,14 @@ export default async function PluginPageRoute({ params }: { params: Promise<{ pl
   const orgId = await getCurrentOrgId();
   if (!orgId) redirect("/");
 
-  const [workspaceType, role, organizations] = await Promise.all([
+  const supabase = await createClient();
+  const [workspaceType, role, organizations, orgPluginIds] = await Promise.all([
     getWorkspaceType(orgId),
     getCurrentUserRole(orgId),
     getUserOrganizations(),
+    getOrgEnabledPluginIds(supabase, orgId).catch(() => enabledPluginIds()),
   ]);
-  const page = findPluginPage(pluginId, slug, workspaceType, enabledPluginIds());
+  const page = findPluginPage(pluginId, slug, workspaceType, orgPluginIds);
   if (!page) notFound();
 
   return (

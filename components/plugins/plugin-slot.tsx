@@ -27,8 +27,9 @@ export function PluginSlot<K extends SlotName>({
   context: SlotContextMap[K];
   className?: string;
 }) {
-  ensurePluginsLoaded(useContext(EnabledPluginsContext));
-  const components = getSlotComponents(name);
+  const enabledIds = useContext(EnabledPluginsContext);
+  ensurePluginsLoaded(enabledIds);
+  const components = getSlotComponents(name, enabledIds);
   if (components.length === 0) return null;
 
   return (

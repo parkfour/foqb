@@ -26,6 +26,14 @@ app's environment:
 | `none` | nothing |
 | `email-invoices,webhooks,receipt-ocr,statement-import,mortgage-notes,startup-assistant` | exactly those |
 
+Each plugin the instance runs is on in every book until the book's owner
+turns it off under Settings → Plugins. That hides its slots, pages and
+menu links in that book; its server-side events, jobs and statement
+readers still run instance-wide. A plugin may also list `settings` (text,
+select, multiselect, boolean or number) for owners to set per book, read
+with `getPluginSettings`. Every member of the book can read them, so they
+hold choices, never secrets.
+
 ## Writing one
 
 ```ts
@@ -265,7 +273,10 @@ statement's opening balance.
 - **Checked before anything is booked:** the opening balance plus the
   transactions read must come to the statement's closing balance, to the
   cent, in the browser and again on the server. A statement that doesn't
-  add up is refused.
+  add up is refused. When no reader knows a layout, or what was read
+  doesn't add up, "Inspect document structure" shows the lines read with
+  the dates, amounts, balances and account number found in them, to help
+  write a reader for it (below). Nothing is imported from there.
 - **No duplicates:** a statement transaction that's already in the
   register (the same amount, dated up to 3 days apart, as the bank feed
   sometimes dates things differently) is skipped, and importing the same
