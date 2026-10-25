@@ -234,6 +234,15 @@ describe("parseStatement", () => {
   it("refuses a bank it doesn't know", () => {
     expect(() => parseStatement(["Some Other Bank", "Statement"])).toThrow(/isn't one FOQB can read/);
   });
+
+  it("names what a best guess couldn't find", () => {
+    expect(() => parseStatement(genericChecking.filter((l) => !/^Beginning balance/.test(l)))).toThrow(
+      /Couldn't find the statement's opening balance$/,
+    );
+    expect(() => parseStatement(["Some Other Bank", "Statement"])).toThrow(
+      /period, account number, opening balance or closing balance$/,
+    );
+  });
 });
 
 describe("pageLines", () => {

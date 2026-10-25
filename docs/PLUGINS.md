@@ -274,7 +274,8 @@ statement's opening balance.
   transactions read must come to the statement's closing balance, to the
   cent, in the browser and again on the server. A statement that doesn't
   add up is refused. When no reader knows a layout, or what was read
-  doesn't add up, "Inspect document structure" shows the lines read with
+  doesn't add up, the importer says why (naming any of the period, account
+  number or balances it couldn't find), and "Inspect document structure" shows the lines read with
   the dates, amounts, balances and account number found in them, to help
   write a reader for it (below). Nothing is imported from there.
 - **No duplicates:** a statement transaction that's already in the

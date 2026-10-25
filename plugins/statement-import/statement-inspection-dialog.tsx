@@ -12,6 +12,8 @@ import { useMoney } from "@/components/providers/book-currency-provider";
 // off loose text have no sign, year or balance check to trust.
 interface StatementInspectionDialogProps {
   inspection: DocumentInspection;
+  // Why the statement couldn't be imported, from the reader.
+  reason: string;
   onClose: () => void;
 }
 
@@ -28,6 +30,7 @@ const CATEGORY_STYLES: Record<string, string> = {
 
 export function StatementInspectionDialog({
   inspection,
+  reason,
   onClose,
 }: StatementInspectionDialogProps) {
   const formatCurrency = useMoney();
@@ -47,10 +50,10 @@ export function StatementInspectionDialog({
                 Document Structure & Recognized Entities
               </h2>
             </div>
-            <p className="mt-1 text-xs text-slate-500">
-              FOQB tried automatic statement parsing, but the format could not be verified automatically.
-              Here is what was identified on the imported document:
+            <p role="alert" className="mt-1 text-xs font-medium text-red-700">
+              {reason}
             </p>
+            <p className="mt-1 text-xs text-slate-500">Here is what was identified on the imported document:</p>
           </div>
           <button
             onClick={onClose}

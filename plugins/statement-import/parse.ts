@@ -145,7 +145,7 @@ function parseBofaDeposit(lines: string[]): ParsedStatement {
   const account = /Account (?:number:|#) ([\d ]*\d)/.exec(text);
   const opening = /Beginning balance on [^|\n]+\| (\S+)/.exec(text);
   const closing = /Ending balance on [^|\n]+\| (\S+)/.exec(text);
-  if (!period || !account || !opening || !closing) throw new Error("Couldn't find the period, account or balances");
+  if (!period || !account || !opening || !closing) throw new Error(missingParts({ period, account, opening, closing }));
 
   const longDate = (s: string) => {
     const m = /([A-Z][a-z]+) (\d{1,2}), (\d{4})/.exec(s)!;
@@ -194,7 +194,7 @@ function parseBofaCard(lines: string[]): ParsedStatement {
   const account = /Account ?# ([\d ]*\d)/.exec(text);
   const opening = /Previous Balance \| (\S+)/.exec(text);
   const closing = /New Balance Total \| (\S+)/.exec(text);
-  if (!period || !account || !opening || !closing) throw new Error("Couldn't find the period, account or balances");
+  if (!period || !account || !opening || !closing) throw new Error(missingParts({ period, account, opening, closing }));
 
   const rows: StatementRow[] = [];
   for (const line of lines) {
@@ -285,6 +285,18 @@ function balanceOn(lines: string[], label: RegExp): number | null {
   return null;
 }
 
+const PART_NAMES = { period: "period", account: "account number", opening: "opening balance", closing: "closing balance" };
+
+// Names what a reader couldn't find, so the person (or whoever writes a
+// reader for the layout) knows where to look.
+export function missingParts(found: Partial<Record<keyof typeof PART_NAMES, unknown>>): string {
+  const missing = (Object.keys(found) as (keyof typeof PART_NAMES)[])
+    .filter((k) => found[k] === null || found[k] === undefined || found[k] === "")
+    .map((k) => PART_NAMES[k]);
+  const list = missing.length <= 1 ? missing[0] : `${missing.slice(0, -1).join(", ")} or ${missing.at(-1)}`;
+  return `Couldn't find the statement's ${list ?? "details"}`;
+}
+
 interface RawRow {
   dates: string[];
   description: string;
@@ -310,7 +322,7 @@ export function parseGeneric(lines: string[], bank = "Other bank"): ParsedStatem
   const opening = balanceOn(lines, OPENING);
   const closing = balanceOn(lines, CLOSING);
   if (!periodStart || !periodEnd || !accountNumber || opening === null || closing === null) {
-    throw new Error("Couldn't find the period, account or balances");
+    throw new Error(missingParts({ period: periodStart && periodEnd, account: accountNumber, opening, closing }));
   }
   const endYear = Number(periodEnd.slice(0, 4));
   const endMonth = Number(periodEnd.slice(5, 7)) - 1;

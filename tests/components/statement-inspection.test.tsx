@@ -92,7 +92,7 @@ describe("StatementInspectionDialog Component", () => {
     const onClose = vi.fn();
 
     render(
-      <StatementInspectionDialog inspection={inspection} onClose={onClose} />,
+      <StatementInspectionDialog inspection={inspection} reason="Couldn't find the statement's period" onClose={onClose} />,
     );
 
     expect(screen.getByText("Document Structure & Recognized Entities")).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("StatementInspectionDialog Component", () => {
   });
 
   it("offers no import: loose rows carry no sign or balance check", () => {
-    render(<StatementInspectionDialog inspection={inspectStatementDocument(unrecognizedStatementLines)} onClose={vi.fn()} />);
+    render(<StatementInspectionDialog inspection={inspectStatementDocument(unrecognizedStatementLines)} reason="" onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByText(/Candidate Transactions \(3\)/));
     expect(screen.queryByRole("button", { name: /import/i })).toBeNull();
@@ -132,5 +132,7 @@ describe("StatementImporter Fallback Integration", () => {
       await screen.findByText("Document Structure & Recognized Entities"),
     ).toBeInTheDocument();
     expect(screen.getByText("Chase")).toBeInTheDocument();
+    // The dialog says why the reader gave up.
+    expect(screen.getAllByRole("alert").some((el) => /don't add up to the closing balance/.test(el.textContent ?? ""))).toBe(true);
   });
 });

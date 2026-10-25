@@ -58,7 +58,8 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
   const [found, setFound] = useState<Found[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState<string | null>(null);
-  const [inspection, setInspection] = useState<DocumentInspection | null>(null);
+  // What was read, and why it couldn't be imported.
+  const [inspection, setInspection] = useState<{ found: DocumentInspection; reason: string } | null>(null);
   const [cachedLines, setCachedLines] = useState<string[] | null>(null);
 
   async function handleFile(file: File | undefined) {
@@ -76,7 +77,9 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
         statements = parseStatement(lines, readers);
       } catch (err) {
         // No reader knew this layout: say so, and show what was read.
-        setError(err instanceof Error ? err.message : "Couldn't read that statement");
+        const reason = err instanceof Error ? err.message : "Couldn't read that statement";
+        setError(reason);
+        setInspection({ found: inspectStatementDocument(lines), reason });
       }
       setFound(
         statements.map((statement) => ({
@@ -87,7 +90,6 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
           settleBefore: false,
         })),
       );
-      if (statements.length === 0) setInspection(inspectStatementDocument(lines));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't read that statement");
     } finally {
@@ -177,7 +179,12 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
                 <button
                   type="button"
                   onClick={() => {
-                    if (cachedLines) setInspection(inspectStatementDocument(cachedLines));
+                    if (cachedLines) {
+                      setInspection({
+                        found: inspectStatementDocument(cachedLines),
+                        reason: `The transactions read don’t add up to the closing balance (off by ${formatCurrency(difference)}).`,
+                      });
+                    }
                   }}
                   className="w-fit text-xs font-medium text-indigo-700 underline hover:text-indigo-900"
                 >
@@ -250,7 +257,11 @@ export const StatementImporter: SlotComponent<"reconcile.header"> = ({ context }
       })}
 
       {inspection && (
-        <StatementInspectionDialog inspection={inspection} onClose={() => setInspection(null)} />
+        <StatementInspectionDialog
+          inspection={inspection.found}
+          reason={inspection.reason}
+          onClose={() => setInspection(null)}
+        />
       )}
     </div>
   );
