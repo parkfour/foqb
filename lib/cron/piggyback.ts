@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanupUnclaimedMembers } from "./cleanup-unclaimed-members";
 import { cleanupRateLimits } from "./cleanup-rate-limits";
-import { enabledPluginJobs } from "@/lib/plugins/server-loader";
+import { enabledPluginJobs, runningPluginIds } from "@/lib/plugins/server-loader";
 
 // Runs maintenance jobs inline off real traffic instead of a scheduled
 // job — Vercel's Hobby plan caps cron jobs at one per account, and two
@@ -19,7 +19,7 @@ const JOBS: { name: string; minIntervalSeconds: number; run: () => Promise<unkno
 export async function maybeRunDueCronJobs(): Promise<void> {
   const admin = createAdminClient();
 
-  for (const job of [...JOBS, ...enabledPluginJobs()]) {
+  for (const job of [...JOBS, ...enabledPluginJobs(await runningPluginIds())]) {
     try {
       const { data: claimed, error } = await admin.rpc("claim_cron_run", {
         p_job_name: job.name,

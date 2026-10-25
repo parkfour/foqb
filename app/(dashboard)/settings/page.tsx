@@ -10,7 +10,7 @@ import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
-import { getSiteSettings } from "@/lib/site/settings";
+import { getSiteSettings, pluginSiteMode } from "@/lib/site/settings";
 import { BANK_LINKING_OFF_ORG, BANK_LINKING_OFF_SITE } from "@/lib/plaid/bank-linking";
 import { formatTimestamp, formatTimestampDate } from "@/lib/time/book-time";
 import { getBookClock } from "@/lib/org/book-clock";
@@ -150,8 +150,11 @@ export default async function SettingsPage({
   ]);
 
   const pluginConfigs: Record<string, OrgPluginConfig> = pluginConfigsRaw;
-  const instancePlugins = availablePlugins.filter((p) =>
-    isPluginEnabled(p.manifest.id, p.manifest.enabledByDefault),
+  // The plugins this instance runs that the site hasn't turned off.
+  const instancePlugins = availablePlugins.filter(
+    (p) =>
+      isPluginEnabled(p.manifest.id, p.manifest.enabledByDefault) &&
+      pluginSiteMode(siteSettings.pluginModes, p.manifest.id) !== "off",
   );
   const pluginsData = instancePlugins.map((p) => {
     const cfg = pluginConfigs[p.manifest.id];
@@ -160,7 +163,7 @@ export default async function SettingsPage({
       name: p.manifest.name,
       version: p.manifest.version,
       description: p.manifest.description,
-      enabled: cfg?.enabled ?? (p.manifest.enabledByDefault ?? true),
+      enabled: cfg?.enabled ?? false,
       settingsSchema: getPluginSettingDefinitions(p),
       currentSettings: cfg?.settings ?? {},
     };

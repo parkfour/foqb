@@ -12,6 +12,7 @@ import {
   PLUGIN_CONFIG_KEY,
 } from "@/lib/plugins/settings";
 import { getSlotComponents, registerSlot, resetRegistry } from "@/lib/plugins/hooks";
+import { runningPluginIds } from "@/lib/plugins/server-loader";
 import type { FOQBPlugin } from "@/lib/plugins/types";
 
 const testPluginA: FOQBPlugin = {
@@ -129,7 +130,7 @@ describe("Organization Plugin Config Storage", () => {
       }),
     };
 
-    const config = await getOrgPluginConfig(mockSupabase as never, "org-1", "plugin-a", [testPluginA]);
+    const config = await getOrgPluginConfig(mockSupabase as never, "org-1", "plugin-a", [testPluginA], { "plugin-a": "on" });
     expect(config.enabled).toBe(true);
     expect(config.settings.text_setting).toBe("default text");
     expect(config.settings.number_setting).toBe(42);
@@ -161,7 +162,7 @@ describe("Organization Plugin Config Storage", () => {
       }),
     };
 
-    const config = await getOrgPluginConfig(mockSupabase as never, "org-1", "plugin-a", [testPluginA]);
+    const config = await getOrgPluginConfig(mockSupabase as never, "org-1", "plugin-a", [testPluginA], { "plugin-a": "on" });
     expect(config.enabled).toBe(false);
     expect(config.settings.text_setting).toBe("stored text");
     // Non-overridden fallback to defaults
@@ -235,19 +236,36 @@ describe("Organization Plugin Config Storage", () => {
       "org-1",
       "plugin-a",
       [testPluginA],
+      {},
     );
     expect(settings.text_setting).toBe("direct test");
   });
 });
 
 describe("Which plugins a book runs", () => {
-  const noRows = { from: () => ({ select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) }) };
+  const rows = (data: unknown[]) => ({
+    from: () => ({ select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data, error: null }) }) }) }),
+  });
+  const turned = (enabled: boolean) => [{ plugin_id: "plugin-a", value: { enabled } }];
+  const run = (modes: Record<string, "off" | "choose" | "on">, data: unknown[] = []) =>
+    getOrgEnabledPluginIds(rows(data) as never, "org-1", [testPluginA, testPluginB], modes);
 
-  it("starts every plugin the operator listed on, whatever its instance default", async () => {
+  it("starts a plugin off when books choose (the default), and on when the site says on", async () => {
     vi.stubEnv("FOQB_PLUGINS", "plugin-a,plugin-b");
     try {
-      const ids = await getOrgEnabledPluginIds(noRows as never, "org-1", [testPluginA, testPluginB]);
-      expect(ids).toEqual(["plugin-a", "plugin-b"]);
+      expect(await run({})).toEqual([]);
+      expect(await run({ "plugin-a": "on" })).toEqual(["plugin-a"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("follows the book's own choice, unless the site turned the plugin off", async () => {
+    vi.stubEnv("FOQB_PLUGINS", "plugin-a,plugin-b");
+    try {
+      expect(await run({}, turned(true))).toEqual(["plugin-a"]);
+      expect(await run({ "plugin-a": "on" }, turned(false))).toEqual([]);
+      expect(await run({ "plugin-a": "off" }, turned(true))).toEqual([]);
     } finally {
       vi.unstubAllEnvs();
     }
@@ -256,11 +274,17 @@ describe("Which plugins a book runs", () => {
   it("keeps a plugin the instance doesn't run off for the book", async () => {
     vi.stubEnv("FOQB_PLUGINS", "none");
     try {
-      const config = await getOrgPluginConfig(noRows as never, "org-1", "plugin-a", [testPluginA]);
+      const config = await getOrgPluginConfig(rows([]) as never, "org-1", "plugin-a", [testPluginA], { "plugin-a": "on" });
       expect(config.enabled).toBe(false);
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("runningPluginIds", () => {
+  it("drops the plugins the site turned off, for their server parts", async () => {
+    expect(await runningPluginIds(["a", "b", "c"], { a: "off", b: "on" })).toEqual(["b", "c"]);
   });
 });
 

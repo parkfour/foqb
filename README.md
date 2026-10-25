@@ -75,8 +75,9 @@ hand; there's no automatic valuation.
 
 ## Plugins
 
-Six optional plugins ship with FOQB, each off until the operator turns it
-on with `FOQB_PLUGINS`:
+Seven optional plugins ship with FOQB, each off until the operator lists it
+in `FOQB_PLUGINS`; then a Site Admin and each book's owner choose where it
+runs:
 
 - **Email invoices**: send the invoice PDF to the customer through the
   organization's own mail server.
@@ -90,6 +91,9 @@ on with `FOQB_PLUGINS`:
   into interest, escrow and principal, and fill in Form 1098.
 - **Start-up assistant**: book what came before each account's
   opening balance to equity, then start a household budget from average spending.
+- **Exchange rates**: add a business you own that keeps books in another
+  currency to a household's net worth, at the European Central Bank's
+  reference rate, marked as an estimate.
 
 | Email invoices | Receipt scanning |
 |---|---|

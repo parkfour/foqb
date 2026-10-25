@@ -1,7 +1,9 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
-import { suspendOrganization, unsuspendOrganization, updateSiteSettings } from "./actions";
-import { getSiteSettings } from "@/lib/site/settings";
+import { suspendOrganization, unsuspendOrganization, updatePluginSiteModes, updateSiteSettings } from "./actions";
+import { getSiteSettings, PLUGIN_SITE_MODES, pluginSiteMode, type PluginSiteMode } from "@/lib/site/settings";
+import { availablePlugins } from "@/plugins";
+import { isPluginEnabled } from "@/lib/plugins/loader";
 import { DeleteOrganizationDialog } from "@/components/site-admin/delete-organization-dialog";
 import { DemoteSiteAdminButton } from "@/components/site-admin/demote-site-admin-button";
 import { CreateSiteAdminForm } from "@/components/site-admin/create-site-admin-form";
@@ -23,7 +25,7 @@ interface SiteAdminRow {
 
 interface ActionRow {
   id: string;
-  action: "suspend" | "unsuspend" | "delete" | "promote" | "demote" | "signups_on" | "signups_off" | "banks_on" | "banks_off";
+  action: "suspend" | "unsuspend" | "delete" | "promote" | "demote" | "signups_on" | "signups_off" | "banks_on" | "banks_off" | "plugins_changed";
   organization_name: string | null;
   site_admin_email: string | null;
   target_email: string | null;
@@ -40,6 +42,7 @@ const ACTION_LABELS: Record<ActionRow["action"], string> = {
   signups_off: "turned off sign-ups",
   banks_on: "turned on connecting banks",
   banks_off: "turned off connecting banks",
+  plugins_changed: "changed which plugins books get",
 };
 
 const SETTING_ACTIONS: ReadonlySet<ActionRow["action"]> = new Set([
@@ -47,9 +50,17 @@ const SETTING_ACTIONS: ReadonlySet<ActionRow["action"]> = new Set([
   "signups_off",
   "banks_on",
   "banks_off",
+  "plugins_changed",
 ]);
 
+const MODE_LABELS: Record<PluginSiteMode, string> = {
+  off: "Off",
+  choose: "Books choose (off until turned on)",
+  on: "On for every book",
+};
+
 export default async function SiteAdminPage() {
+  const instancePlugins = availablePlugins.filter((p) => isPluginEnabled(p.manifest.id, p.manifest.enabledByDefault));
   const supabase = await createClient();
 
   const [{ data: orgData }, { data: adminData }, { data: actionData }, siteSettings] = await Promise.all([
@@ -107,6 +118,47 @@ export default async function SiteAdminPage() {
             Save
           </button>
         </form>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">Plugins</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          The plugins this instance runs (FOQB_PLUGINS). Off hides one in every book and stops its
+          server work; otherwise each book&rsquo;s owner can turn it on or off under Settings, starting
+          from the choice here.
+        </p>
+        {instancePlugins.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">FOQB_PLUGINS names no plugins.</p>
+        ) : (
+          <form action={updatePluginSiteModes} className="mt-3 flex flex-col gap-3">
+            {instancePlugins.map((p) => (
+              <div key={p.manifest.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <label htmlFor={`mode_${p.manifest.id}`} className="text-sm text-slate-700">
+                  {p.manifest.name}
+                  <span className="block text-xs text-slate-500">{p.manifest.description}</span>
+                </label>
+                <select
+                  id={`mode_${p.manifest.id}`}
+                  name={`mode_${p.manifest.id}`}
+                  defaultValue={pluginSiteMode(siteSettings.pluginModes, p.manifest.id)}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 sm:w-72"
+                >
+                  {PLUGIN_SITE_MODES.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {MODE_LABELS[mode]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <button
+              type="submit"
+              className="w-fit rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Save
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">

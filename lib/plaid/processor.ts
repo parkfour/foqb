@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PlaidTransaction } from "@/lib/plaid/client";
-import { enabledCategorizers } from "@/lib/plugins/server-loader";
+import { enabledCategorizers, runningPluginIds } from "@/lib/plugins/server-loader";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -129,7 +129,7 @@ export async function categorizeByRules(
   bankAccountId: string,
   row: { id: string; date: string; name: string; amount: number },
 ): Promise<void> {
-  for (const categorize of enabledCategorizers()) {
+  for (const categorize of enabledCategorizers(await runningPluginIds())) {
     try {
       if (await categorize(supabase, organizationId, bankAccountId, row)) return;
     } catch (err) {

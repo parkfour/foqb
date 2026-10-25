@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { serverPluginParts } from "@/plugins/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getSiteSettings, type PluginSiteMode } from "@/lib/site/settings";
 import { on } from "./hooks";
 import { enabledPluginIds, ensurePluginsLoaded } from "./loader";
 import type { BankCategorizer, ExchangeRate, HookEvent, PluginJob, ServerPluginParts } from "./types";
@@ -11,6 +13,34 @@ import type { BankCategorizer, ExchangeRate, HookEvent, PluginJob, ServerPluginP
 export const MAX_RATE_AGE_DAYS = 7;
 
 let loaded = false;
+
+// The site's plugin modes, read at most every 30 seconds per process: an
+// event, a job run and each new bank transaction ask.
+const MODES_CACHE_MS = 30_000;
+let cachedModes: { until: number; modes: Record<string, PluginSiteMode> } | null = null;
+
+async function siteModes(): Promise<Record<string, PluginSiteMode>> {
+  if (cachedModes && cachedModes.until > Date.now()) return cachedModes.modes;
+  try {
+    const { pluginModes } = await getSiteSettings(createAdminClient());
+    cachedModes = { until: Date.now() + MODES_CACHE_MS, modes: pluginModes };
+    return pluginModes;
+  } catch (err) {
+    // Unreadable (no database yet, or a test): nothing is switched off.
+    console.error("Couldn't read the site's plugin modes", err);
+    return {};
+  }
+}
+
+// The plugins the instance runs that the site hasn't turned off: the ones
+// whose server parts run.
+export async function runningPluginIds(
+  enabledIds: string[] = enabledPluginIds(),
+  modes?: Record<string, PluginSiteMode>,
+): Promise<string[]> {
+  const site = modes ?? (await siteModes());
+  return enabledIds.filter((id) => site[id] !== "off");
+}
 
 // Server code that emits events calls this first: it registers the enabled
 // plugins, plus their server-only handlers.
@@ -23,7 +53,12 @@ export function ensureServerPluginsLoaded(
   loaded = true;
   for (const id of enabledIds) {
     for (const [event, handler] of Object.entries(parts[id]?.hooks ?? {})) {
-      if (handler) on(event as HookEvent, handler as (payload: unknown) => Promise<void>);
+      if (!handler) continue;
+      // Registered once, so the site's switch is checked at each event.
+      on(event as HookEvent, async (payload: unknown) => {
+        if ((await siteModes())[id] === "off") return;
+        await (handler as (payload: unknown) => Promise<void>)(payload);
+      });
     }
   }
 }
@@ -68,4 +103,5 @@ export async function exchangeRate(
 // For tests.
 export function resetServerLoaderState(): void {
   loaded = false;
+  cachedModes = null;
 }

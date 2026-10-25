@@ -50,8 +50,11 @@ timezone of any organization that hasn't chosen its own in Settings; new ones
 start in their creator's browser timezone).
 
 **Optional, plugins**: `FOQB_PLUGINS`, a comma-separated list of the
-plugins to run: `email-invoices`, `webhooks`, `receipt-ocr`. All are off
-unless listed; see [PLUGINS.md](PLUGINS.md) for what each does.
+plugins the instance may run (`email-invoices`, `webhooks`, `receipt-ocr`,
+`statement-import`, `mortgage-notes`, `startup-assistant`,
+`exchange-rates`). All are off unless listed. A Site Admin then sets each
+one to off, books choose (the default) or on for every book, and each
+book's owner turns it on or off; see [PLUGINS.md](PLUGINS.md#turning-plugins-on).
 `ALLOW_PRIVATE_NETWORK_HOSTS=true` lets organizations' mail servers and
 webhook URLs be on private addresses; leave it unset on any instance whose
 users you don't trust with your network.

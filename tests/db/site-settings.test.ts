@@ -87,3 +87,43 @@ describe("site settings: sign-ups", () => {
     ).rejects.toThrow(/row-level security/);
   });
 });
+
+describe("site settings: plugin modes", () => {
+  let client: Client;
+
+  beforeAll(async () => {
+    client = new Client({ connectionString: inject("databaseUrl") });
+    await client.connect();
+  });
+
+  afterAll(async () => {
+    await client.end();
+  });
+
+  beforeEach(async () => {
+    await client.query("BEGIN");
+  });
+
+  afterEach(async () => {
+    await client.query("ROLLBACK");
+  });
+
+  it("takes off, choose or on per plugin, and nothing else", async () => {
+    await client.query(`update site_settings set plugin_modes = '{"webhooks": "off", "receipt-ocr": "on"}'`);
+    await client.query("SAVEPOINT s");
+    await expect(client.query(`update site_settings set plugin_modes = '{"webhooks": "maybe"}'`)).rejects.toThrow(/check/);
+    await client.query("ROLLBACK TO SAVEPOINT s");
+    await expect(client.query(`update site_settings set plugin_modes = '["webhooks"]'`)).rejects.toThrow(/check/);
+  });
+
+  it("logs a site admin's change", async () => {
+    const admin = await createUser(client, "plugins-admin@example.com");
+    await client.query("insert into site_admins (user_id) values ($1) on conflict do nothing", [admin]);
+    await asUser(client, admin);
+    await client.query(`update site_settings set plugin_modes = '{"webhooks": "off"}'`);
+    await client.query("RESET ROLE");
+
+    const { rows } = await client.query("select action from site_admin_actions where site_admin_id = $1", [admin]);
+    expect(rows).toEqual([{ action: "plugins_changed" }]);
+  });
+});

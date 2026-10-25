@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { availablePlugins } from "@/plugins";
 import { isPluginEnabled } from "./loader";
+import { getSiteSettings, pluginSiteMode, type PluginSiteMode } from "@/lib/site/settings";
 import type { FOQBPlugin, OrgPluginConfig, PluginSettingDefinition, PluginSettingValue } from "./types";
 
 // FOQB's own key among the plugin's: a plugin's getPluginData keys are its
@@ -60,13 +61,25 @@ export function mergeSettingsWithDefaults(
   return result;
 }
 
-// A plugin the instance runs is on for a book until its owner turns it off.
-// (enabledByDefault is the instance's choice, for when FOQB_PLUGINS is
-// unset; an operator who lists a plugin wants it in every book.)
-function resolveConfig(plugin: FOQBPlugin, row: { value: StoredConfig; updated_at?: string } | undefined): OrgPluginConfig {
-  if (!row?.value) return { enabled: true, settings: getDefaultPluginSettings(plugin) };
+type Modes = Record<string, PluginSiteMode>;
+
+// The site's mode for each plugin, unless the caller has them.
+async function modesOr(supabase: SupabaseClient, modes: Modes | undefined): Promise<Modes> {
+  return modes ?? (await getSiteSettings(supabase)).pluginModes;
+}
+
+// Whether a plugin the instance runs is on for a book: never when the site
+// turned it off; otherwise the book's own choice, or else the site's
+// default ("on", or "choose", which starts off).
+function resolveConfig(
+  plugin: FOQBPlugin,
+  row: { value: StoredConfig; updated_at?: string } | undefined,
+  mode: PluginSiteMode,
+): OrgPluginConfig {
+  const byDefault = mode === "on";
+  if (!row?.value) return { enabled: mode !== "off" && byDefault, settings: getDefaultPluginSettings(plugin) };
   return {
-    enabled: row.value.enabled !== false,
+    enabled: mode !== "off" && (typeof row.value.enabled === "boolean" ? row.value.enabled : byDefault),
     settings: mergeSettingsWithDefaults(row.value.settings, plugin),
     updatedAt: row.updated_at,
   };
@@ -79,6 +92,7 @@ export async function getOrgPluginConfig(
   orgId: string,
   pluginId: string,
   available: FOQBPlugin[] = availablePlugins,
+  modes?: Modes,
 ): Promise<OrgPluginConfig> {
   const plugin = available.find((p) => p.manifest.id === pluginId);
   if (!plugin || !isPluginEnabled(plugin.manifest.id, plugin.manifest.enabledByDefault)) {
@@ -94,7 +108,8 @@ export async function getOrgPluginConfig(
     .maybeSingle();
   if (error) throw new Error(error.message);
 
-  return resolveConfig(plugin, (data as { value: StoredConfig; updated_at?: string } | null) ?? undefined);
+  const mode = pluginSiteMode(await modesOr(supabase, modes), pluginId);
+  return resolveConfig(plugin, (data as { value: StoredConfig; updated_at?: string } | null) ?? undefined, mode);
 }
 
 // Gets configs for all instance-available plugins for an organization
@@ -102,7 +117,9 @@ export async function getAllOrgPluginConfigs(
   supabase: SupabaseClient,
   orgId: string,
   available: FOQBPlugin[] = availablePlugins,
+  modes?: Modes,
 ): Promise<Record<string, OrgPluginConfig>> {
+  const siteModes = await modesOr(supabase, modes);
   const { data, error } = await supabase
     .from("plugin_data")
     .select("plugin_id, value, updated_at")
@@ -116,7 +133,9 @@ export async function getAllOrgPluginConfigs(
   const result: Record<string, OrgPluginConfig> = {};
   for (const plugin of available) {
     const id = plugin.manifest.id;
-    if (isPluginEnabled(id, plugin.manifest.enabledByDefault)) result[id] = resolveConfig(plugin, rows.get(id));
+    if (isPluginEnabled(id, plugin.manifest.enabledByDefault)) {
+      result[id] = resolveConfig(plugin, rows.get(id), pluginSiteMode(siteModes, id));
+    }
   }
   return result;
 }
@@ -157,8 +176,9 @@ export async function getOrgEnabledPluginIds(
   supabase: SupabaseClient,
   orgId: string,
   available: FOQBPlugin[] = availablePlugins,
+  modes?: Modes,
 ): Promise<string[]> {
-  const configs = await getAllOrgPluginConfigs(supabase, orgId, available);
+  const configs = await getAllOrgPluginConfigs(supabase, orgId, available, modes);
   return Object.entries(configs)
     .filter(([, cfg]) => cfg.enabled)
     .map(([id]) => id);
@@ -170,7 +190,8 @@ export async function getPluginSettings<T = Settings>(
   orgId: string,
   pluginId: string,
   available: FOQBPlugin[] = availablePlugins,
+  modes?: Modes,
 ): Promise<T> {
-  const config = await getOrgPluginConfig(supabase, orgId, pluginId, available);
+  const config = await getOrgPluginConfig(supabase, orgId, pluginId, available, modes);
   return config.settings as T;
 }

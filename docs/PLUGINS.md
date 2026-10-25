@@ -26,10 +26,20 @@ app's environment:
 | `none` | nothing |
 | `email-invoices,webhooks,receipt-ocr,statement-import,mortgage-notes,startup-assistant,exchange-rates` | exactly those |
 
-Each plugin the instance runs is on in every book until the book's owner
-turns it off under Settings → Plugins. That hides its slots, pages and
-menu links in that book; its server-side events, jobs and statement
-readers still run instance-wide. A plugin may also list `settings` (text,
+Then, in the app, three layers decide where each one runs:
+
+1. **`FOQB_PLUGINS`**, above: what the instance may run. An operator can
+   name every plugin here and decide the rest in the app.
+2. **Site Admin → Plugins**, per plugin: *Off* hides it in every book and
+   stops its server work (event handlers, jobs, categorizers, exchange
+   rates); *Books choose* (the default) leaves it off in a book until the
+   book's owner turns it on; *On for every book* starts it on, and an owner
+   can still turn it off.
+3. **A book's Settings → Plugins**: its owner's choice, kept once made.
+   It hides or shows the plugin's slots, pages and menu links in that
+   book. Server work that isn't tied to a book's own data (webhook
+   delivery, statement readers) runs for every book unless the site turns
+   the plugin off. A plugin may also list `settings` (text,
 select, multiselect, boolean or number) for owners to set per book, read
 with `getPluginSettings`. Every member of the book can read them, so they
 hold choices, never secrets.

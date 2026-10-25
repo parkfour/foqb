@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { adminCreateUser } from "@/lib/auth/admin-create-user";
 import { isSiteAdmin } from "@/lib/org/site-admin";
+import { getSiteSettings, PLUGIN_SITE_MODES, type PluginSiteMode } from "@/lib/site/settings";
+import { enabledPluginIds } from "@/lib/plugins/loader";
 import { generatePassword } from "@/lib/auth/generate-password";
 import { removeItem } from "@/lib/plaid/client";
 import { decryptToken } from "@/lib/crypto/token-encryption";
@@ -152,6 +154,23 @@ export async function demoteSiteAdmin(
 
   revalidatePath("/site-admin");
   return { error: null };
+}
+
+// Each plugin's site-wide mode, from a select per plugin ("mode_<id>").
+// Plugins the instance doesn't run now keep their saved mode, for when
+// FOQB_PLUGINS names them again. The database checks the values.
+export async function updatePluginSiteModes(formData: FormData): Promise<void> {
+  if (!(await isSiteAdmin())) return;
+  const supabase = await createClient();
+  const modes = { ...(await getSiteSettings(supabase)).pluginModes };
+  for (const id of enabledPluginIds()) {
+    const mode = formData.get(`mode_${id}`);
+    if (PLUGIN_SITE_MODES.includes(mode as PluginSiteMode)) modes[id] = mode as PluginSiteMode;
+  }
+  await supabase.from("site_settings").update({ plugin_modes: modes }).eq("id", true);
+
+  revalidatePath("/site-admin");
+  revalidatePath("/", "layout");
 }
 
 // RLS lets only Site Admins update site_settings; each change is logged to
