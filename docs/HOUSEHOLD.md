@@ -45,7 +45,11 @@ menu just leaves them out.
 - **Properties** (below) are added at their estimated value.
 - **Business equity**: if you own business organizations in FOQB, their book
   equity (assets − liabilities) is listed, and you can tick "Include in Net
-  Worth". Each business counts in full, not by your ownership share.
+  Worth". Each business counts in full, not by your ownership share. One
+  kept in another currency is listed but left out, unless the
+  exchange-rates plugin ([PLUGINS.md](PLUGINS.md#exchange-rates)) can
+  give a rate: then it's added at that rate, marked "≈", as an estimate
+  that isn't recorded anywhere.
 - **History**: the chart and the 30-day change are worked out from the
   books (`get_net_worth_series`): a point for every day of the last six
   months (1M, 6M) and for each month-end back to the first entry (1Y,

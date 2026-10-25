@@ -61,7 +61,7 @@ describe("PersonalWealthDashboard", () => {
   });
 
   it("counts businesses into assets only when they're included", () => {
-    const businessEquity = { total: 5000, businesses: [{ id: "b1", name: "Shop LLC", equity: 5000 }] };
+    const businessEquity = { total: 5000, businesses: [{ id: "b1", name: "Shop LLC", equity: 5000, currency: "USD", ownEquity: 5000 }] };
     render(<PersonalWealthDashboard data={data} history={[]} businessEquity={businessEquity} />);
     fireEvent.click(screen.getByText("Total Assets"));
     expect(dialog().queryByText("Shop LLC (business equity)")).toBeNull();
@@ -70,6 +70,29 @@ describe("PersonalWealthDashboard", () => {
     fireEvent.click(screen.getByLabelText("Include in Net Worth"));
     fireEvent.click(screen.getByText("Total Assets"));
     expect(dialog().getByText("Shop LLC (business equity)")).toBeInTheDocument();
+  });
+
+  it("adds a book in another currency at its quote, marked, and lists one without a quote as left out", () => {
+    const quote = { rate: 0.00075, asOf: "2026-10-23", source: "European Central Bank reference rate" };
+    const businessEquity = {
+      total: 750,
+      businesses: [
+        { id: "k1", name: "Seoul Co", equity: 750, currency: "KRW", ownEquity: 1_000_000, quote },
+        { id: "e1", name: "Berlin GmbH", equity: null, currency: "EUR", ownEquity: 2000 },
+      ],
+    };
+    render(<PersonalWealthDashboard data={data} history={[]} businessEquity={businessEquity} />);
+
+    expect(screen.getByText("≈ $750.00")).toBeInTheDocument();
+    expect(screen.getByText(/at 0.00075 \(2026-10-23\)/)).toBeInTheDocument();
+    expect(screen.getByText(/not included, no exchange rate/)).toBeInTheDocument();
+    expect(screen.getByText(/1 business kept in another currency isn.t included/)).toBeInTheDocument();
+    expect(screen.getByText(/an estimate,\s+not recorded in any book/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Include in Net Worth"));
+    fireEvent.click(screen.getByText("Total Assets"));
+    expect(dialog().getByText("Seoul Co (business equity, ≈ from KRW)")).toBeInTheDocument();
+    expect(dialog().queryByText(/Berlin GmbH/)).toBeNull();
   });
 
   it("draws daily points for 1M and 6M, and month-ends with today for 1Y and All-time", () => {

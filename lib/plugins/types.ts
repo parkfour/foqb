@@ -194,6 +194,19 @@ export interface ServerPluginParts {
   hooks?: FOQBPlugin["hooks"];
   jobs?: PluginJob[];
   categorizers?: BankCategorizer[];
+  exchangeRates?: ExchangeRateSource;
+}
+
+// A quote for one unit of `from` in `to`, to show a book kept in another
+// currency beside this one's. Shown, never booked.
+export interface ExchangeRate {
+  rate: number;
+  asOf: string; // YYYY-MM-DD, the day the quote is for
+  source: string;
+}
+
+export interface ExchangeRateSource {
+  rate: (from: string, to: string) => Promise<ExchangeRate | null>;
 }
 
 // Gets the first look at each new bank transaction, before the book's rules

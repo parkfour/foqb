@@ -1,25 +1,36 @@
 import { createClient } from "@/lib/supabase/server";
 import { instanceTimezone } from "@/lib/org/book-clock";
 import { localDate } from "@/lib/time/book-time";
+import { exchangeRate } from "@/lib/plugins/server-loader";
+import type { ExchangeRate } from "@/lib/plugins/types";
 
 export interface BusinessEquityRollup {
   organizationId: string;
   organizationName: string;
+  // In the business's own currency.
+  currency: string;
   assets: number;
   liabilities: number;
   bookEquity: number;
+  // What it adds to the household, in the household's currency: bookEquity
+  // itself, or converted at `quote`. Null when there's no quote to use.
+  counted: number | null;
+  quote?: ExchangeRate;
 }
 
 export function computeBookEquity(assets: number, liabilities: number): number {
   return Math.round((assets - liabilities) * 100) / 100;
 }
 
-// Only businesses kept in `currency` (the household's) are added up: nothing
-// converts between currencies.
+// Businesses kept in `currency` (the household's) are added up as they
+// are. One in another currency is added at a quote, when an exchange-rate
+// plugin gives one, and otherwise listed but left out. A quote is only for
+// showing: nothing converted is stored or booked.
 export async function calculateUserBusinessEquity(
   userId: string,
   supabaseClient?: Awaited<ReturnType<typeof createClient>>,
   currency = "USD",
+  rateFor: (from: string, to: string) => Promise<ExchangeRate | null> = exchangeRate,
 ): Promise<{
   businesses: BusinessEquityRollup[];
   totalBusinessEquity: number;
@@ -49,18 +60,18 @@ export async function calculateUserBusinessEquity(
     } | null;
   }
 
-  const businessOrgs: { id: string; name: string; timeZone: string }[] = [];
+  const businessOrgs: { id: string; name: string; timeZone: string; currency: string }[] = [];
   for (const m of members as unknown as OrgMemberRecord[]) {
     if (
       m.organizations &&
-      (m.organizations.workspace_type === "business" || !m.organizations.workspace_type) &&
-      (m.organizations.currency ?? "USD") === currency
+      (m.organizations.workspace_type === "business" || !m.organizations.workspace_type)
     ) {
       businessOrgs.push({
         id: m.organizations.id,
         name: m.organizations.name,
         // Each business's balances as of its own today.
         timeZone: m.organizations.timezone ?? instanceTimezone(),
+        currency: m.organizations.currency ?? "USD",
       });
     }
   }
@@ -78,18 +89,23 @@ export async function calculateUserBusinessEquity(
       }
       assets = Math.round(assets * 100) / 100;
       liabilities = Math.round(liabilities * 100) / 100;
+      const bookEquity = computeBookEquity(assets, liabilities);
+      const quote = org.currency === currency ? null : await rateFor(org.currency, currency);
       return {
         organizationId: org.id,
         organizationName: org.name,
+        currency: org.currency,
         assets,
         liabilities,
-        bookEquity: computeBookEquity(assets, liabilities),
+        bookEquity,
+        counted: org.currency === currency ? bookEquity : quote ? Math.round(bookEquity * quote.rate * 100) / 100 : null,
+        ...(quote ? { quote } : {}),
       };
     }),
   );
 
   const totalBusinessEquity = Math.round(
-    businesses.reduce((sum, b) => sum + b.bookEquity, 0) * 100,
+    businesses.reduce((sum, b) => sum + (b.counted ?? 0), 0) * 100,
   ) / 100;
 
   return { businesses, totalBusinessEquity };

@@ -4,6 +4,7 @@
 import type { ServerPluginParts } from "@/lib/plugins/types";
 import { webhooksServer } from "./webhooks/server";
 import { mortgageNotesServer } from "./mortgage-notes/server";
+import { exchangeRatesServer } from "./exchange-rates/server";
 import { localServerParts } from "./local-server.generated";
 
 // The server-only parts of the plugins in plugins/index.ts, by plugin id.
@@ -11,5 +12,6 @@ import { localServerParts } from "./local-server.generated";
 export const serverPluginParts: Record<string, ServerPluginParts> = {
   webhooks: webhooksServer,
   "mortgage-notes": mortgageNotesServer,
+  "exchange-rates": exchangeRatesServer,
   ...localServerParts,
 };

@@ -6,13 +6,23 @@ import type { NetWorthBucket, NetWorthSnapshotData } from "@/lib/net-worth/engin
 import { BreakdownDialog, type Breakdown, type BreakdownLine } from "./breakdown-dialog";
 import { addDays, isMonthEnd } from "@/lib/time/book-time";
 import { useMoney } from "@/components/providers/book-currency-provider";
+import { formatMoney } from "@/lib/money";
 
 interface WealthDashboardProps {
   data: NetWorthSnapshotData;
   history: { date: string; net_worth: number; total_assets: number; total_liabilities: number }[];
   businessEquity?: {
     total: number;
-    businesses: { id: string; name: string; equity: number }[];
+    // equity: what's added, in the household's currency; null when a book
+    // in another currency has no exchange rate to add it at.
+    businesses: {
+      id: string;
+      name: string;
+      equity: number | null;
+      currency: string;
+      ownEquity: number;
+      quote?: { rate: number; asOf: string; source: string };
+    }[];
   };
 }
 
@@ -51,8 +61,12 @@ export function PersonalWealthDashboard({
   const linesIn = (...buckets: NetWorthBucket[]): BreakdownLine[] =>
     items.filter((i) => buckets.includes(i.bucket)).map(({ name, amount, href }) => ({ name, amount, href }));
   const businessLines: BreakdownLine[] = includeBusiness
-    ? (businessEquity?.businesses ?? []).map((b) => ({ name: `${b.name} (business equity)`, amount: b.equity }))
+    ? (businessEquity?.businesses ?? []).flatMap((b) =>
+        b.equity === null ? [] : [{ name: `${b.name} (business equity${b.quote ? `, ≈ from ${b.currency}` : ""})`, amount: b.equity }],
+      )
     : [];
+  const converted = (businessEquity?.businesses ?? []).filter((b) => b.quote);
+  const leftOut = (businessEquity?.businesses ?? []).filter((b) => b.equity === null);
   const assetLines = [...linesIn("cash", "investments", "real_estate", "vehicles"), ...businessLines];
   const liabilityLines = linesIn("credit_cards", "mortgages", "loans", "other_liabilities");
   const show = (title: string, total: number, lines: BreakdownLine[]) => setBreakdown({ title, total, sections: [{ lines }] });
@@ -384,14 +398,33 @@ export function PersonalWealthDashboard({
               <div key={b.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 bg-slate-50/50">
                 <div>
                   <p className="text-xs font-bold text-slate-900">{b.name}</p>
-                  <p className="text-[11px] text-slate-500">Book equity</p>
+                  <p className="text-[11px] text-slate-500">
+                    {b.quote
+                      ? `Book equity ${formatMoney(b.ownEquity, b.currency)}, at ${b.quote.rate} (${b.quote.asOf})`
+                      : b.equity === null
+                        ? `Book equity ${formatMoney(b.ownEquity, b.currency)}: not included, no exchange rate`
+                        : "Book equity"}
+                  </p>
                 </div>
-                <span className="font-mono text-xs font-bold text-emerald-700">
-                  {formatCurrency(b.equity)}
+                <span className={`font-mono text-xs font-bold ${b.equity === null ? "text-slate-400" : "text-emerald-700"}`}>
+                  {b.equity === null ? "—" : `${b.quote ? "≈ " : ""}${formatCurrency(b.equity)}`}
                 </span>
               </div>
             ))}
           </div>
+          {converted.length > 0 && (
+            <p className="mt-3 text-[11px] text-slate-500">
+              ≈ Converted at the {converted[0].quote?.source} on the date shown, only to show here: an estimate,
+              not recorded in any book. The net worth history doesn&rsquo;t include it.
+            </p>
+          )}
+          {leftOut.length > 0 && (
+            <p className="mt-3 text-[11px] text-slate-500">
+              {leftOut.length === 1 ? "1 business" : `${leftOut.length} businesses`} kept in another currency{" "}
+              {leftOut.length === 1 ? "isn't" : "aren't"} included: there&rsquo;s no exchange rate to add{" "}
+              {leftOut.length === 1 ? "it" : "them"} at. The exchange-rates plugin can supply one.
+            </p>
+          )}
         </div>
       )}
 

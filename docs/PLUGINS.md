@@ -24,7 +24,7 @@ app's environment:
 |---|---|
 | unset or `*` | plugins whose manifest says `enabledByDefault: true` (none, so far) |
 | `none` | nothing |
-| `email-invoices,webhooks,receipt-ocr,statement-import,mortgage-notes,startup-assistant` | exactly those |
+| `email-invoices,webhooks,receipt-ocr,statement-import,mortgage-notes,startup-assistant,exchange-rates` | exactly those |
 
 Each plugin the instance runs is on in every book until the book's owner
 turns it off under Settings → Plugins. That hides its slots, pages and
@@ -396,6 +396,26 @@ owners and accountants.
 - **Limits:** fixed-rate, monthly, fully amortizing notes; one month's
   interest per payment, so a missed month isn't charged twice; no late
   fees.
+
+## Exchange rates
+
+`FOQB_PLUGINS=exchange-rates`. A household's net worth lists the businesses
+you own; one kept in another currency is otherwise listed but left out of
+the total, as nothing converts between currencies. With this plugin it's
+added at the European Central Bank's reference rate, from
+[Frankfurter](https://frankfurter.dev) (no key; only the two currency
+codes are sent), marked "≈" with the rate and its date.
+
+- **Shown, never booked.** A converted amount isn't stored or recorded in
+  any book, and the net worth history doesn't include it.
+- **No guessing.** When there's no rate (the service is down, it doesn't
+  quote the currency, or its latest rate is over a week old), the business
+  is left out, as without the plugin.
+- Rates are kept for six hours in each app process; a failed lookup is
+  tried again after ten minutes.
+- Another plugin can supply rates from somewhere else: an `exchangeRates`
+  source in its server parts (`rate(from, to)`, giving `{ rate, asOf,
+  source }` or null). The first enabled one with a rate is used.
 
 ## Start-up assistant
 

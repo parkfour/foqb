@@ -9,6 +9,9 @@ import { YoyComparison, type MonthComparison } from "@/components/dashboard/yoy-
 import { PersonalWealthDashboard } from "@/components/dashboard/personal-wealth-dashboard";
 import { calculateHouseholdNetWorth, fetchNetWorthHistory, withTodaysPoint } from "@/lib/net-worth/engine";
 import { calculateUserBusinessEquity } from "@/lib/org/equity-rollup";
+import { exchangeRate } from "@/lib/plugins/server-loader";
+import { enabledPluginIds } from "@/lib/plugins/loader";
+import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
 import { bookToday } from "@/lib/org/book-clock";
 import { monthStart } from "@/lib/time/book-time";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
@@ -95,11 +98,17 @@ export default async function DashboardPage() {
 
   if (workspaceType === "household") {
     const supabase = await createClient();
-    const [user, today] = await Promise.all([getAuthUser(), bookToday(orgId)]);
+    const [user, today, pluginIds] = await Promise.all([
+      getAuthUser(),
+      bookToday(orgId),
+      getOrgEnabledPluginIds(supabase, orgId).catch(() => enabledPluginIds()),
+    ]);
+    // Rates from the plugins this household runs (Settings → Plugins).
+    const rateFor = (from: string, to: string) => exchangeRate(from, to, pluginIds);
     const [netWorthData, history, businessEquityRollup] = await Promise.all([
       calculateHouseholdNetWorth(orgId, today, supabase),
       fetchNetWorthHistory(orgId, today, supabase),
-      user?.id ? calculateUserBusinessEquity(user.id, supabase, currency) : Promise.resolve({ businesses: [], totalBusinessEquity: 0 }),
+      user?.id ? calculateUserBusinessEquity(user.id, supabase, currency, rateFor) : Promise.resolve({ businesses: [], totalBusinessEquity: 0 }),
     ]);
 
     return (
@@ -113,7 +122,10 @@ export default async function DashboardPage() {
           businesses: businessEquityRollup.businesses.map((b) => ({
             id: b.organizationId,
             name: b.organizationName,
-            equity: b.bookEquity,
+            equity: b.counted,
+            currency: b.currency,
+            ownEquity: b.bookEquity,
+            ...(b.quote ? { quote: b.quote } : {}),
           })),
         }}
       />

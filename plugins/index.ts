@@ -8,6 +8,7 @@ import { statementImportPlugin } from "./statement-import";
 import { webhooksPlugin } from "./webhooks";
 import { mortgageNotesPlugin } from "./mortgage-notes";
 import { startupAssistantPlugin } from "./startup-assistant";
+import { exchangeRatesPlugin } from "./exchange-rates";
 import { localPlugins } from "./local.generated";
 
 // Plugins shipped in this repository, each off until FOQB_PLUGINS names it
@@ -19,6 +20,7 @@ export const builtInPlugins: FOQBPlugin[] = [
   statementImportPlugin,
   mortgageNotesPlugin,
   startupAssistantPlugin,
+  exchangeRatesPlugin,
 ];
 
 // Those plus the private plugins checked out under plugins/local. A private
