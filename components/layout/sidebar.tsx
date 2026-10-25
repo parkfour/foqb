@@ -291,7 +291,9 @@ export function Sidebar({
         </nav>
         <div className="shrink-0 px-4 py-3 text-xs text-slate-400">
           <p>
-            v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_SHA}
+            <Link href="/changelog" className="hover:text-slate-600 hover:underline" title="What's new">
+              v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_SHA}
+            </Link>
           </p>
           <p className="mt-1 flex gap-2">
             <Link href="/terms" className="hover:text-slate-600 hover:underline">
