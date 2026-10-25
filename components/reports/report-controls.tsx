@@ -10,6 +10,8 @@ const REPORT_TYPES = [
   { value: "ar-aging", label: "AR Aging" },
   { value: "ap-aging", label: "AP Aging" },
   { value: "tax-line-items", label: "Tax Line Report" },
+  { value: "sales-tax", label: "Sales Tax" },
+  { value: "1099-nec", label: "1099-NEC" },
 ] as const;
 
 export function ReportControls({
@@ -17,11 +19,13 @@ export function ReportControls({
   asOf,
   start,
   end,
+  year,
 }: {
   report: string;
   asOf: string;
   start: string;
   end: string;
+  year: number;
 }) {
   const router = useRouter();
   const [selectedReport, setSelectedReport] = useState(report);
@@ -32,7 +36,9 @@ export function ReportControls({
     const params = new URLSearchParams();
     params.set("report", selectedReport);
 
-    if (selectedReport === "income-statement" || selectedReport === "tax-line-items") {
+    if (selectedReport === "1099-nec") {
+      params.set("year", formData.get("year") as string);
+    } else if (selectedReport === "income-statement" || selectedReport === "tax-line-items" || selectedReport === "sales-tax") {
       params.set("start", formData.get("start") as string);
       params.set("end", formData.get("end") as string);
     } else {
@@ -63,7 +69,22 @@ export function ReportControls({
         </select>
       </div>
 
-      {selectedReport === "income-statement" || selectedReport === "tax-line-items" ? (
+      {selectedReport === "1099-nec" ? (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="year" className="text-xs font-medium text-slate-600">
+            Year
+          </label>
+          <input
+            type="number"
+            id="year"
+            name="year"
+            min="2000"
+            max="2100"
+            defaultValue={year}
+            className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+      ) : selectedReport === "income-statement" || selectedReport === "tax-line-items" || selectedReport === "sales-tax" ? (
         <>
           <div className="flex flex-col gap-1">
             <label htmlFor="start" className="text-xs font-medium text-slate-600">

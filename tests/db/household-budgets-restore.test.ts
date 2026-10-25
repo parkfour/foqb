@@ -69,7 +69,7 @@ describe("household budgets and backups", () => {
       organization: { id: orgId, name: "Restored Household", workspace_type: "household" },
       accounts: [
         { id: cash, organization_id: orgId, account_number: "1000", name: "Checking", type: "asset", is_active: true },
-        { id: groceries, organization_id: orgId, account_number: "6000", name: "Groceries", type: "expense", is_active: true, property_id: home },
+        { id: groceries, organization_id: orgId, account_number: "6000", name: "Groceries", type: "expense", is_active: true, property_id: home, budget_rollover: true },
       ],
       journal_entries: [
         {
@@ -111,7 +111,10 @@ describe("household budgets and backups", () => {
     expect(await one("select count(*)::int as n from net_worth_snapshots where organization_id = $1")).toEqual({ n: 1 });
     expect((await client.query("select cleared from journal_lines where id = $1", [cashLine])).rows[0]).toEqual({ cleared: true });
     expect((await client.query("select cleared from bank_transactions where id = $1", [bankTx])).rows[0]).toEqual({ cleared: true });
-    expect((await client.query("select property_id from accounts where id = $1", [groceries])).rows[0]).toEqual({ property_id: home });
+    expect((await client.query("select property_id, budget_rollover from accounts where id = $1", [groceries])).rows[0]).toEqual({
+      property_id: home,
+      budget_rollover: true,
+    });
     expect(await one("select bank_account_id from categorization_rules where organization_id = $1")).toEqual({ bank_account_id: cash });
     expect(await one("select value from plugin_data where organization_id = $1")).toEqual({ value: { year: 2026 } });
   });

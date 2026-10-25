@@ -16,6 +16,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/app/(dashboard)/budget/actions", () => ({
   updateBudgetCategoryAction: vi.fn(),
   copyPreviousMonthAction: vi.fn(),
+  setBudgetRolloverAction: vi.fn(async () => ({ success: true })),
 }));
 
 describe("BudgetManager Component", () => {
@@ -23,6 +24,7 @@ describe("BudgetManager Component", () => {
     organizationId: "org-1",
     yearMonth: "2026-10",
     totalBudgeted: 3000,
+    totalCarriedOver: 0,
     totalSpent: 1800,
     totalRemaining: 1200,
     overallPercentage: 60,
@@ -37,6 +39,9 @@ describe("BudgetManager Component", () => {
         percentageUsed: 50,
         status: "on_track",
         notes: null,
+        rollover: false,
+        carriedOver: 0,
+        available: 800,
       },
       {
         accountId: "acc-2",
@@ -48,6 +53,9 @@ describe("BudgetManager Component", () => {
         percentageUsed: 120,
         status: "over_budget",
         notes: null,
+        rollover: false,
+        carriedOver: 0,
+        available: 500,
       },
     ],
   };
@@ -70,5 +78,16 @@ describe("BudgetManager Component", () => {
 
     expect(screen.getByText(/On track/)).toBeInTheDocument();
     expect(screen.getByText(/Over by \$100\.00/)).toBeInTheDocument();
+  });
+  it("shows what a rollover category carried over, and lets a writer turn rollover on", () => {
+    const report: MonthlyBudgetReport = {
+      ...sampleReport,
+      totalCarriedOver: 300,
+      categories: [{ ...sampleReport.categories[0], rollover: true, carriedOver: 300, available: 1100, remainingAmount: 700 }],
+    };
+    render(<BudgetManager report={report} canWrite={true} />);
+    expect(screen.getByText("+$300.00 carried over")).toBeInTheDocument();
+    expect(screen.getByText(/plus \$300\.00 carried over/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Roll over")).toBeChecked();
   });
 });

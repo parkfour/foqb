@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import type { MonthlyBudgetReport, BudgetCategoryItem } from "@/lib/budget/engine";
-import { updateBudgetCategoryAction, copyPreviousMonthAction } from "@/app/(dashboard)/budget/actions";
+import { updateBudgetCategoryAction, copyPreviousMonthAction, setBudgetRolloverAction } from "@/app/(dashboard)/budget/actions";
 import { useBookCurrency, useMoney } from "@/components/providers/book-currency-provider";
 
 interface BudgetManagerProps {
@@ -71,6 +71,14 @@ export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
     setEditingAccountId(category.accountId);
     setEditAmount(category.budgetedAmount > 0 ? category.budgetedAmount.toString() : "");
     setErrorMessage(null);
+  }
+
+  function toggleRollover(category: BudgetCategoryItem) {
+    startTransition(async () => {
+      const result = await setBudgetRolloverAction(category.accountId, !category.rollover);
+      if (!result.success) setErrorMessage(result.error ?? "Couldn't change rollover");
+      else router.refresh();
+    });
   }
 
   function cancelEditing() {
@@ -198,7 +206,11 @@ export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
           <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
             {formatCurrency(report.totalBudgeted)}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Planned for {monthLabel}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Planned for {monthLabel}
+            {report.totalCarriedOver !== 0 &&
+              `, ${report.totalCarriedOver > 0 ? "plus" : "less"} ${formatCurrency(Math.abs(report.totalCarriedOver))} carried over`}
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -381,6 +393,12 @@ export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
                           <p className="font-mono text-xs font-bold text-slate-900">
                             {formatCurrency(category.budgetedAmount)}
                           </p>
+                          {category.rollover && category.carriedOver !== 0 && (
+                            <p className="font-mono text-[11px] text-slate-500">
+                              {category.carriedOver > 0 ? "+" : "−"}
+                              {formatCurrency(Math.abs(category.carriedOver))} carried over
+                            </p>
+                          )}
                           <p
                             className={`font-mono text-[11px] ${
                               category.remainingAmount < 0
@@ -393,6 +411,21 @@ export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
                               : `${formatCurrency(category.remainingAmount)} left`}
                           </p>
                         </div>
+                        {canWrite && (
+                          <label
+                            className="flex items-center gap-1 text-[11px] text-slate-500"
+                            title="Carry what's left (or overspent) into next month, for a sinking fund"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={category.rollover}
+                              onChange={() => toggleRollover(category)}
+                              disabled={isPending}
+                              className="h-3 w-3 rounded border-slate-300"
+                            />
+                            Roll over
+                          </label>
+                        )}
                         {canWrite && (
                           <button
                             type="button"

@@ -6,6 +6,12 @@ business; only the screens differ. You can belong to both kinds and switch
 between them from the header. For how it compares with other personal
 finance software, see [HOUSEHOLD_COMPARISON.md](HOUSEHOLD_COMPARISON.md).
 
+Nobody has to know double-entry to use it. In the register, a bank
+transaction gets a category (an expense or income account) from a dropdown,
+and FOQB books the bank side against it; splits and transfers work the same
+way. Debits and credits only show up in the chart of accounts and journal
+entries, for whoever keeps the books.
+
 Choose the kind when you create the organization ("Small Business" or
 "Household"). It's stored in `organizations.workspace_type`.
 
@@ -107,7 +113,14 @@ A planned amount per expense account per month (`monthly_budgets`), against
 what was spent: debits less credits to that account in posted entries that
 month, from `get_income_statement`. Over 80% shows a warning, over 100% shows
 over budget. "Copy Last Month" carries last month's amounts forward. Each
-category opens its ledger for the month. The start-up assistant plugin can
+category opens its ledger for the month.
+
+**Roll over** on a category carries what's left of its budget into the
+next month, or what was overspent out of it, for sinking funds: car
+repairs, holidays, gifts. A rollover category's month shows its own
+budget plus what was carried over. What's carried is every earlier month's
+budget for it, less everything spent on it since its first budgeted month,
+so changing an old month's budget changes what's carried today. The start-up assistant plugin can
 start a budget from your average spending ([PLUGINS.md](PLUGINS.md#start-up-assistant)).
 
 ![September's budget: spending against plan, with two categories over](screenshots/household-budget.jpg)
@@ -145,6 +158,29 @@ every entry, newest first, 50 a page, with a memo search; one can be
 voided there, except an entry from the bank feed, which is re-opened in
 the register instead.
 
+## Between your books (`/between-books`)
+
+When one event touches two of your books, post it once and FOQB books both
+sides in the same transaction (or neither, if one can't be posted). You
+need to be an owner or accountant in both, and both must keep the same
+currency.
+
+- **A business expense on a personal card.** In the household: owed by
+  the business (an asset), paid from the card. In the business: the
+  expense, owed to the owner (a liability) or the owner's contribution.
+  When the business pays you back, record that as money moved from the
+  business to the household, against those two accounts.
+- **An owner's draw, or money put into a business.** Money moved from one
+  book to the other: what it was in each (owner's draw, investment in the
+  business, owner's contribution) and the bank account on each side.
+- **Already in the bank feed?** Pick the waiting transaction on either
+  side and it's booked by this entry instead of being categorized
+  separately.
+
+Each entry's page says where the other side is and opens it in that book.
+Voiding one side doesn't void the other, and an organization backup only
+carries its own side.
+
 ## Tax lines
 
 Settings → Tax form "Form 1040 with Schedules 1, B, C, D and E
@@ -170,4 +206,5 @@ security as the others, and requesting `investments` in the link token.
 
 The organization backup (Settings) includes properties, budgets, the net
 worth history, the register's cleared marks, accounts' properties and the
-plugins' data, and restoring puts them all back.
+plugins' data, and restoring puts them all back. Attachments aren't in it yet; the database backup has
+them ([BANK_FEED.md](BANK_FEED.md#receipts-and-attachments)).

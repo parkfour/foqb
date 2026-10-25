@@ -46,11 +46,13 @@ export async function disconnectEnrollment(formData: FormData): Promise<void> {
   // 20260101000037_hide_enrollment_access_token.sql).
   const { data: secret } = await createAdminClient()
     .from("enrollments")
-    .select("access_token")
+    .select("access_token, provider")
     .eq("id", id)
     .maybeSingle();
 
-  if (secret) {
+  // A SimpleFIN connection has nothing to remove here: the access URL is
+  // simply no longer used (and can be revoked at the Bridge).
+  if (secret && secret.provider === "plaid") {
     try {
       await removeItem(decryptToken(secret.access_token as string));
     } catch (error) {

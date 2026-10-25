@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrgId, getUseAccountCodes } from "@/lib/org/current";
+import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
+import { Attachments, type AttachmentInfo } from "@/components/attachments/attachments";
+import { switchOrganization } from "@/app/(dashboard)/actions";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { registerHref } from "@/lib/reports/entry-links";
 import { formatMoney } from "@/lib/money";
@@ -28,11 +30,13 @@ interface EntryRow {
 // wasn't booked from the bank feed (those open in the register instead).
 export default async function JournalEntryPage({ params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
+  // It goes into a filter below, so only an id is let through.
+  if (!/^[0-9a-f-]{36}$/i.test(entryId)) notFound();
   const orgId = await getCurrentOrgId();
   if (!orgId) redirect("/");
 
   const supabase = await createClient();
-  const [{ data }, showAccountCodes, currency] = await Promise.all([
+  const [{ data }, showAccountCodes, currency, role, { data: attachments }, { data: links }] = await Promise.all([
     supabase
       .from("journal_entries")
       .select(
@@ -43,6 +47,16 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ e
       .maybeSingle(),
     getUseAccountCodes(orgId),
     getBookCurrency(orgId),
+    getCurrentUserRole(orgId),
+    supabase
+      .from("attachments")
+      .select("id, file_name, content_type, size_bytes")
+      .eq("journal_entry_id", entryId)
+      .order("created_at"),
+    supabase
+      .from("inter_book_links")
+      .select("org_a, entry_a, org_b, entry_b")
+      .or(`entry_a.eq.${entryId},entry_b.eq.${entryId}`),
   ]);
   const entry = data as unknown as EntryRow | null;
   if (!entry) notFound();
@@ -61,6 +75,23 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ e
           ← Journal Entries
         </Link>
       </div>
+
+      {await Promise.all(
+        ((links ?? []) as { org_a: string; entry_a: string; org_b: string; entry_b: string }[]).map(async (link) => {
+          const [otherOrg, otherEntry] = link.entry_a === entry.id ? [link.org_b, link.entry_b] : [link.org_a, link.entry_a];
+          const { data: book } = await supabase.from("organizations").select("name").eq("id", otherOrg).maybeSingle();
+          return (
+            <form key={otherEntry} action={switchOrganization} className="text-sm text-slate-600">
+              <input type="hidden" name="organizationId" value={otherOrg} />
+              <input type="hidden" name="next" value={`/journal/${otherEntry}`} />
+              Booked between your books: the other side is in {book?.name ?? "another book"}.{" "}
+              <button type="submit" className="underline hover:text-slate-900">
+                Open it
+              </button>
+            </form>
+          );
+        }),
+      )}
 
       {(entry.bank_transactions ?? []).map((bt) =>
         bt.account_id ? (
@@ -109,6 +140,8 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ e
           </table>
         </div>
       </div>
+
+      <Attachments entryId={entry.id} initial={(attachments as AttachmentInfo[] | null) ?? []} canWrite={canWrite(role)} />
     </div>
   );
 }

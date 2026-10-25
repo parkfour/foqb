@@ -17,19 +17,22 @@ export function EnabledPluginsProvider({ ids, children }: { ids: string[]; child
 }
 
 // A place in the UI where enabled plugins render their own controls.
-// Renders nothing when no plugin uses the slot.
+// Renders nothing when no plugin uses the slot. With pluginId, only that
+// plugin's part of it.
 export function PluginSlot<K extends SlotName>({
   name,
   context,
+  pluginId,
   className = "flex items-center gap-2",
 }: {
   name: K;
   context: SlotContextMap[K];
+  pluginId?: string;
   className?: string;
 }) {
   const enabledIds = useContext(EnabledPluginsContext);
   ensurePluginsLoaded(enabledIds);
-  const components = getSlotComponents(name, enabledIds);
+  const components = getSlotComponents(name, pluginId ? enabledIds.filter((id) => id === pluginId) : enabledIds);
   if (components.length === 0) return null;
 
   return (

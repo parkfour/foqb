@@ -9,6 +9,7 @@ import { webhooksPlugin } from "./webhooks";
 import { mortgageNotesPlugin } from "./mortgage-notes";
 import { startupAssistantPlugin } from "./startup-assistant";
 import { exchangeRatesPlugin } from "./exchange-rates";
+import { stripePaymentsPlugin } from "./stripe-payments";
 import { localPlugins } from "./local.generated";
 
 // Plugins shipped in this repository, each off until FOQB_PLUGINS names it
@@ -21,6 +22,7 @@ export const builtInPlugins: FOQBPlugin[] = [
   mortgageNotesPlugin,
   startupAssistantPlugin,
   exchangeRatesPlugin,
+  stripePaymentsPlugin,
 ];
 
 // Those plus the private plugins checked out under plugins/local. A private

@@ -12,6 +12,7 @@ interface VendorFormProps {
     email: string | null;
     phone: string | null;
     address: string | null;
+    is_1099: boolean;
   };
 }
 
@@ -60,6 +61,15 @@ export function VendorForm({ organizationId, vendor }: VendorFormProps) {
           rows={3}
           className="rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            name="is1099"
+            defaultChecked={vendor?.is_1099 ?? false}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+          Gets a 1099-NEC (an independent contractor, not a corporation)
+        </label>
 
         <button
           type="submit"

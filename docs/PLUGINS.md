@@ -3,11 +3,12 @@
 FOQB has a small, in-repo plugin system: **events** a plugin can react to on
 the server, **slots** where a plugin can put its own controls in the UI, and
 **pages** of its own in the menu.
-Six plugins ship with FOQB, each off until you turn it on:
+Eight plugins ship with FOQB, each off until you turn it on:
 [email invoices](#email-invoices), [webhooks](#webhooks),
 [receipt scanning](#receipt-scanning),
 [statement import](#statement-import),
-[mortgage notes](#mortgage-notes) and the
+[mortgage notes](#mortgage-notes), [exchange rates](#exchange-rates),
+[Stripe payments](#stripe-payments) and the
 [start-up assistant](#start-up-assistant).
 
 Plugins live in this repository (`plugins/<id>/`), or in a private repo of
@@ -244,14 +245,17 @@ organization can have up to 10 webhooks. Secrets are encrypted with
 
 `FOQB_PLUGINS=receipt-ocr`. Adds a drop zone above the Enter Bill form:
 drop a photo or PDF of a receipt (or, on a phone, take one), and the form
-fills in what could be read. Nothing is entered until the person clicks Enter Bill.
+fills in what could be read. Nothing is entered until the person clicks Enter Bill,
+and then the receipt is kept with the bill as an attachment, opened from
+the bill's number in Bills.
 
 ![A bill filled in from a photo of a receipt, with what was found listed above it](screenshots/plugin-receipt-scan.jpg)
 
 - **Read on the device.** A PDF with text is read directly
   ([pdf.js](https://mozilla.github.io/pdf.js/)); a photo or a scanned PDF
   goes through [Tesseract](https://tesseract.projectnaptha.com) in the
-  browser. The receipt is never uploaded. The OCR engine and its English
+  browser. Reading it sends nothing anywhere; when the bill is saved, the
+  receipt is attached to it (below). The OCR engine and its English
   model (about 10 MB, downloaded on the first scan and then cached) are
   served by the app from `/ocr`; `npm run build` and `npm run dev` copy them
   there from `node_modules` (`scripts/copy-ocr-assets.mjs`), so no CDN is
@@ -426,6 +430,35 @@ codes are sent), marked "≈" with the rate and its date.
 - Another plugin can supply rates from somewhere else: an `exchangeRates`
   source in its server parts (`rate(from, to)`, giving `{ rate, asOf,
   source }` or null). The first enabled one with a rate is used.
+
+## Stripe payments
+
+`FOQB_PLUGINS=stripe-payments` (needs `ENCRYPTION_KEY`). Each book uses its
+own Stripe account.
+
+1. **Settings → Stripe** (owner): paste a secret key, or a restricted key
+   with write access to Prices and Payment Links, and choose the asset
+   account payments go into (make one called "Stripe balance").
+2. In Stripe, add a webhook endpoint for the address shown there
+   (`/api/stripe/webhook/<book id>`) with the event
+   `checkout.session.completed`, and paste its signing secret back in
+   Settings.
+3. On an invoice, **Payment link** makes a Stripe payment link for what's
+   still owed. Copy it into your email (or the email-invoices message).
+
+When the customer pays, Stripe calls the webhook; the payment is recorded
+against the invoice (`record_invoice_payment`, the same as recording one by
+hand) into the chosen account, dated the book's today, and the link is
+turned off. A link is recorded once however often Stripe sends the event,
+and a webhook not signed with the book's secret is refused.
+
+- **Fees and payouts.** The full amount goes into the Stripe balance
+  account. Book Stripe's fees from it, and match its payouts to your bank
+  as transfers, when you reconcile it.
+- **The amount changed?** Making a link again after a partial payment
+  closes the old link and makes one for the new remaining amount.
+- Keys are stored encrypted (`organization_stripe_settings`), and no
+  signed-in user can read them back, owners included.
 
 ## Start-up assistant
 

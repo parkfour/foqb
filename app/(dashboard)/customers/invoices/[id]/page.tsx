@@ -19,6 +19,7 @@ interface RawInvoice {
     amount: number;
   }[];
   invoice_payments: { amount: number }[];
+  invoice_taxes: { name: string; rate: number; amount: number }[];
 }
 
 export default async function InvoiceDetailPage({
@@ -39,7 +40,7 @@ export default async function InvoiceDetailPage({
     supabase
       .from("invoices")
       .select(
-        "id, invoice_number, invoice_date, due_date, status, tax_rate, tax_amount, customers(name, email, billing_address), invoice_lines(description, quantity, unit_price, amount), invoice_payments(amount)",
+        "id, invoice_number, invoice_date, due_date, status, tax_rate, tax_amount, customers(name, email, billing_address), invoice_lines(description, quantity, unit_price, amount), invoice_payments(amount), invoice_taxes(name, rate, amount)",
       )
       .eq("id", id)
       .eq("organization_id", orgId)
@@ -71,6 +72,7 @@ export default async function InvoiceDetailPage({
       subtotal={subtotal}
       taxRate={Number(typedInvoice.tax_rate)}
       taxAmount={taxAmount}
+      taxes={typedInvoice.invoice_taxes.map((t) => ({ name: t.name, rate: Number(t.rate), amount: Number(t.amount) }))}
       total={total}
       remaining={Math.round((total - paid) * 100) / 100}
     />

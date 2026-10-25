@@ -90,6 +90,13 @@ describe("plugin loader", () => {
     expect(getPlugins().map((p) => p.manifest.id)).toEqual(["a", "c"]);
   });
 
+  it("registers a plugin turned on after the first load", () => {
+    const available = [plugin("a"), plugin("b")];
+    ensurePluginsLoaded([], available);
+    ensurePluginsLoaded(["b"], available);
+    expect(getPlugins().map((p) => p.manifest.id)).toEqual(["b"]);
+  });
+
   it("ships no plugins", () => {
     expect(enabledPluginIds()).toEqual([]);
   });

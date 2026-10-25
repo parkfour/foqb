@@ -23,7 +23,7 @@ export default async function EditVendorPage({
   const supabase = await createClient();
   const { data: vendor } = await supabase
     .from("vendors")
-    .select("id, name, email, phone, address")
+    .select("id, name, email, phone, address, is_1099")
     .eq("id", id)
     .maybeSingle();
 

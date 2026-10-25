@@ -36,6 +36,8 @@ interface InvoiceDetailProps {
   subtotal: number;
   taxRate: number;
   taxAmount: number;
+  // One line per rate applied; empty for invoices made before named rates.
+  taxes: { name: string; rate: number; amount: number }[];
   total: number;
   remaining: number;
 }
@@ -79,6 +81,7 @@ export function InvoiceDetail({
   subtotal,
   taxRate,
   taxAmount,
+  taxes,
   total,
   remaining,
 }: InvoiceDetailProps) {
@@ -220,12 +223,21 @@ export function InvoiceDetail({
             <span className="text-slate-500">Subtotal</span>
             <span className="text-slate-900">{formatCurrency(subtotal)}</span>
           </p>
-          {taxAmount > 0 && (
-            <p className="flex w-48 justify-between">
-              <span className="text-slate-500">Tax ({taxRate}%)</span>
-              <span className="text-slate-900">{formatCurrency(taxAmount)}</span>
-            </p>
-          )}
+          {taxes.length > 0
+            ? taxes.map((tax) => (
+                <p key={tax.name} className="flex w-48 justify-between gap-2">
+                  <span className="text-slate-500">
+                    {tax.name} ({tax.rate}%)
+                  </span>
+                  <span className="text-slate-900">{formatCurrency(tax.amount)}</span>
+                </p>
+              ))
+            : taxAmount > 0 && (
+                <p className="flex w-48 justify-between">
+                  <span className="text-slate-500">Tax ({taxRate}%)</span>
+                  <span className="text-slate-900">{formatCurrency(taxAmount)}</span>
+                </p>
+              )}
           <p className="flex w-48 justify-between">
             <span className="text-slate-500">Total</span>
             <span className="font-medium text-slate-900">{formatCurrency(total)}</span>

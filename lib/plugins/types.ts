@@ -102,7 +102,7 @@ export interface SlotContextMap {
     // The same PDF "Download / Share PDF" makes.
     buildPdf: () => Promise<File>;
   };
-  // A section of its own on the Settings page.
+  // On the Settings page, inside the plugin's own card.
   "settings.sections": {
     organizationId: string;
   };
@@ -138,6 +138,8 @@ export interface BillPrefill {
   billNumber?: string;
   billDate?: string;
   lines?: { accountId?: string; description: string; quantity: number; unitPrice: number }[];
+  // The receipt itself, attached to the bill's entry when it's saved.
+  attachment?: File;
 }
 
 export type SlotComponent<K extends SlotName> = React.ComponentType<{ context: SlotContextMap[K] }>;

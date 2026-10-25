@@ -166,5 +166,5 @@ export async function POST(req: NextRequest) {
     orgId: organization_id,
   });
 
-  return NextResponse.json({ success: true, id: billId });
+  return NextResponse.json({ success: true, id: billId, journal_entry_id: entryId });
 }

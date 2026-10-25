@@ -2,6 +2,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ReadOnlyNotice } from "@/components/ui/read-only-notice";
 import { DownloadButton } from "@/components/ui/download-button";
 import { ConnectBankButton } from "@/components/settings/connect-bank-button";
+import { SimplefinConnect } from "@/components/settings/simplefin-connect";
+import { SalesTaxRates } from "@/components/settings/sales-tax-rates";
 import { ReconnectBankButton } from "@/components/settings/reconnect-bank-button";
 import { CreateMemberForm } from "@/components/settings/create-member-form";
 import { RegeneratePasswordButton } from "@/components/settings/regenerate-password-button";
@@ -16,7 +18,6 @@ import { formatTimestamp, formatTimestampDate } from "@/lib/time/book-time";
 import { getBookClock } from "@/lib/org/book-clock";
 import { TimezoneSetting } from "@/components/settings/timezone-setting";
 import { PluginSettingsSection } from "@/components/settings/plugin-settings-section";
-import { PluginSlot } from "@/components/plugins/plugin-slot";
 import { getAllOrgPluginConfigs, getPluginSettingDefinitions } from "@/lib/plugins/settings";
 import { availablePlugins } from "@/plugins";
 import type { OrgPluginConfig } from "@/lib/plugins/types";
@@ -40,6 +41,7 @@ interface EnrollmentRow {
   disconnect_reason: string | null;
   created_at: string;
   last_synced_at: string | null;
+  provider: "plaid" | "simplefin";
 }
 
 interface OrganizationRow {
@@ -114,10 +116,11 @@ export default async function SettingsPage({
     { data: hasOwnerRemovalSecret },
     siteSettings,
     pluginConfigsRaw,
+    { data: salesTaxRates },
   ] = await Promise.all([
     supabase
       .from("enrollments")
-      .select("id, institution_name, status, disconnect_reason, created_at, last_synced_at")
+      .select("id, institution_name, status, disconnect_reason, created_at, last_synced_at, provider")
       .eq("organization_id", orgId)
       .order("created_at", { ascending: false }),
     supabase
@@ -147,6 +150,12 @@ export default async function SettingsPage({
     supabase.rpc("has_owner_removal_secret", { p_org_id: orgId }),
     getSiteSettings(supabase),
     getAllOrgPluginConfigs(supabase, orgId).catch(() => ({})),
+    supabase
+      .from("sales_tax_rates")
+      .select("id, name, rate, account_id, is_active")
+      .eq("organization_id", orgId)
+      .order("is_active", { ascending: false })
+      .order("name"),
   ]);
 
   const pluginConfigs: Record<string, OrgPluginConfig> = pluginConfigsRaw;
@@ -230,10 +239,13 @@ export default async function SettingsPage({
           (bankLinkingBlocked ? (
             <p className="text-sm text-slate-500">{bankLinkingBlocked}</p>
           ) : mfaFactor ? (
-            <ConnectBankButton
-              organizationId={orgId}
-              linkableAccounts={[...arOptions, ...apOptions].map((a) => ({ id: a.id, label: a.name }))}
-            />
+            <>
+              <ConnectBankButton
+                organizationId={orgId}
+                linkableAccounts={[...arOptions, ...apOptions].map((a) => ({ id: a.id, label: a.name }))}
+              />
+              <SimplefinConnect organizationId={orgId} />
+            </>
           ) : (
             <p className="text-sm text-amber-700">
               Two-factor authentication is required to connect or reconnect a bank. Set it up under
@@ -277,11 +289,11 @@ export default async function SettingsPage({
                   >
                     {enrollment.status === "error" ? "needs reconnecting" : enrollment.status}
                   </span>
-                  {canLinkBanks &&
+                  {canLinkBanks && enrollment.provider === "plaid" &&
                     (enrollment.status === "error" || enrollment.status === "expiring") && (
                       <ReconnectBankButton enrollmentId={enrollment.id} />
                     )}
-                  {canLinkBanks && enrollment.status === "active" && (
+                  {canLinkBanks && enrollment.provider === "plaid" && enrollment.status === "active" && (
                     <ReconnectBankButton enrollmentId={enrollment.id} addAccounts />
                   )}
                   {userCanWrite && enrollment.status !== "disconnected" && (
@@ -506,8 +518,6 @@ export default async function SettingsPage({
         plugins={pluginsData}
       />
 
-      <PluginSlot name="settings.sections" context={{ organizationId: orgId }} className="flex flex-col gap-6" />
-
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Time</h2>
         {/* Keyed so it starts over from the saved value after a change. */}
@@ -721,6 +731,14 @@ export default async function SettingsPage({
         </form>
         )}
       </div>
+
+      <SalesTaxRates
+        organizationId={orgId}
+        rates={salesTaxRates ?? []}
+        liabilityAccounts={apOptions}
+        canWrite={userCanWrite}
+        showAccountCodes={showAccountCodes}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ interface RawBill {
   id: string;
   bill_number: string;
   bill_date: string;
+  journal_entry_id: string | null;
   status: "open" | "partial" | "paid" | "void";
   vendors: { name: string } | null;
   bill_lines: { amount: number }[];
@@ -42,7 +43,7 @@ export default async function BillsListPage() {
     supabase
       .from("bills")
       .select(
-        "id, bill_number, bill_date, status, vendors(name), bill_lines(amount), bill_payments(amount)",
+        "id, bill_number, bill_date, journal_entry_id, status, vendors(name), bill_lines(amount), bill_payments(amount)",
       )
       .eq("organization_id", orgId)
       .order("bill_date", { ascending: false }),
@@ -95,7 +96,15 @@ export default async function BillsListPage() {
 
                   return (
                     <tr key={bill.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-5 py-3 text-slate-900">{bill.bill_number}</td>
+                      <td className="px-5 py-3 text-slate-900">
+                        {bill.journal_entry_id ? (
+                          <Link href={`/journal/${bill.journal_entry_id}`} className="underline hover:text-slate-600">
+                            {bill.bill_number}
+                          </Link>
+                        ) : (
+                          bill.bill_number
+                        )}
+                      </td>
                       <td className="px-5 py-3 text-slate-600">{bill.vendors?.name ?? "—"}</td>
                       <td className="px-5 py-3 text-slate-600">{bill.bill_date}</td>
                       <td className="px-5 py-3 text-slate-600">{formatCurrency(total)}</td>

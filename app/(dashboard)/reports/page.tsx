@@ -6,13 +6,15 @@ import { BalanceSheetReport } from "@/components/reports/balance-sheet-report";
 import { ArAgingReport } from "@/components/reports/ar-aging-report";
 import { ApAgingReport } from "@/components/reports/ap-aging-report";
 import { TaxLineReport } from "@/components/reports/tax-line-report";
+import { Form1099Report } from "@/components/reports/form-1099-report";
+import { SalesTaxReport } from "@/components/reports/sales-tax-report";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { getCurrentOrgId } from "@/lib/org/current";
 import { bookToday } from "@/lib/org/book-clock";
 import { monthStart } from "@/lib/time/book-time";
 
 interface ReportsPageProps {
-  searchParams: Promise<{ report?: string; asOf?: string; start?: string; end?: string }>;
+  searchParams: Promise<{ report?: string; asOf?: string; start?: string; end?: string; year?: string }>;
 }
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
@@ -36,7 +38,9 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const asOf = params.asOf ?? today;
   const start = params.start ?? monthStart(today);
   const end = params.end ?? today;
-  const isRange = report === "income-statement" || report === "tax-line-items";
+  const isRange = report === "income-statement" || report === "tax-line-items" || report === "sales-tax";
+  // 1099s are filed for the year just ended, so that's the default.
+  const year = Number(params.year) || Number(today.slice(0, 4)) - 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,16 +50,20 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       />
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <ReportControls report={report} asOf={asOf} start={start} end={end} />
+        <ReportControls report={report} asOf={asOf} start={start} end={end} year={year} />
       </div>
 
       {/* A range report covers every day in it; an as-of report turns on its last day. */}
-      <TimezoneChangeNotice from={isRange ? start : asOf} to={isRange ? end : asOf} />
+      {report !== "1099-nec" && <TimezoneChangeNotice from={isRange ? start : asOf} to={isRange ? end : asOf} />}
 
       {report === "income-statement" ? (
         <IncomeStatementReport orgId={orgId} start={start} end={end} />
       ) : report === "tax-line-items" ? (
         <TaxLineReport orgId={orgId} start={start} end={end} />
+      ) : report === "sales-tax" ? (
+        <SalesTaxReport orgId={orgId} start={start} end={end} />
+      ) : report === "1099-nec" ? (
+        <Form1099Report orgId={orgId} year={year} />
       ) : report === "balance-sheet" ? (
         <BalanceSheetReport orgId={orgId} asOf={asOf} />
       ) : report === "ar-aging" ? (

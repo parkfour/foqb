@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanupUnclaimedMembers } from "./cleanup-unclaimed-members";
 import { cleanupRateLimits } from "./cleanup-rate-limits";
+import { SIMPLEFIN_SYNC_INTERVAL_SECONDS, syncAllSimplefin } from "@/lib/simplefin/sync";
 import { enabledPluginJobs, runningPluginIds } from "@/lib/plugins/server-loader";
 
 // Runs maintenance jobs inline off real traffic instead of a scheduled
@@ -14,6 +15,8 @@ import { enabledPluginJobs, runningPluginIds } from "@/lib/plugins/server-loader
 const JOBS: { name: string; minIntervalSeconds: number; run: () => Promise<unknown> }[] = [
   { name: "cleanup-unclaimed-members", minIntervalSeconds: 24 * 60 * 60, run: cleanupUnclaimedMembers },
   { name: "cleanup-rate-limits", minIntervalSeconds: 60 * 60, run: cleanupRateLimits },
+  // SimpleFIN has no webhooks, so its banks are asked for news on a timer.
+  { name: "simplefin-sync", minIntervalSeconds: SIMPLEFIN_SYNC_INTERVAL_SECONDS, run: syncAllSimplefin },
 ];
 
 export async function maybeRunDueCronJobs(): Promise<void> {

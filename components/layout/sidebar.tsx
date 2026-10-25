@@ -86,6 +86,7 @@ const BASE_NAV_ENTRIES: NavEntry[] = [
   { type: "link", href: "/items", label: "Items", icon: Tag },
   { type: "link", href: "/fixed-assets", label: "Fixed Assets", icon: Boxes },
   { type: "link", href: "/reports", label: "Financial Reports", icon: BarChart3 },
+  { type: "link", href: "/between-books", label: "Between Your Books", icon: ArrowLeftRight },
   { type: "link", href: "/rules", label: "Rules", icon: ListFilter },
   { type: "link", href: "/audit-log", label: "Audit Log", icon: History },
 ];
@@ -100,6 +101,7 @@ const HOUSEHOLD_NAV_ENTRIES: NavEntry[] = [
   { type: "link", href: "/cash-flow", label: "Cash Flow", icon: ArrowLeftRight },
   { type: "link", href: "/accounts", label: "Chart of Accounts", icon: BookOpen },
   { type: "link", href: "/journal", label: "Journal Entries", icon: NotebookPen },
+  { type: "link", href: "/between-books", label: "Between Your Books", icon: ArrowLeftRight },
   { type: "link", href: "/rules", label: "Rules", icon: ListFilter },
   { type: "link", href: "/audit-log", label: "Audit Log", icon: History },
 ];

@@ -25,34 +25,61 @@ comparison for a general-ledger product like this).
 |---|---|---|---|
 | Double-entry accounting | ✅ | ✅ | ✅ |
 | Chart of accounts / journal entries | ✅ | ✅ (basic) | ✅ |
-| Bank connection (live feed) | ✅ (Plaid) | ❌ — moved to paid Pro ($19/mo) | ✅ |
+| Bank connection (live feed) | ✅ (Plaid¹ or SimpleFIN) | ❌ — moved to paid Pro ($19/mo) | ✅ |
 | Bank reconciliation | ✅ | not detailed/limited | ✅ |
 | Auto-categorization rules | ✅ | ❌ (Pro only) | ✅ |
-| Invoicing | ✅ (multi-line, sales tax) | ✅ | ✅ |
+| Invoicing | ✅ (multi-line; several named sales tax rates, each with its own liability account, and a Sales Tax report) | ✅ | ✅ |
 | Emailing invoices to customers | ✅ (plugin, through your own mail server) | ✅ | ✅ |
 | Recurring invoices/bills | ✅ | ❌ | ❌ (Essentials+) |
 | Bill entry / accounts payable | ✅ (full AP workflow) | ❌ | ✅ |
 | Partial payments (AR/AP) | ✅ | not detailed | ✅ |
-| Reports: P&L, Balance Sheet, Trial Balance | ✅ all three | "basic reporting" only | ✅ P&L; TB unclear |
+| Reports: P&L, Balance Sheet, Trial Balance | ✅ all three | "basic reporting" only | ✅ all three, plus General Ledger |
 | AR/AP aging reports | ✅ | ❌ | unclear/likely Essentials |
 | Fixed assets + depreciation | ✅ | ❌ | ❌ (Advanced tier only) |
 | Inventory tracking | ✅ (basic) | ❌ | ❌ (Plus/Advanced only) |
 | Audit log | ✅ | ❌ | not advertised at this tier |
 | Multi-user / roles | ✅ (owner/accountant/viewer) | ❌ single user (Pro adds users) | ❌ 1 user |
-| File attachments (receipts) | ❌ — not built | ❌ (Pro only) | ✅ |
+| File attachments (receipts) | ✅ (PDFs and photos, on any entry, bill or bank booking) | ❌ (Pro only) | ✅ |
 | CSV import/export | ✅ | limited | ✅ |
 | Offline support (PWA) | ✅ | ❌ | ❌ |
 | Multi-currency | partial (one currency per book, no conversion) | ❌ | ❌ (Essentials+) |
-| Mileage / time tracking / 1099s | ❌ | ❌ | ✅ |
-| Online payment collection | ❌ | ✅ (2.9%+$0.60/txn) | ✅ |
+| 1099-NEC report (contractor vendors, by payment date, card payments left out) | ✅ | ❌ | ✅ |
+| Mileage / time tracking | ❌ | ❌ | ✅ |
+| Online payment collection | ✅ (Stripe plugin, Stripe's fees) | ✅ (2.9%+$0.60/txn) | ✅ |
 | Self-hosted / open source | ✅ | ❌ | ❌ |
-| Cost | $0 (your infra) | $0 | $38/mo |
+| Cost | $0 (your infra), plus a live feed's fees¹ | $0 | $38/mo |
 
-The biggest current gap versus both competitors is **file attachments**: the
-receipt-scanning plugin fills in a bill from a photo, but the photo isn't
-kept with it. Online payment collection isn't built either, and currency is
+¹ **For a live bank feed on your own server**, either connect through
+[SimpleFIN](https://www.simplefin.org) (about $15 a year per person, paid
+to SimpleFIN, nothing to apply for), or get your own Plaid account,
+approved for production use, which charges per connected bank. Plaid
+approves businesses, not hobbyists. Without either, the statement import
+plugin and CSV import still bring in transactions
+([docs/BANK_FEED.md](docs/BANK_FEED.md)).
+
+Receipts and documents attach to any journal entry, so to every bill,
+expense and bank booking; the receipt-scanning plugin keeps the photo it
+read with the bill. Currency is
 per book: a book can be kept in KRW or JPY, but one book can't hold accounts
 in several currencies or convert between them.
+
+### Open-source alternatives
+
+If you'd rather run open-source software, these are the usual choices.
+"?" marks something we couldn't confirm.
+
+| | **FOQB** | Akaunting | Bigcapital | ERPNext | LedgerSMB |
+|---|---|---|---|---|---|
+| License | AGPL-3.0 | ? (paid add-on apps) | AGPL-3.0 | GPL-3.0 | GPL-2.0+ |
+| Built with | Next.js, Supabase (Postgres) | PHP (Laravel) | Node.js | Python (Frappe) | Perl, Postgres |
+| Focus | Small business and household books | Small-business invoicing and bookkeeping | Small-business accounting and inventory | Full ERP: accounting, HR, manufacturing, CRM | Accounting, invoicing, stock |
+| Double-entry | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Live bank feed | ✅ Plaid or SimpleFIN¹ | ? (paid app) | ? | ? | ❌ (file import) |
+| Household books beside the business | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Several users with roles | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+FOQB is smaller than ERPNext and LedgerSMB. What sets it apart is household
+books beside the business, under one login.
 
 ## Households
 
@@ -62,7 +89,11 @@ checkbook-style register with split transactions, a monthly budget, a list
 of properties you value yourself, and accounts tagged with Form 1040 lines
 (Schedule E per rental). Run your
 business and your family finances side by side and switch between them from
-the header. See [docs/HOUSEHOLD.md](docs/HOUSEHOLD.md), and
+the header. **Between Your Books** posts one event to both at once: a
+business expense on a personal card, an owner's draw, money put into the
+business. The household screens talk in categories, not debits and
+credits: a bank transaction gets a category from a dropdown, and FOQB
+books the balancing side. See [docs/HOUSEHOLD.md](docs/HOUSEHOLD.md), and
 [docs/HOUSEHOLD_COMPARISON.md](docs/HOUSEHOLD_COMPARISON.md) for how it
 compares with Firefly III, Actual, GnuCash, Quicken, Monarch, YNAB and others.
 
@@ -77,7 +108,7 @@ hand; there's no automatic valuation.
 
 ## Plugins
 
-Seven optional plugins ship with FOQB, each off until the operator lists it
+Eight optional plugins ship with FOQB, each off until the operator lists it
 in `FOQB_PLUGINS`; then a Site Admin and each book's owner choose where it
 runs:
 
@@ -96,6 +127,8 @@ runs:
 - **Exchange rates**: add a business you own that keeps books in another
   currency to a household's net worth, at the European Central Bank's
   reference rate, marked as an estimate.
+- **Stripe payments**: a payment link on each invoice for the customer to
+  pay by card; Stripe's word that it's paid records the payment.
 
 | Email invoices | Receipt scanning |
 |---|---|
@@ -111,11 +144,17 @@ including private ones kept in a repository of your own.
   do all the multi-tenant data isolation and read/write role enforcement
 - Tailwind CSS
 - [Vitest](https://vitest.dev) for unit, component, and DB integration tests
-- PWA with offline journal-entry queuing (syncs when back online)
+- PWA: journal entries made offline wait on the device and are posted when
+  you're back online, through the same checks as any other entry (balanced
+  lines, locked periods). Only journal entries queue offline; invoices,
+  bills and the bank feed need a connection.
 
 ## Quick start
 
-You need a machine with Docker installed:
+You need a machine with Docker installed. Once running, the whole stack
+uses about 250 MB of memory. Building the app image needs about 2 GB; on a
+smaller server, use the prebuilt images instead
+([docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)).
 
 1. **Run the quickstart script.** In a terminal, run:
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, getCurrentUserRole, canWrite } from "@/lib/org/current";
-import { upsertMonthlyBudget } from "@/lib/budget/engine";
+import { setBudgetRollover, upsertMonthlyBudget } from "@/lib/budget/engine";
 
 export async function updateBudgetCategoryAction(
   accountId: string,
@@ -101,5 +101,21 @@ export async function copyPreviousMonthAction(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to copy budget";
     return { success: false, error: message };
+  }
+}
+
+export async function setBudgetRolloverAction(
+  accountId: string,
+  rollover: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  const orgId = await getCurrentOrgId();
+  if (!orgId) return { success: false, error: "No active organization" };
+  if (!canWrite(await getCurrentUserRole(orgId))) return { success: false, error: "Read-only access" };
+  try {
+    await setBudgetRollover(await createClient(), orgId, accountId, rollover);
+    revalidatePath("/budget");
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Couldn't change rollover" };
   }
 }

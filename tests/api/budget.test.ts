@@ -119,3 +119,34 @@ describe("Budget Engine", () => {
     expect(report.categories.map((c) => c.accountNumber)).toEqual(["5100", "5500", "5800"]);
   });
 });
+
+describe("budget rollover", () => {
+  it("adds what was left (or overspent) to a rollover category's month, and ignores it elsewhere", () => {
+    const report = calculateBudgetSummary("org-1", "2026-10", [
+      { accountId: "car", accountNumber: "6100", accountName: "Car repairs", budgetedAmount: 100, actualSpent: 250, rollover: true, carriedOver: 300 },
+      { accountId: "fun", accountNumber: "6200", accountName: "Fun", budgetedAmount: 100, actualSpent: 120, rollover: true, carriedOver: -50 },
+      { accountId: "gro", accountNumber: "6300", accountName: "Groceries", budgetedAmount: 400, actualSpent: 100, carriedOver: 999 },
+    ]);
+    const [car, fun, gro] = report.categories;
+    expect(car).toMatchObject({ available: 400, remainingAmount: 150, percentageUsed: 62.5, status: "on_track" });
+    expect(fun).toMatchObject({ available: 50, remainingAmount: -70, status: "over_budget" });
+    expect(gro).toMatchObject({ carriedOver: 0, available: 400, remainingAmount: 300 });
+    expect(report.totalCarriedOver).toBe(250);
+    expect(report.totalRemaining).toBe(380);
+  });
+
+  it("carries every earlier budget less spending since the account's first one", async () => {
+    const { carryover } = await import("@/lib/budget/engine");
+    const spent: Record<string, number> = { "car|2026-07": 180, "fun|2026-09": 130 };
+    const result = carryover(
+      [
+        { account_id: "car", year_month: "2026-08", budgeted_amount: 100 },
+        { account_id: "car", year_month: "2026-07", budgeted_amount: 100 },
+        { account_id: "car", year_month: "2026-09", budgeted_amount: "100" },
+        { account_id: "fun", year_month: "2026-09", budgeted_amount: 100 },
+      ],
+      (account, first) => spent[`${account}|${first}`] ?? 0,
+    );
+    expect(result).toEqual(new Map([["car", 120], ["fun", -30]]));
+  });
+});

@@ -34,6 +34,7 @@ const baseProps = {
   subtotal: 50,
   taxRate: 0,
   taxAmount: 0,
+  taxes: [],
   total: 50,
   remaining: 50,
 };
@@ -63,6 +64,25 @@ describe("InvoiceDetail", () => {
     expect(screen.getByText("Tax (10%)")).toBeInTheDocument();
     expect(screen.getAllByText("$5.00").length).toBeGreaterThan(0);
     expect(screen.getAllByText("$55.00").length).toBeGreaterThan(0);
+  });
+
+  it("shows each named rate on its own line", () => {
+    render(
+      <InvoiceDetail
+        {...baseProps}
+        taxRate={8.25}
+        taxAmount={4.13}
+        taxes={[
+          { name: "State", rate: 6.25, amount: 3.13 },
+          { name: "City", rate: 2, amount: 1 },
+        ]}
+        total={54.13}
+        remaining={54.13}
+      />,
+    );
+    expect(screen.getByText("State (6.25%)")).toBeInTheDocument();
+    expect(screen.getByText("City (2%)")).toBeInTheDocument();
+    expect(screen.queryByText("Tax (8.25%)")).not.toBeInTheDocument();
   });
 
   it("renders the invoice content", () => {

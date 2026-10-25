@@ -5,7 +5,8 @@ const formatters = new Map<string, Intl.NumberFormat>();
 export function formatMoney(value: number, currency = "USD"): string {
   let formatter = formatters.get(currency);
   if (!formatter) {
-    formatter = new Intl.NumberFormat("en-US", { style: "currency", currency });
+    // "negative": a balance that rounds to zero reads $0.00, not -$0.00.
+    formatter = new Intl.NumberFormat("en-US", { style: "currency", currency, signDisplay: "negative" });
     formatters.set(currency, formatter);
   }
   return formatter.format(value);

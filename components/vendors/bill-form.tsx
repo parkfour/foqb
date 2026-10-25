@@ -8,6 +8,7 @@ import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
 import type { BillPrefill } from "@/lib/plugins/types";
 import { useMoney } from "@/components/providers/book-currency-provider";
+import { uploadAttachment } from "@/components/attachments/attachments";
 
 interface VendorOption {
   id: string;
@@ -50,6 +51,7 @@ export function BillForm({
   const [billDate, setBillDate] = useState(today);
   const [dueDate, setDueDate] = useState("");
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -71,6 +73,8 @@ export function BillForm({
     if (bill.vendorId) setVendorId(bill.vendorId);
     if (bill.billNumber) setBillNumber(bill.billNumber);
     if (bill.billDate) setBillDate(bill.billDate);
+    const attachment = bill.attachment;
+    if (attachment) setFiles((prev) => (prev.includes(attachment) ? prev : [...prev, attachment]));
     if (bill.lines?.length) {
       setLines(
         bill.lines.map((line) => ({
@@ -132,6 +136,14 @@ export function BillForm({
         throw new Error(responseBody.error ?? "Failed to enter bill");
       }
 
+      const { journal_entry_id: entryId } = (await response.json()) as { journal_entry_id: string };
+      try {
+        for (const file of files) await uploadAttachment(entryId, file);
+      } catch {
+        // The bill is saved; its entry's page lets them attach it again.
+        router.push(`/journal/${entryId}`);
+        return;
+      }
       router.push("/vendors");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to enter bill");
@@ -244,6 +256,36 @@ export function BillForm({
             + Add line
           </button>
           <p className="text-sm font-medium text-slate-900">Total: {formatCurrency(total)}</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="cursor-pointer font-medium text-slate-600 hover:text-slate-900">
+            + Attach receipt
+            <input
+              type="file"
+              multiple
+              accept="application/pdf,image/*"
+              onChange={(e) => {
+                const picked = [...(e.target.files ?? [])];
+                e.target.value = "";
+                setFiles((prev) => [...prev, ...picked]);
+              }}
+              className="sr-only"
+            />
+          </label>
+          {files.map((file, i) => (
+            <span key={i} className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+              {file.name}
+              <button
+                type="button"
+                aria-label={`Don't attach ${file.name}`}
+                onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                className="text-slate-400 hover:text-red-600"
+              >
+                ×
+              </button>
+            </span>
+          ))}
         </div>
 
         <button

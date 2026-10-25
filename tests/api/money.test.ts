@@ -9,6 +9,11 @@ describe("formatMoney", () => {
     expect(formatMoney(-20, "USD")).toBe("-$20.00");
   });
 
+  it("never shows a minus on zero", () => {
+    expect(formatMoney(-0)).toBe("$0.00");
+    expect(formatMoney(-0.004)).toBe("$0.00");
+  });
+
   it("knows a currency code from anything else", () => {
     expect(isValidCurrency("KRW")).toBe(true);
     expect(isValidCurrency("krw")).toBe(false);

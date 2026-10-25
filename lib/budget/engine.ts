@@ -7,11 +7,19 @@ export interface BudgetCategoryInput {
   budgetedAmount: number;
   actualSpent: number;
   notes?: string | null;
+  // Rollover accounts: what's left (or overspent, negative) from earlier
+  // months, added to this month's budget.
+  rollover?: boolean;
+  carriedOver?: number;
 }
 
 export type BudgetStatus = "on_track" | "caution" | "over_budget";
 
 export interface BudgetCategoryItem extends BudgetCategoryInput {
+  rollover: boolean;
+  carriedOver: number;
+  // This month's budget plus what was carried over.
+  available: number;
   remainingAmount: number;
   percentageUsed: number;
   status: BudgetStatus;
@@ -21,6 +29,7 @@ export interface MonthlyBudgetReport {
   organizationId: string;
   yearMonth: string;
   totalBudgeted: number;
+  totalCarriedOver: number;
   totalSpent: number;
   totalRemaining: number;
   overallPercentage: number;
@@ -36,33 +45,40 @@ export function calculateBudgetSummary(
   items: BudgetCategoryInput[],
 ): MonthlyBudgetReport {
   let totalBudgeted = 0;
+  let totalCarried = 0;
   let totalSpent = 0;
 
   const categories: BudgetCategoryItem[] = items.map((item) => {
     const budgeted = Math.max(0, Number(item.budgetedAmount) || 0);
     const spent = Number(item.actualSpent) || 0;
-    const remaining = budgeted - spent;
+    const carried = item.rollover ? Math.round((Number(item.carriedOver) || 0) * 100) / 100 : 0;
+    const available = budgeted + carried;
+    const remaining = available - spent;
 
     let percentageUsed = 0;
-    if (budgeted > 0) {
-      percentageUsed = Math.round((spent / budgeted) * 1000) / 10;
+    if (available > 0) {
+      percentageUsed = Math.round((spent / available) * 1000) / 10;
     } else if (spent > 0) {
       percentageUsed = 100;
     }
 
     let status: BudgetStatus = "on_track";
     // Compared in cents, so spending against a $0 budget is over, not 100%.
-    if (Math.round(spent * 100) > Math.round(budgeted * 100)) {
+    if (Math.round(spent * 100) > Math.round(available * 100)) {
       status = "over_budget";
     } else if (percentageUsed >= 80) {
       status = "caution";
     }
 
     totalBudgeted += budgeted;
+    totalCarried += carried;
     totalSpent += spent;
 
     return {
       ...item,
+      rollover: !!item.rollover,
+      carriedOver: carried,
+      available: Math.round(available * 100) / 100,
       budgetedAmount: Math.round(budgeted * 100) / 100,
       actualSpent: Math.round(spent * 100) / 100,
       remainingAmount: Math.round(remaining * 100) / 100,
@@ -74,10 +90,11 @@ export function calculateBudgetSummary(
   // Sort by account number
   categories.sort((a, b) => a.accountNumber.localeCompare(b.accountNumber));
 
-  const totalRemaining = Math.round((totalBudgeted - totalSpent) * 100) / 100;
+  const totalAvailable = totalBudgeted + totalCarried;
+  const totalRemaining = Math.round((totalAvailable - totalSpent) * 100) / 100;
   let overallPercentage = 0;
-  if (totalBudgeted > 0) {
-    overallPercentage = Math.round((totalSpent / totalBudgeted) * 1000) / 10;
+  if (totalAvailable > 0) {
+    overallPercentage = Math.round((totalSpent / totalAvailable) * 1000) / 10;
   } else if (totalSpent > 0) {
     overallPercentage = 100;
   }
@@ -86,6 +103,7 @@ export function calculateBudgetSummary(
     organizationId,
     yearMonth,
     totalBudgeted: Math.round(totalBudgeted * 100) / 100,
+    totalCarriedOver: Math.round(totalCarried * 100) / 100,
     totalSpent: Math.round(totalSpent * 100) / 100,
     totalRemaining,
     overallPercentage,
@@ -117,7 +135,7 @@ export async function getMonthlyBudgetReport(
   // 1. Fetch active expense accounts
   const { data: accounts, error: accError } = await supabase
     .from("accounts")
-    .select("id, account_number, name")
+    .select("id, account_number, name, budget_rollover")
     .eq("organization_id", orgId)
     .eq("type", "expense")
     .eq("is_active", true)
@@ -163,7 +181,17 @@ export async function getMonthlyBudgetReport(
     if (row.type === "expense") spentMap.set(row.account_id, Number(row.amount) || 0);
   }
 
-  // 4. Combine inputs
+  // 4. Carried over into this month, per rollover account: every earlier
+  // month's budget, less everything spent from its first budgeted month
+  // to the end of last month.
+  const carried = await carriedOverInto(
+    supabase,
+    orgId,
+    yearMonth,
+    (accounts ?? []).filter((a) => a.budget_rollover).map((a) => a.id as string),
+  );
+
+  // 5. Combine inputs
   const inputs: BudgetCategoryInput[] = (accounts || []).map((acc) => {
     const b = budgetMap.get(acc.id);
     const spent = spentMap.get(acc.id) || 0;
@@ -174,10 +202,89 @@ export async function getMonthlyBudgetReport(
       budgetedAmount: b?.budgetedAmount || 0,
       actualSpent: spent,
       notes: b?.notes ?? null,
+      rollover: !!acc.budget_rollover,
+      carriedOver: carried.get(acc.id) ?? 0,
     };
   });
 
   return calculateBudgetSummary(orgId, yearMonth, inputs);
+}
+
+// Budgets before `yearMonth` minus spending since each account's first
+// one. Spending is read once per distinct first month.
+export function carryover(
+  budgets: { account_id: string; year_month: string; budgeted_amount: number | string }[],
+  spentSince: (accountId: string, firstMonth: string) => number,
+): Map<string, number> {
+  const byAccount = new Map<string, { first: string; total: number }>();
+  for (const b of budgets) {
+    const cur = byAccount.get(b.account_id) ?? { first: b.year_month, total: 0 };
+    cur.first = b.year_month < cur.first ? b.year_month : cur.first;
+    cur.total += Number(b.budgeted_amount) || 0;
+    byAccount.set(b.account_id, cur);
+  }
+  const out = new Map<string, number>();
+  for (const [accountId, { first, total }] of byAccount) {
+    out.set(accountId, Math.round((total - spentSince(accountId, first)) * 100) / 100);
+  }
+  return out;
+}
+
+async function carriedOverInto(
+  supabase: SupabaseClient,
+  orgId: string,
+  yearMonth: string,
+  accountIds: string[],
+): Promise<Map<string, number>> {
+  if (accountIds.length === 0) return new Map();
+  const { data: earlier, error } = await supabase
+    .from("monthly_budgets")
+    .select("account_id, year_month, budgeted_amount")
+    .eq("organization_id", orgId)
+    .in("account_id", accountIds)
+    .lt("year_month", yearMonth);
+  if (error) throw new Error(`Failed to fetch earlier budgets: ${error.message}`);
+  const rows = (earlier ?? []) as { account_id: string; year_month: string; budgeted_amount: number }[];
+
+  const firstMonths = new Set<string>();
+  const firstOf = new Map<string, string>();
+  for (const r of rows) {
+    const f = firstOf.get(r.account_id);
+    if (!f || r.year_month < f) firstOf.set(r.account_id, r.year_month);
+  }
+  for (const f of firstOf.values()) firstMonths.add(f);
+
+  const [y, m] = yearMonth.split("-").map(Number);
+  const lastMonthEnd = new Date(Date.UTC(y, m - 1, 0)).toISOString().slice(0, 10);
+  const spent = new Map<string, Map<string, number>>();
+  for (const first of firstMonths) {
+    const { data, error: isError } = await supabase.rpc("get_income_statement", {
+      p_org_id: orgId,
+      p_start_date: `${first}-01`,
+      p_end_date: lastMonthEnd,
+    });
+    if (isError) throw new Error(`Failed to fetch earlier spending: ${isError.message}`);
+    spent.set(
+      first,
+      new Map(((data ?? []) as { account_id: string; amount: number | string }[]).map((r) => [r.account_id, Number(r.amount) || 0])),
+    );
+  }
+  return carryover(rows, (accountId, first) => spent.get(first)?.get(accountId) ?? 0);
+}
+
+export async function setBudgetRollover(
+  supabase: SupabaseClient,
+  orgId: string,
+  accountId: string,
+  rollover: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("accounts")
+    .update({ budget_rollover: rollover })
+    .eq("id", accountId)
+    .eq("organization_id", orgId)
+    .eq("type", "expense");
+  if (error) throw new Error(`Failed to change rollover: ${error.message}`);
 }
 
 /**

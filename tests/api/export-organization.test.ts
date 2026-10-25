@@ -40,6 +40,7 @@ function emptyTables() {
     organization_timezone_changes: { select: ok([]) },
     mortgage_notes: { select: ok([]) },
     plugin_data: { select: ok([]) },
+    sales_tax_rates: { select: ok([]) },
     enrollments: {
       select: ok([
         {

@@ -14,6 +14,7 @@ export async function createVendor(
   const email = (formData.get("email") as string)?.trim() || null;
   const phone = (formData.get("phone") as string)?.trim() || null;
   const address = (formData.get("address") as string)?.trim() || null;
+  const is_1099 = formData.get("is1099") === "on";
 
   if (!organizationId || !name) {
     return { error: "Vendor name is required" };
@@ -26,6 +27,7 @@ export async function createVendor(
     email,
     phone,
     address,
+    is_1099,
   });
 
   if (error) {
@@ -45,6 +47,7 @@ export async function updateVendor(
   const email = (formData.get("email") as string)?.trim() || null;
   const phone = (formData.get("phone") as string)?.trim() || null;
   const address = (formData.get("address") as string)?.trim() || null;
+  const is_1099 = formData.get("is1099") === "on";
 
   if (!id || !name) {
     return { error: "Vendor name is required" };
@@ -53,7 +56,7 @@ export async function updateVendor(
   const supabase = await createClient();
   const { error } = await supabase
     .from("vendors")
-    .update({ name, email, phone, address })
+    .update({ name, email, phone, address, is_1099 })
     .eq("id", id);
 
   if (error) {

@@ -13,13 +13,13 @@ marks something we couldn't confirm.
 | License | AGPL-3.0 | AGPL-3.0 | MIT | GPL | GPL |
 | Runs as | Web app / PWA, self-hosted or hosted | Web app, self-hosted | Web or desktop app, local-first with an optional sync server | Desktop | Desktop |
 | Double-entry ledger | ✅ | ✅ | ❌ (budget-first) | ✅ | ✅ |
-| Live bank feed | ✅ Plaid, pushed automatically | Separate Data Importer (SimpleFIN, GoCardless and others) | "Bank Sync" button (SimpleFIN, GoCardless, Pluggy) | File import (OFX/QIF/CSV); AqBanking for some banks | File import (OFX/QIF/CSV); AqBanking for some banks |
-| Budgeting | Monthly amount per expense account | Budgets, piggy banks | Envelope (zero-based) budgeting | Budgets | Budgets |
+| Live bank feed | ✅ Plaid (pushed as it happens) or SimpleFIN (every few hours) | Separate Data Importer (SimpleFIN, GoCardless and others) | "Bank Sync" button (SimpleFIN, GoCardless, Pluggy) | File import (OFX/QIF/CSV); AqBanking for some banks | File import (OFX/QIF/CSV); AqBanking for some banks |
+| Budgeting | Monthly amount per expense account, optional rollover (sinking funds) | Budgets, piggy banks | Envelope (zero-based) budgeting | Budgets | Budgets |
 | Net worth | ✅ every figure opens its accounts; history chart | ✅ | ✅ report | ✅ report | ✅ report |
 | Investment holdings and prices | ❌ balances only | ❌ balances only | ❌ balances only | ✅ | ✅ |
 | Property values | ✅ entered by hand | as an asset account | as an account | as an asset account | as an asset account |
 | Several people, with roles | ✅ owner / accountant / viewer, two-factor | mostly one user | ✅ with a sync server | ❌ | ❌ |
-| Business books beside the household | ✅ same login; business equity rolls into net worth | ❌ | ❌ | ✅ in one file (invoices, bills) | ❌ |
+| Business books beside the household | ✅ same login; business equity rolls into net worth; one event posts to both books | ❌ | ❌ | ✅ in one file (invoices, bills) | ❌ |
 | Tax lines | ✅ Form 1040 with Schedules 1, B, C, D, E; per-rental Schedule E | ❌ | ❌ | ✅ US tax report (TXF) | ✅ tax report |
 | Multi-currency | one currency per book; other-currency businesses shown at a quote | ✅ | ❌ | ✅ | ✅ |
 | Cost | $0 on your own server, plus Plaid's per-bank fees | $0 (bank feed providers may charge; SimpleFIN is about $15/year) | $0 (same) | $0 | $0 |
@@ -38,7 +38,7 @@ investment lots and prices, and don't need a web app or several users.
 | Runs as | Web app / PWA | Windows / Mac desktop, with a mobile companion | Web and mobile | Web and mobile | Web and mobile | iPhone, iPad, Mac |
 | Double-entry ledger | ✅ | ❌ (register-based) | ❌ | ❌ | ❌ | ❌ |
 | Bank feed | ✅ Plaid | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Budgeting | Monthly per account | ✅ | Spending plan | ✅ | Zero-based, its core | ✅ |
+| Budgeting | Monthly per account, with rollover | ✅ | Spending plan | ✅ | Zero-based, its core | ✅ |
 | Investment holdings | ❌ | ✅ (more tools in Premier) | ✅ | ✅ | ❌ balances only | ✅ |
 | Property values | entered by hand | entered by hand | ? | ✅ automatic home value (Zillow) | as a tracking account | ? |
 | Business or rentals | ✅ full business books; per-rental Schedule E | Business & Personal plan: Schedule C/E, invoices, rentals | ❌ | ❌ | ❌ | ❌ |
@@ -60,9 +60,10 @@ data on your own server.
 - **No investment holdings.** Brokerage and retirement accounts count only
   through their ledger balances (see [HOUSEHOLD.md](HOUSEHOLD.md#investments-not-included)).
 - **No automatic property values.** They're entered by hand.
-- **Budgets are simple:** a monthly amount per expense account, not
-  envelopes or rollovers.
+- **Budgets are simple:** a monthly amount per expense account, which can
+  roll over, but no zero-based envelope budgeting (giving every dollar of
+  income a job, as YNAB and Actual do).
 - **No native phone app.** It's an installable web app (PWA).
-- **Plaid for self-hosters.** A live bank feed on your own server needs your
-  own Plaid account and approval. Without one, the statement import plugin
-  and CSV import still work ([BANK_FEED.md](BANK_FEED.md)).
+- **Bank feeds for self-hosters.** SimpleFIN (about $15 a year) needs no
+  approval; Plaid needs your own approved account. Without either, the
+  statement import plugin and CSV import still work ([BANK_FEED.md](BANK_FEED.md)).

@@ -25,21 +25,24 @@ export function enabledPluginIds(available: FOQBPlugin[] = availablePlugins): st
     .map((p) => p.manifest.id);
 }
 
-let loaded = false;
+const loaded = new Set<string>();
 
-// Registers the enabled plugins once per runtime; cheap to call anywhere.
+// Registers each enabled plugin once per runtime; cheap to call anywhere.
+// Per id, not once overall: in the browser the list is the book's, and a
+// plugin turned on in Settings has to show up without a reload.
 export function ensurePluginsLoaded(
   enabledIds: string[] = enabledPluginIds(),
   available: FOQBPlugin[] = availablePlugins,
 ): void {
-  if (loaded) return;
-  loaded = true;
   for (const plugin of available) {
-    if (enabledIds.includes(plugin.manifest.id)) registerPlugin(plugin);
+    const { id } = plugin.manifest;
+    if (loaded.has(id) || !enabledIds.includes(id)) continue;
+    loaded.add(id);
+    registerPlugin(plugin);
   }
 }
 
 // For tests.
 export function resetLoaderState(): void {
-  loaded = false;
+  loaded.clear();
 }

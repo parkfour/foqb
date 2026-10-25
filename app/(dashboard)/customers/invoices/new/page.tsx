@@ -17,7 +17,7 @@ export default async function NewInvoicePage() {
 
   const supabase = await createClient();
 
-  const [{ data: customers }, { data: accounts }, { data: items }, { data: org }, showAccountCodes] =
+  const [{ data: customers }, { data: accounts }, { data: items }, { data: org }, { data: taxRates }, showAccountCodes] =
     await Promise.all([
       supabase
         .from("customers")
@@ -39,6 +39,12 @@ export default async function NewInvoicePage() {
         .eq("is_active", true)
         .order("name"),
       supabase.from("organizations").select("default_tax_rate").eq("id", orgId).maybeSingle(),
+      supabase
+        .from("sales_tax_rates")
+        .select("id, name, rate, account_id")
+        .eq("organization_id", orgId)
+        .eq("is_active", true)
+        .order("name"),
       getUseAccountCodes(orgId),
     ]);
 
@@ -49,6 +55,7 @@ export default async function NewInvoicePage() {
       accounts={accounts ?? []}
       items={items ?? []}
       defaultTaxRate={(org as { default_tax_rate: number | null } | null)?.default_tax_rate ?? 0}
+      taxRates={taxRates ?? []}
       showAccountCodes={showAccountCodes}
     />
   );

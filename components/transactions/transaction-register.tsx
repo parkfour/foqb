@@ -652,6 +652,16 @@ export function TransactionRegister({
                               Re-open
                             </button>
                           )}
+                          {tx.categorized && tx.journal_entry_id && (
+                            <Link
+                              href={`/journal/${tx.journal_entry_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="whitespace-nowrap text-[11px] text-slate-400 hover:text-slate-900"
+                              title="The entry, with its attached receipts"
+                            >
+                              Receipts
+                            </Link>
+                          )}
                         </span>
                       )}
                       {canWrite && !tx.categorized && tx.transfer && (

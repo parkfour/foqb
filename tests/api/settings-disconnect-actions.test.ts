@@ -21,7 +21,7 @@ function formData(id: string): FormData {
   return fd;
 }
 
-function mockCaller(role: "owner" | "viewer") {
+function mockCaller(role: "owner" | "viewer", provider: "plaid" | "simplefin" = "plaid") {
   const { client, tables } = createSupabaseMock({
     user: { id: "caller-1" },
     tables: {
@@ -31,7 +31,7 @@ function mockCaller(role: "owner" | "viewer") {
   });
   serverClientMock.mockResolvedValue(client);
   const { client: admin } = createSupabaseMock({
-    tables: { enrollments: { select: ok({ access_token: encryptToken("tok") }) } },
+    tables: { enrollments: { select: ok({ access_token: encryptToken("tok"), provider }) } },
   });
   adminClientMock.mockReturnValue(admin);
   return tables;
@@ -55,6 +55,18 @@ describe("disconnectEnrollment", () => {
       disconnect_reason: "User disconnected",
     });
     expect(tables.enrollments.select).not.toHaveBeenCalledWith("access_token");
+  });
+
+  it("only marks a SimpleFIN connection disconnected: there's no Plaid Item to remove", async () => {
+    const tables = mockCaller("owner", "simplefin");
+
+    await disconnectEnrollment(formData("enr-1"));
+
+    expect(removeItemMock).not.toHaveBeenCalled();
+    expect(tables.enrollments.update).toHaveBeenCalledWith({
+      status: "disconnected",
+      disconnect_reason: "User disconnected",
+    });
   });
 
   it("does nothing for a viewer", async () => {

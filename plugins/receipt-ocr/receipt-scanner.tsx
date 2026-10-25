@@ -51,7 +51,7 @@ export const ReceiptScanner: SlotComponent<"bill.header"> = ({ context }) => {
       const read = await readReceipt(file, setProgress);
       const parsed = parseReceipt(read.text);
       const vendor = matchVendor(read.text, vendors);
-      prefill(toPrefill(parsed, vendor?.id));
+      prefill({ ...toPrefill(parsed, vendor?.id), attachment: file });
 
       const notes = [
         vendor

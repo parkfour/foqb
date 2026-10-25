@@ -6,6 +6,7 @@ import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { useMoney } from "@/components/providers/book-currency-provider";
+import { applyTaxes, type SalesTaxRate } from "@/lib/sales-tax";
 
 interface CustomerOption {
   id: string;
@@ -43,6 +44,7 @@ export function InvoiceForm({
   accounts,
   items,
   defaultTaxRate = 0,
+  taxRates = [],
   showAccountCodes = true,
 }: {
   organizationId: string;
@@ -50,6 +52,8 @@ export function InvoiceForm({
   accounts: AccountOption[];
   items: ItemOption[];
   defaultTaxRate?: number;
+  // The book's named rates; when there are any, the invoice picks from them.
+  taxRates?: SalesTaxRate[];
   showAccountCodes?: boolean;
 }) {
   const formatCurrency = useMoney();
@@ -60,6 +64,7 @@ export function InvoiceForm({
   const [invoiceDate, setInvoiceDate] = useState(today);
   const [dueDate, setDueDate] = useState("");
   const [taxRate, setTaxRate] = useState(String(defaultTaxRate || ""));
+  const [taxRateIds, setTaxRateIds] = useState<string[]>([]);
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,7 +99,9 @@ export function InvoiceForm({
     (sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0),
     0,
   );
-  const taxAmount = Math.round(subtotal * ((Number(taxRate) || 0) / 100) * 100) / 100;
+  const named = applyTaxes(subtotal, taxRates.filter((r) => taxRateIds.includes(r.id)));
+  const taxAmount =
+    taxRates.length > 0 ? named.totalTax : Math.round(subtotal * ((Number(taxRate) || 0) / 100) * 100) / 100;
   const total = subtotal + taxAmount;
 
   async function handleSubmit(event: FormEvent) {
@@ -133,7 +140,7 @@ export function InvoiceForm({
           invoice_number: invoiceNumber,
           invoice_date: invoiceDate,
           due_date: dueDate || null,
-          tax_rate: Number(taxRate) || 0,
+          ...(taxRates.length > 0 ? { tax_rate_ids: taxRateIds } : { tax_rate: Number(taxRate) || 0 }),
           lines: parsedLines,
         }),
       });
@@ -269,18 +276,37 @@ export function InvoiceForm({
           </button>
           <div className="flex flex-col items-end gap-1 text-sm">
             <p className="text-slate-600">Subtotal: {formatCurrency(subtotal)}</p>
-            <label className="flex items-center gap-2 text-slate-600">
-              Tax rate
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-                className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
-              />
-              %
-            </label>
+            {taxRates.length > 0 ? (
+              taxRates.map((r) => {
+                const tax = named.taxes.find((t) => t.tax_rate_id === r.id);
+                return (
+                  <label key={r.id} className="flex items-center gap-2 text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={taxRateIds.includes(r.id)}
+                      onChange={(e) =>
+                        setTaxRateIds((prev) => (e.target.checked ? [...prev, r.id] : prev.filter((id) => id !== r.id)))
+                      }
+                      className="h-4 w-4 rounded border-slate-300"
+                    />
+                    {r.name} ({Number(r.rate)}%){tax ? `: ${formatCurrency(tax.amount)}` : ""}
+                  </label>
+                );
+              })
+            ) : (
+              <label className="flex items-center gap-2 text-slate-600">
+                Tax rate
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(e.target.value)}
+                  className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                />
+                %
+              </label>
+            )}
             <p className="text-slate-600">Tax: {formatCurrency(taxAmount)}</p>
             <p className="font-medium text-slate-900">Total: {formatCurrency(total)}</p>
           </div>

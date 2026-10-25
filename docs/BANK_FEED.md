@@ -1,7 +1,7 @@
 # The bank feed
 
-How transactions get from a connected bank (through Plaid) into the books,
-for business and household organizations alike.
+How transactions get from a connected bank (through Plaid or SimpleFIN)
+into the books, for business and household organizations alike.
 
 ## Getting transactions
 
@@ -27,6 +27,31 @@ for business and household organizations alike.
 - **Pending transactions aren't booked.** When one posts, Plaid removes the
   pending copy and sends the posted one under a new id; only that one is
   recorded.
+
+## SimpleFIN
+
+[SimpleFIN](https://www.simplefin.org) is the other way in: no approval to
+apply for, about $15 a year per person, paid to SimpleFIN. Connect your
+banks at a SimpleFIN Bridge, make a setup token there, and paste it under
+Settings → Bank Connections → **Connect through SimpleFIN instead**.
+
+- **What comes in.** Every account at the Bridge gets an account in the
+  books, named as the bank names it. SimpleFIN doesn't say what kind an
+  account is, so one with a negative balance or a card, loan or mortgage
+  name is booked as a liability and the rest as assets. Check them before
+  categorizing: an account's type is fixed once it has entries.
+- **History.** The last 90 days, SimpleFIN's limit.
+- **Updates.** SimpleFIN doesn't call back, so the app asks every 4 hours
+  (the `simplefin-sync` job), about the last week each time, for
+  transactions that post late. Already-recorded ones are skipped.
+- **Pending transactions aren't booked**, as with Plaid.
+- **Disconnecting** stops the syncing; revoke the token at the Bridge too.
+  If SimpleFIN stops accepting the connection, Settings says so; connect
+  again with a new token, and the same accounts are used.
+
+The setup token names the server it's claimed from, so the app only
+connects to public addresses over HTTPS (`ALLOW_PRIVATE_NETWORK_HOSTS=true`
+lifts that, as for webhooks and mail servers).
 
 ## Categorizing
 
@@ -127,3 +152,19 @@ Accounts can be edited from the chart of accounts: name, number,
 description and type. The type can only change while the account has no
 transactions, because changing it later would move past amounts between the
 balance sheet and the profit and loss.
+
+## Receipts and attachments
+
+Any journal entry can carry attachments: PDFs and photos (JPEG, PNG, WebP,
+HEIC, GIF), up to 4 MB each. Open the entry (from Journal Entries, a
+bill's number under Bills, or **Receipts** beside a categorized
+transaction in the register) and use **+ Attach a receipt or document**.
+The Enter Bill form takes them too. Owners and accountants can attach and
+remove files; viewers can open them.
+
+The type is worked out from the file itself, not its name, and nothing
+else is accepted. Files are kept in the database (`attachments`), with the
+same row-level security as the books, so the database backups
+(`scripts/backup-db.sh`, or your host's) include them. The organization
+backup from Settings doesn't yet: it's a JSON file, and attachments would
+make it large.
