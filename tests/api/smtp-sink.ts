@@ -21,7 +21,7 @@ const unQuotedPrintable = (raw: string) =>
     "latin1",
   ).toString("utf8");
 
-// A real SMTP server on 127.0.0.1 for a test: it takes any login, offers
+// A real SMTP server on this machine for a test: it takes any login, offers
 // STARTTLS with smtp-server's own self-signed certificate (unless
 // noStartTls), and keeps every message. The mailer under test must be told
 // to accept that certificate (NODE_TLS_REJECT_UNAUTHORIZED=0) and to allow
@@ -57,7 +57,9 @@ export async function startSmtpSink({ noStartTls = false } = {}) {
       });
     },
   });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  // Every local address, IPv6 and IPv4: "localhost" is ::1 first in some
+  // places (CI's container) and 127.0.0.1 in others.
+  await new Promise<void>((resolve) => server.listen(0, resolve));
   const port = (server.server.address() as AddressInfo).port;
   return {
     port,

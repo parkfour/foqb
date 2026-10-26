@@ -13,6 +13,7 @@ vi.mock("@/lib/cron/cleanup-unclaimed-members", () => ({
 }));
 vi.mock("@/lib/cron/cleanup-rate-limits", () => ({ cleanupRateLimits: cleanupRateLimitsMock }));
 vi.mock("@/lib/recurring/generate", () => ({ RECURRING_INTERVAL_SECONDS: 3600, generateDueRecurring: vi.fn() }));
+vi.mock("@/lib/plugins/events-outbox", () => ({ PLUGIN_EVENTS_INTERVAL_SECONDS: 60, deliverPluginEvents: vi.fn() }));
 
 import { maybeRunDueCronJobs } from "@/lib/cron/piggyback";
 
