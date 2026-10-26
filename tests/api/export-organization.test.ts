@@ -41,6 +41,15 @@ function emptyTables() {
     mortgage_notes: { select: ok([]) },
     plugin_data: { select: ok([]) },
     sales_tax_rates: { select: ok([]) },
+    estimates: { select: ok([]) },
+    inventory_moves: { select: ok([]) },
+    time_entries: { select: ok([]) },
+    classes: { select: ok([]) },
+    credit_memos: { select: ok([]) },
+    mileage_trips: { select: ok([]) },
+    securities: { select: ok([]) },
+    security_prices: { select: ok([]) },
+    investment_trades: { select: ok([]) },
     enrollments: {
       select: ok([
         {

@@ -9,9 +9,10 @@ import { getCurrentUserRole } from "@/lib/org/current";
 import { checkRateLimit } from "@/lib/auth/rate-limit";
 import { encryptToken } from "@/lib/crypto/token-encryption";
 import { resolvePublicAddress } from "@/lib/net/public-address";
-import { deliverWebhook, newWebhookSecret, type WebhookEvent } from "./delivery";
+import { deliverWebhook, newWebhookSecret } from "./delivery";
+import { WEBHOOK_EVENTS, type WebhookEvent } from "./events";
 
-const EVENTS: WebhookEvent[] = ["invoice:created", "bill:created", "invoice_payment:recorded", "bill_payment:recorded"];
+const EVENTS = Object.keys(WEBHOOK_EVENTS) as WebhookEvent[];
 const MAX_WEBHOOKS = 10;
 const TEST_LIMIT = 10;
 

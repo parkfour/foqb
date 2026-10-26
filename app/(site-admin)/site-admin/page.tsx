@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
-import { suspendOrganization, unsuspendOrganization, updatePluginSiteModes, updateSiteSettings } from "./actions";
+import { acknowledgePluginForSite, suspendOrganization, unsuspendOrganization, updatePluginSiteModes, updateSiteSettings } from "./actions";
+import { AcknowledgeForm, AcknowledgementNotice } from "@/components/plugins/acknowledgement-notice";
+import { fetchAcknowledgements } from "@/lib/plugins/acknowledgements";
 import { getSiteSettings, PLUGIN_SITE_MODES, pluginSiteMode, type PluginSiteMode } from "@/lib/site/settings";
 import { availablePlugins } from "@/plugins";
 import { isPluginEnabled } from "@/lib/plugins/loader";
@@ -63,11 +65,13 @@ export default async function SiteAdminPage() {
   const instancePlugins = availablePlugins.filter((p) => isPluginEnabled(p.manifest.id));
   const supabase = await createClient();
 
-  const [{ data: orgData }, { data: adminData }, { data: actionData }, siteSettings] = await Promise.all([
+  const gatedPlugins = instancePlugins.filter((p) => p.manifest.acknowledgement);
+  const [{ data: orgData }, { data: adminData }, { data: actionData }, siteSettings, acknowledgements] = await Promise.all([
     supabase.rpc("get_all_organizations"),
     supabase.rpc("get_site_admins"),
     supabase.rpc("get_site_admin_actions"),
     getSiteSettings(supabase),
+    fetchAcknowledgements(supabase, null, gatedPlugins),
   ]);
 
   const organizations = (orgData as OrganizationRow[] | null) ?? [];
@@ -160,6 +164,28 @@ export default async function SiteAdminPage() {
           </form>
         )}
       </div>
+
+      {gatedPlugins.map((p) => {
+        const site = acknowledgements.get(p.manifest.id)?.site ?? null;
+        return (
+          <div key={p.manifest.id} className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">{p.manifest.name}: acknowledgement</h2>
+            <AcknowledgementNotice
+              acknowledgement={p.manifest.acknowledgement!}
+              site={site}
+              action={
+                !site && (
+                  <AcknowledgeForm
+                    action={acknowledgePluginForSite}
+                    hidden={{ pluginId: p.manifest.id }}
+                    label="I have read this. This instance offers the plugin only as a starting point; each book's owner must still acknowledge it and check its results with a tax professional."
+                  />
+                )
+              }
+            />
+          </div>
+        );
+      })}
 
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-3">

@@ -16,6 +16,8 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: adminClientMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: serverClientMock }));
 vi.mock("@/lib/auth/rate-limit", () => ({ checkRateLimit: vi.fn(async () => true) }));
 vi.mock("@/lib/org/current", () => ({ getCurrentUserRole: getCurrentUserRoleMock }));
+const { bookPlugins } = vi.hoisted(() => ({ bookPlugins: { value: ["webhooks"] } }));
+vi.mock("@/lib/plugins/settings", () => ({ getOrgEnabledPluginIds: async () => bookPlugins.value }));
 vi.mock("next/server", () => ({ after: afterMock }));
 vi.mock("node:https", () => ({ request: httpsRequestMock }));
 
@@ -159,6 +161,24 @@ describe("enqueueWebhookEvent", () => {
       { organization_id: "org-1", webhook_id: "wh-2", event: "bill:created", payload: { billId: "b-1" } },
     ]);
     expect(afterMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends nothing from a book that has webhooks turned off, though its webhooks are still saved", async () => {
+    const { client, tables } = createSupabaseMock({
+      tables: {
+        organization_webhooks: { select: ok([{ id: "wh-1" }]) },
+        webhook_deliveries: { insert: ok([{ id: "d1" }]) },
+      },
+    });
+    adminClientMock.mockReturnValue(client);
+    bookPlugins.value = [];
+    try {
+      await enqueueWebhookEvent("journal_entry:posted", { orgId: "org-1", journalEntryId: "je-1" } as { orgId: string });
+    } finally {
+      bookPlugins.value = ["webhooks"];
+    }
+    expect(tables.webhook_deliveries.insert).not.toHaveBeenCalled();
+    expect(afterMock).not.toHaveBeenCalled();
   });
 });
 

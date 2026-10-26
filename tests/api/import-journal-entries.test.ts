@@ -11,6 +11,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: serverClientMock }));
 vi.mock("@/lib/org/current", () => ({ getCurrentOrgId: getCurrentOrgIdMock }));
 
 import { POST } from "@/app/api/import/journal-entries/route";
+import { entryFingerprint } from "@/lib/csv/entry-fingerprint";
 
 function makeRequest(csv: string, dryRun = false): NextRequest {
   const formData = new FormData();
@@ -62,6 +63,50 @@ describe("POST /api/import/journal-entries — native format", () => {
   });
 });
 
+describe("POST /api/import/journal-entries — importing the same file again", () => {
+  it("skips entries an earlier import already booked", async () => {
+    const earlier = entryFingerprint({
+      ref: "e1",
+      entryDate: "2026-01-01",
+      memo: "Test",
+      lines: [
+        { accountNumber: "4000", debit: 0, credit: 100 },
+        { accountNumber: "1000", debit: 100, credit: 0 },
+      ],
+    });
+    const { client, tables } = createSupabaseMock({
+      tables: {
+        accounts: { select: ok([{ id: "acc-cash", account_number: "1000", name: "Cash", type: "asset" }, { id: "acc-rev", account_number: "4000", name: "Revenue", type: "revenue" }]) },
+        journal_entries: { select: ok([{ external_id: earlier }]), insert: ok({ id: "je-9" }) },
+        journal_lines: { insert: ok(null) },
+      },
+    });
+    serverClientMock.mockResolvedValue(client);
+
+    const json = (await (await POST(makeRequest(NATIVE_CSV))).json()) as { imported: number; skipped: number };
+
+    expect(json).toMatchObject({ imported: 0, skipped: 1 });
+    expect(tables.journal_entries.insert).not.toHaveBeenCalled();
+  });
+
+  it("tags each new entry with its source and fingerprint", async () => {
+    const { client, tables } = createSupabaseMock({
+      tables: {
+        accounts: { select: ok([{ id: "acc-cash", account_number: "1000", name: "Cash", type: "asset" }, { id: "acc-rev", account_number: "4000", name: "Revenue", type: "revenue" }]) },
+        journal_entries: { insert: ok({ id: "je-1" }), update: ok(null) },
+        journal_lines: { insert: ok(null) },
+      },
+    });
+    serverClientMock.mockResolvedValue(client);
+
+    await POST(makeRequest(NATIVE_CSV));
+
+    expect(tables.journal_entries.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "csv-import", external_id: expect.stringMatching(/^[0-9a-f]{40}$/) }),
+    );
+  });
+});
+
 describe("POST /api/import/journal-entries — Wave format", () => {
   it("auto-creates unmatched accounts by name and imports the entry", async () => {
     const { client, tables } = createSupabaseMock({
@@ -93,6 +138,7 @@ describe("POST /api/import/journal-entries — Wave format", () => {
     const { client, tables } = createSupabaseMock({
       tables: {
         accounts: { select: ok([]), insert: ok({ id: "created-acc" }) },
+        journal_entries: { select: ok([]) },
       },
     });
     serverClientMock.mockResolvedValue(client);

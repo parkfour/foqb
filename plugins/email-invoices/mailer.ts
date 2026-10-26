@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import nodemailer from "nodemailer";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePublicAddress } from "@/lib/net/public-address";
+import { decryptToken } from "@/lib/crypto/token-encryption";
 
 // Server-only: imported by the plugin's server actions, never by the
 // browser.
@@ -21,10 +23,29 @@ export interface OutgoingMail {
   to: string;
   subject: string;
   text: string;
-  attachment?: { filename: string; content: Buffer };
+  attachment?: { filename: string; content: Buffer; contentType?: string };
 }
 
 const TIMEOUT_MS = 15_000;
+
+// The book's server with its password, read with the service-role key
+// (signed-in users can't read the password). Callers check who's asking.
+export async function loadMailServer(admin: SupabaseClient, organizationId: string): Promise<MailServer | null> {
+  const { data } = await admin
+    .from("organization_smtp_settings")
+    .select("host, port, username, password_encrypted, from_address, reply_to")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    host: data.host as string,
+    port: data.port as number,
+    username: data.username as string,
+    password: decryptToken(data.password_encrypted as string),
+    fromAddress: data.from_address as string,
+    replyTo: (data.reply_to as string | null) ?? null,
+  };
+}
 
 // Simple on purpose: catches typos and header tricks (no spaces, commas or
 // line breaks); the mail server is the real judge.
@@ -58,7 +79,7 @@ export async function sendMail(server: MailServer, mail: OutgoingMail): Promise<
       subject: mail.subject,
       text: mail.text,
       attachments: mail.attachment
-        ? [{ filename: mail.attachment.filename, content: mail.attachment.content, contentType: "application/pdf" }]
+        ? [{ filename: mail.attachment.filename, content: mail.attachment.content, contentType: mail.attachment.contentType ?? "application/pdf" }]
         : undefined,
     });
   } finally {

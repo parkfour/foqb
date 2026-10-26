@@ -131,6 +131,10 @@ npm run verify:mfa       # end-to-end 2FA verification against a real local Supa
 
 The DB tests spin up their own ephemeral PostgreSQL container using Docker, run all migrations, execute tests against real Row Level Security policies, and tear down the container when finished. A working Docker CLI is required. Beside it they start PostgREST (`postgrest/postgrest`), the API Supabase puts in front of the database, so code that talks to the database through supabase-js can be tested as a signed-in user: see `tests/db/rest.ts`.
 
+### Upgrade check (before a release)
+
+Production applies new migrations on top of real books before the new app deploys. `node scripts/upgrade-check.mjs v0.7.0` (the last release's tag) builds a throwaway database the way that release left it, fills a company and a household with that release's sample data, applies the migrations added since, and checks every trial balance and row count is unchanged and that posting, voiding and the reports still work. It needs Docker and psql, and removes its container afterwards.
+
 ---
 
 ## Building for production

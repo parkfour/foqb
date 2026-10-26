@@ -150,3 +150,16 @@ describe("budget rollover", () => {
     expect(result).toEqual(new Map([["car", 120], ["fun", -30]]));
   });
 });
+
+describe("toAssign", () => {
+  it("is income since the first budget less every budget through the month", async () => {
+    const { toAssign } = await import("@/lib/budget/engine");
+    const budgets = [
+      { year_month: "2026-08", budgeted_amount: 1000 },
+      { year_month: "2026-09", budgeted_amount: "1200" },
+      { year_month: "2026-10", budgeted_amount: 900 },
+    ];
+    expect(toAssign("2026-08", 3500, budgets, "2026-09")).toEqual({ since: "2026-08", income: 3500, budgeted: 2200, toAssign: 1300 });
+    expect(toAssign("2026-08", 3000, budgets, "2026-10").toAssign).toBe(-100);
+  });
+});

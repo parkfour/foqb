@@ -1,3 +1,5 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import { salesTaxLookups } from "@/lib/plugins/server-loader";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReadOnlyNotice } from "@/components/ui/read-only-notice";
 import { DownloadButton } from "@/components/ui/download-button";
@@ -135,6 +137,7 @@ export default async function SettingsPage({
       .select("id, account_number, name")
       .eq("organization_id", orgId)
       .eq("is_active", true)
+      .is("currency", null)
       .eq("type", "asset")
       .order("account_number"),
     supabase
@@ -142,6 +145,7 @@ export default async function SettingsPage({
       .select("id, account_number, name")
       .eq("organization_id", orgId)
       .eq("is_active", true)
+      .is("currency", null)
       .eq("type", "liability")
       .order("account_number"),
     getCurrentUserRole(orgId),
@@ -175,6 +179,9 @@ export default async function SettingsPage({
       enabled: cfg?.enabled ?? false,
       settingsSchema: getPluginSettingDefinitions(p),
       currentSettings: cfg?.settings ?? {},
+      acknowledgement: p.manifest.acknowledgement
+        ? { ...p.manifest.acknowledgement, site: cfg?.acknowledgement?.site ?? null, book: cfg?.acknowledgement?.book ?? null }
+        : undefined,
     };
   });
 
@@ -738,6 +745,7 @@ export default async function SettingsPage({
         liabilityAccounts={apOptions}
         canWrite={userCanWrite}
         showAccountCodes={showAccountCodes}
+        lookupSources={(await salesTaxLookups(createAdminClient(), orgId)).map((l) => l.name)}
       />
     </div>
   );

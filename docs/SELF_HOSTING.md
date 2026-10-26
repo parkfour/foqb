@@ -317,9 +317,11 @@ Auth's `GOTRUE_SMTP_*` settings if you want them. (Emailing invoices is
 separate: with the `email-invoices` plugin, each organization uses its own
 mail server, set in Settings.)
 
-Plugins are set in `docker/.env` too: `FOQB_PLUGINS` and, if your
-organizations' mail servers are on your LAN, `ALLOW_PRIVATE_NETWORK_HOSTS`
-(both in §2).
+Plugins are set in `docker/.env` too: `FOQB_PLUGINS`, if your
+organizations' mail servers are on your LAN `ALLOW_PRIVATE_NETWORK_HOSTS`
+(both in §2), and for the Property values plugin `PROPERTY_VALUE_API_URL`,
+`PROPERTY_VALUE_API_KEY` and `PROPERTY_VALUE_API_HOST` (see
+[PLUGINS.md](PLUGINS.md#property-values)).
 
 **The first account created becomes Site Admin.** Create yours before
 sharing the URL. Back up the `db-data` volume like any Postgres database,

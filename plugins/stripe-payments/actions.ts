@@ -39,6 +39,7 @@ export async function getStripeSetup(organizationId: string): Promise<StripeSetu
       .eq("organization_id", organizationId)
       .eq("type", "asset")
       .eq("is_active", true)
+      .is("currency", null)
       .order("name"),
     headers(),
   ]);
@@ -76,6 +77,7 @@ export async function saveStripeSettings(_prev: ActionResult | null, formData: F
   const { data: account } = await (await createClient())
     .from("accounts")
     .select("id")
+    .is("currency", null)
     .eq("id", depositAccountId)
     .eq("organization_id", organizationId)
     .eq("type", "asset")

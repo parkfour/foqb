@@ -272,6 +272,61 @@ async function carriedOverInto(
   return carryover(rows, (accountId, first) => spent.get(first)?.get(accountId) ?? 0);
 }
 
+// Zero-based budgeting: income since the first month anything was
+// budgeted, less every budget through this month. What's left still needs
+// a job; below zero, more was budgeted than came in.
+export interface ToAssign {
+  since: string | null;
+  income: number;
+  budgeted: number;
+  toAssign: number;
+}
+
+export function toAssign(
+  since: string | null,
+  income: number,
+  budgets: { year_month: string; budgeted_amount: number | string }[],
+  yearMonth: string,
+): ToAssign {
+  const budgeted = Math.round(budgets.filter((b) => b.year_month <= yearMonth).reduce((s, b) => s + (Number(b.budgeted_amount) || 0), 0) * 100) / 100;
+  return { since, income: Math.round(income * 100) / 100, budgeted, toAssign: Math.round((income - budgeted) * 100) / 100 };
+}
+
+export async function getToAssign(supabase: SupabaseClient, orgId: string, yearMonth: string): Promise<ToAssign> {
+  const { data: budgets, error } = await supabase
+    .from("monthly_budgets")
+    .select("year_month, budgeted_amount")
+    .eq("organization_id", orgId)
+    .lte("year_month", yearMonth);
+  if (error) throw new Error(`Failed to fetch budgets: ${error.message}`);
+  const rows = (budgets ?? []) as { year_month: string; budgeted_amount: number }[];
+  if (rows.length === 0) return toAssign(null, 0, [], yearMonth);
+
+  const since = rows.reduce((first, b) => (b.year_month < first ? b.year_month : first), rows[0].year_month);
+  const [y, m] = yearMonth.split("-").map(Number);
+  const { data: statement, error: isError } = await supabase.rpc("get_income_statement", {
+    p_org_id: orgId,
+    p_start_date: `${since}-01`,
+    p_end_date: new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10),
+  });
+  if (isError) throw new Error(`Failed to fetch income: ${isError.message}`);
+  const income = ((statement ?? []) as { type: string; amount: number | string }[])
+    .filter((r) => r.type === "revenue")
+    .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  return toAssign(since, income, rows, yearMonth);
+}
+
+// Envelopes: every expense category carries what's left (or overspent)
+// into the next month.
+export async function setAllBudgetRollover(supabase: SupabaseClient, orgId: string, rollover: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("accounts")
+    .update({ budget_rollover: rollover })
+    .eq("organization_id", orgId)
+    .eq("type", "expense");
+  if (error) throw new Error(`Failed to change rollover: ${error.message}`);
+}
+
 export async function setBudgetRollover(
   supabase: SupabaseClient,
   orgId: string,

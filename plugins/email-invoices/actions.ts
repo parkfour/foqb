@@ -7,8 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canWrite, getCurrentUserRole } from "@/lib/org/current";
 import { checkRateLimit } from "@/lib/auth/rate-limit";
-import { decryptToken, encryptToken } from "@/lib/crypto/token-encryption";
-import { isEmailAddress, sendMail, type MailServer } from "./mailer";
+import { encryptToken } from "@/lib/crypto/token-encryption";
+import { isEmailAddress, loadMailServer as loadBookMailServer, sendMail } from "./mailer";
 
 // Per organization, per hour.
 const SEND_LIMIT = 50;
@@ -121,25 +121,8 @@ export async function removeMailServer(organizationId: string): Promise<ActionRe
   return error ? { error: error.message } : { ok: true, message: "Removed." };
 }
 
-// The organization's server with its password, read with the service-role
-// key (signed-in users can't read the password). Callers check the user's
-// role first.
-async function loadMailServer(organizationId: string): Promise<MailServer | null> {
-  const { data } = await createAdminClient()
-    .from("organization_smtp_settings")
-    .select("host, port, username, password_encrypted, from_address, reply_to")
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-  if (!data) return null;
-  return {
-    host: data.host as string,
-    port: data.port as number,
-    username: data.username as string,
-    password: decryptToken(data.password_encrypted as string),
-    fromAddress: data.from_address as string,
-    replyTo: (data.reply_to as string | null) ?? null,
-  };
-}
+// Callers check the user's role first.
+const loadMailServer = (organizationId: string) => loadBookMailServer(createAdminClient(), organizationId);
 
 async function organizationName(organizationId: string): Promise<string> {
   const supabase = await createClient();

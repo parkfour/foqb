@@ -6,33 +6,46 @@ import { saveOfflineEntry } from "@/lib/db/offline";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { useBookToday } from "@/components/providers/book-clock-provider";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
+import { useMoney } from "@/components/providers/book-currency-provider";
+import { ClassSelect, type ClassOption } from "@/components/classes/class-select";
 
 interface AccountOption {
   id: string;
   account_number: string;
   name: string;
+  // Set only for an account in another currency than the book's.
+  currency?: string | null;
 }
 
 interface LineDraft {
   accountId: string;
   debit: string;
   credit: string;
+  classId: string;
+  // An account in another currency: its amount there, the rate to the
+  // book's currency, and which side the line is on.
+  foreign: string;
+  rate: string;
+  side: "debit" | "credit";
 }
 
 function emptyLine(): LineDraft {
-  return { accountId: "", debit: "", credit: "" };
+  return { accountId: "", debit: "", credit: "", classId: "", foreign: "", rate: "", side: "debit" };
 }
 
 export function JournalEntryForm({
   organizationId,
   accounts,
   showAccountCodes = true,
+  classes = [],
 }: {
   organizationId: string;
   accounts: AccountOption[];
   showAccountCodes?: boolean;
+  classes?: ClassOption[];
 }) {
   const isOnline = useOnlineStatus();
+  const formatCurrency = useMoney();
   const today = useBookToday();
   const [entryDate, setEntryDate] = useState(today);
   const [memo, setMemo] = useState("");
@@ -50,6 +63,10 @@ export function JournalEntryForm({
     setLines((prev) => [...prev, emptyLine()]);
   }
 
+  const currencyOf = (accountId: string) => accounts.find((a) => a.id === accountId)?.currency ?? null;
+  // A foreign line's amount in the book's currency.
+  const bookAmount = (line: LineDraft) => Math.round((Number(line.foreign) || 0) * (Number(line.rate) || 0) * 100) / 100;
+
   function removeLine(index: number) {
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
@@ -60,11 +77,20 @@ export function JournalEntryForm({
 
     const parsedLines = lines
       .filter((line) => line.accountId)
-      .map((line) => ({
-        account_id: line.accountId,
-        debit: Number(line.debit || 0),
-        credit: Number(line.credit || 0),
-      }));
+      .map((line) => {
+        const base = { account_id: line.accountId, ...(line.classId ? { class_id: line.classId } : {}) };
+        if (!currencyOf(line.accountId)) {
+          return { ...base, debit: Number(line.debit || 0), credit: Number(line.credit || 0) };
+        }
+        const amount = bookAmount(line);
+        return {
+          ...base,
+          debit: line.side === "debit" ? amount : 0,
+          credit: line.side === "credit" ? amount : 0,
+          foreign_amount: Number(line.foreign) || 0,
+          exchange_rate: Number(line.rate) || 1,
+        };
+      });
 
     const totalDebit = parsedLines.reduce((sum, l) => sum + l.debit, 0);
     const totalCredit = parsedLines.reduce((sum, l) => sum + l.credit, 0);
@@ -164,24 +190,60 @@ export function JournalEntryForm({
                   </option>
                 ))}
               </select>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Debit"
-                value={line.debit}
-                onChange={(e) => updateLine(index, { debit: e.target.value, credit: "" })}
-                className="w-28 rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Credit"
-                value={line.credit}
-                onChange={(e) => updateLine(index, { credit: e.target.value, debit: "" })}
-                className="w-28 rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
+              {currencyOf(line.accountId) ? (
+                <>
+                  <select
+                    value={line.side}
+                    onChange={(e) => updateLine(index, { side: e.target.value as LineDraft["side"] })}
+                    aria-label="Debit or credit"
+                    className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+                  >
+                    <option value="debit">Debit</option>
+                    <option value="credit">Credit</option>
+                  </select>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    placeholder={`Amount in ${currencyOf(line.accountId)}`}
+                    value={line.foreign}
+                    onChange={(e) => updateLine(index, { foreign: e.target.value })}
+                    className="w-36 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="Rate"
+                    value={line.rate}
+                    onChange={(e) => updateLine(index, { rate: e.target.value })}
+                    className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                  <span className="text-sm text-slate-600">= {formatCurrency(bookAmount(line))}</span>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Debit"
+                    value={line.debit}
+                    onChange={(e) => updateLine(index, { debit: e.target.value, credit: "" })}
+                    className="w-28 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Credit"
+                    value={line.credit}
+                    onChange={(e) => updateLine(index, { credit: e.target.value, debit: "" })}
+                    className="w-28 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </>
+              )}
+              <ClassSelect classes={classes} value={line.classId} onChange={(classId) => updateLine(index, { classId })} />
               {lines.length > 2 && (
                 <button
                   type="button"

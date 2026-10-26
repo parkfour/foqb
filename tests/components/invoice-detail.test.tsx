@@ -47,6 +47,22 @@ afterEach(() => {
 });
 
 describe("InvoiceDetail", () => {
+  it("prints plugins' notes in the part that becomes the PDF", async () => {
+    render(<InvoiceDetail {...baseProps} notes={["VAT number: DE123456789", "Reverse charge: VAT to be accounted for by the customer."]} />);
+    expect(screen.getByText("VAT number: DE123456789")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Download/ }));
+    await waitFor(() => expect(html2canvasMock).toHaveBeenCalled());
+    const printed = (html2canvasMock.mock.calls[0] as unknown as [HTMLElement])[0];
+    expect(printed.textContent).toContain("VAT number: DE123456789");
+    expect(printed.textContent).toContain("Reverse charge");
+  });
+
+  it("prints no notes section without notes", () => {
+    render(<InvoiceDetail {...baseProps} />);
+    expect(screen.queryByText(/VAT number/)).not.toBeInTheDocument();
+  });
+
   it("shows a tax line only when tax was charged", () => {
     render(<InvoiceDetail {...baseProps} />);
     expect(screen.queryByText(/^Tax/)).not.toBeInTheDocument();

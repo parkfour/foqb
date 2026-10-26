@@ -71,12 +71,20 @@ export default async function CustomerStatusPage({ params }: { params: Promise<{
             "Invoice history and current balance."
           }
         />
-        <Link
-          href={`/customers/${customer.id}/edit`}
-          className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
-        >
-          Edit customer
-        </Link>
+        <div className="flex gap-4">
+          <Link
+            href={`/customers/${customer.id}/statement`}
+            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+          >
+            Statement
+          </Link>
+          <Link
+            href={`/customers/${customer.id}/edit`}
+            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+          >
+            Edit customer
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">

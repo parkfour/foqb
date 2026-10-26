@@ -19,7 +19,7 @@ export default async function RecurringBillsPage() {
   if (!orgId) {
     return (
       <div>
-        <PageHeader title="Recurring Bills" description="Templates generated on demand when due." />
+        <PageHeader title="Recurring Bills" description="Generated automatically on their next date, within about an hour (pause a template to stop it). Generate Now does a due one at once." />
         <p className="text-sm text-slate-500">Create an organization first.</p>
       </div>
     );
@@ -42,7 +42,7 @@ export default async function RecurringBillsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <PageHeader title="Recurring Bills" description="Templates generated on demand when due." />
+        <PageHeader title="Recurring Bills" description="Generated automatically on their next date, within about an hour (pause a template to stop it). Generate Now does a due one at once." />
         {userCanWrite && (
           <Link
             href="/vendors/recurring/new"

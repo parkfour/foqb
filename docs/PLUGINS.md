@@ -83,6 +83,54 @@ service-role client, outgoing requests). Two places for that:
   [SELF_HOSTING.md](SELF_HOSTING.md)): at most once per interval, and only
   while someone is using the app.
 
+### Server parts
+
+`ServerPluginParts` (in `plugins/server.ts`) can hold:
+
+| Part | What it does | Asked |
+|---|---|---|
+| `hooks` | [event](#events) handlers | instance-wide: check the book yourself |
+| `jobs` | `{ name, minIntervalSeconds, run }` background work | instance-wide |
+| `categorizers` | first look at each new bank transaction; true if it booked it | instance-wide |
+| `exchangeRates`, `securityPrices` | quotes for other books' currencies and for holdings | instance-wide |
+| `invoiceNotes` | lines printed at the foot of an invoice and its PDF (a VAT number, "Reverse charge", payment details) | only in books it's on in |
+| `invoiceChecks` | asked before every invoice is saved, by every path; a message refuses it | only in books it's on in |
+| `mailer` | sends mail as the book (`ready`, `send`); FOQB and other plugins use it through `sendBookMail` | only in books it's on in |
+| `bankFeed` | a bank feed FOQB doesn't build in: `{ name, minIntervalSeconds, fetch(orgId) }` | only in books it's on in |
+| `salesTaxLookup` | `{ name, rates(address) }`: rates for an address, offered under Settings → Sales tax | only in books it's on in |
+
+"Only in books it's on in" means the site's switch, the book's, and any
+acknowledgement the plugin needs: the helpers in
+`lib/plugins/server-loader.ts` (`invoiceNotes`, `checkInvoice`,
+`sendBookMail`, `bookCanSendMail`, `salesTaxLookups`) do that check, and a
+part that throws is logged and passed over (a failing check lets the
+invoice through).
+
+**Bank feeds.** The plugin keeps each book's connection itself (encrypted,
+in `plugin_data`) and offers the way to connect, in its settings or a page.
+`fetch` returns the bank's accounts, each with an `id`, `name`, `kind`
+(`asset` or `liability`), optional `mask` and `balance`, and its recent
+`transactions` (`id`, `date`, `name`, `amount`, negative for money out).
+FOQB adds a ledger account for each new bank account, skips transactions it
+already has, books the rest through the categorizers and the book's rules
+like any feed, records the balances, and pairs transfers. It runs as a job
+named `<plugin id>-bank-feed`, and only where the book allows connecting
+banks.
+
+### Plugins that need acknowledging
+
+A plugin whose results someone could rely on for taxes (payroll, VAT)
+declares `manifest.acknowledgement`: a version, a title and the disclaimer's
+paragraphs. It stays off in every book, whatever the book's switch says,
+until a Site Admin acknowledges that version for the instance (Site Admin)
+and then an owner for the book (Settings → Plugins). Both see the
+disclaimer in full; each acknowledgement records who and when
+(`plugin_acknowledgements`), and changing the version asks again. Pages
+and slots follow the book's enabled list, so they're covered; a gated
+plugin's own hooks and jobs run instance-wide and must check
+`getOrgEnabledPluginIds` for the book themselves; the book-scoped server
+parts above are checked for it.
+
 ### Private plugins
 
 A plugin that shouldn't be public (your own tax worksheets, say) lives in a
@@ -119,21 +167,33 @@ plugins/local/            # git clone <your repo> plugins/local
 ### Events
 
 Emitted on the server after the change is saved, by every path that makes
-it (the recurring invoice and bill generators included). All handlers run
-together; one that throws, or takes longer than 5 seconds, is logged and
-skipped, and never fails the request. Queue anything slow.
+it (the recurring generators, estimates turned into invoices, and CSV
+imports included). All handlers run together; one that throws, or takes
+longer than 5 seconds, is logged and skipped, and never fails the request.
+Queue anything slow. Each payload also has `orgId`.
 
 | Event | When | Payload |
 |---|---|---|
-| `invoice:created` | an invoice is posted | `invoiceId`, `invoiceNumber`, `customerId`, `total`, `orgId` |
-| `bill:created` | a bill is posted | `billId`, `billNumber`, `vendorId`, `total`, `orgId` |
-| `invoice_payment:recorded` | a payment (possibly partial) is applied | `paymentId`, `invoiceId`, `invoiceStatus`, `orgId` |
-| `bill_payment:recorded` | a payment (possibly partial) is applied | `paymentId`, `billId`, `billStatus`, `orgId` |
+| `invoice:created` | an invoice is posted | `invoiceId`, `invoiceNumber`, `customerId`, `total` |
+| `invoice:voided` | an invoice is voided, with its payments | `invoiceId`, `invoiceNumber` |
+| `invoice_payment:recorded` | a payment (possibly partial) is applied, a credit memo included | `paymentId`, `invoiceId`, `invoiceStatus` |
+| `credit_memo:created` | a credit memo is posted (applied or held) | `creditMemoId`, `memoNumber`, `customerId`, `total`, `appliedToInvoiceId` |
+| `estimate:created` | an estimate is saved | `estimateId`, `estimateNumber`, `customerId`, `subtotal` |
+| `estimate:status_changed` | accepted, declined, reopened, or invoiced | `estimateId`, `estimateNumber`, `status`, `invoiceId` |
+| `customer:created` | a customer is added (form or CSV) | `customerId`, `name`, `email` |
+| `bill:created` | a bill is posted | `billId`, `billNumber`, `vendorId`, `total` |
+| `bill:voided` | a bill is voided, with its payments | `billId`, `billNumber` |
+| `bill_payment:recorded` | a payment (possibly partial) is applied | `paymentId`, `billId`, `billStatus` |
+| `vendor:created` | a vendor is added (form or CSV) | `vendorId`, `name`, `email` |
+| `journal_entry:posted` | any entry becomes posted | `journalEntryId`, `entryDate`, `memo` |
+| `bank_transaction:imported` | a bank row is added (feed, statement or CSV) | `bankTransactionId`, `accountId`, `date`, `name`, `amount` (negative is money out) |
+| `period:locked` | the period lock date changes | `lockDate` (null: unlocked), `previousLockDate` |
 
-There's deliberately no "journal entry posted" event yet: entries are posted
-from several places (forms, bank categorization, splits, the Plaid sync),
-and an event that missed some of them would be worse than none. Doing it
-properly means a database trigger feeding a queue.
+The last three can be caused by database functions as well as pages, so
+the database records them (`plugin_events`, a trigger on each table) and a
+background job hands them to the handlers in order, usually within a
+minute or two while the app is in use. One lost to a server stopping
+mid-delivery isn't retried. Restoring a backup records none.
 
 ### Slots
 
@@ -145,6 +205,8 @@ properly means a database trigger feeding a queue.
 | `properties.sections` | a section of its own on Properties & Assets | `organizationId`, `canWrite` |
 | `reconcile.header` | at the top of the Reconcile page, for writers | `accounts` (`id`, `name`, `account_number`, `type`) |
 | `bill.header` | above the Enter Bill form | `vendors`, `accounts`, `prefill(bill)`: fills in any of `vendorId`, `billNumber`, `billDate`, `lines` |
+| `estimate.actions` | beside an estimate's status | `estimateId`, `estimateNumber`, `customer` (`name`, `email`), `subtotal`, `status` |
+| `statement.actions` | beside "Print or save as PDF" on a customer statement | `customerId`, `customer` (`name`, `email`), `start`, `end`, `amountDue` |
 
 A slot with no plugin in it renders nothing.
 
@@ -162,11 +224,22 @@ that book's own access rules, and each book's amounts are in its own
 currency (see [CURRENCY.md](CURRENCY.md)); a page that adds books together
 converts them itself.
 
+### Reports
+
+Each entry in `reports` (`id`, `title`, `range`, optional `workspace`, and
+`component`) is listed under Financial Reports, in a "From plugins" group,
+while the plugin is on in the book. A `range` report gets a start and end
+date, otherwise an as-of date; the component renders in the browser with
+`context`: `organizationId`, `start`, `end`, `asOf`. The VAT summary and
+payroll's draft forms are reports this way.
+
 ## Email invoices
 
 Plugin id `email-invoices`. Adds an **Email invoice** button to each
-invoice, which sends the customer the invoice PDF, and an **Email** section
-to its card in Settings → Plugins.
+invoice, which sends the customer the invoice PDF, **Email estimate** and
+**Email statement** buttons (the figures as text, below your message), and
+an **Email** section to its card in Settings → Plugins. Its mail server is
+also the book's `mailer`, for FOQB and other plugins.
 
 ![Emailing an invoice: recipient, subject and message, with the PDF attached](screenshots/plugin-email-invoice.jpg)
 
@@ -196,7 +269,8 @@ to its card in Settings → Plugins.
 
 Plugin id `webhooks`. Adds a **Webhooks** section to its card in Settings → Plugins, for
 owners: each webhook is an `https` URL and the events it wants (any of the
-four [events](#events)). On each event, FOQB POSTs:
+[events](#events); "any journal entry posted" and "any bank transaction
+imported" start unticked, since they're busy). On each event, FOQB POSTs:
 
 ```json
 {
@@ -432,6 +506,78 @@ codes are sent), marked "≈" with the rate and its date.
 - Another plugin can supply rates from somewhere else: an `exchangeRates`
   source in its server parts (`rate(from, to)`, giving `{ rate, asOf,
   source }` or null). The first enabled one with a rate is used.
+
+## Property values
+
+Updates each property's estimated value once a week from a Zillow estimate
+(a "Zestimate"). Zillow has no public API, so the instance subscribes to a
+property-data API that returns one (the unofficial Zillow APIs on RapidAPI,
+for example) and names it in `PROPERTY_VALUE_API_URL` (with `{address}` in
+it), `PROPERTY_VALUE_API_KEY` and, for RapidAPI, `PROPERTY_VALUE_API_HOST`.
+The value is the first `zestimate` field anywhere in the reply; check your
+provider returns one before relying on it.
+
+A book turns it on with **Update property values weekly** in the plugin's
+settings. Each property with a street and a zip (or city and state) has its
+address sent to the provider, the longest-unvalued first, 20 a week
+(free tiers allow about 100 lookups a month). The value replaces what was
+entered by hand.
+
+## Payroll (US)
+
+**Needs acknowledging** by a Site Admin and then each book's owner before it
+does anything (see "Plugins that need acknowledging"): it isn't a payroll
+service, and a professional should check its setup and figures.
+
+A business book's **Payroll** page keeps employees from their Form W-4
+(2020 or later: filing status, the Step 2 box, Steps 3, 4a, 4b and 4c), the
+accounts a paycheck posts to, and the state unemployment rate and wage base.
+**Run payroll** previews each check, then posts one journal entry per
+paycheck: wages and the employer's taxes as expenses, net pay from cash,
+and every amount withheld or owed to its liability account.
+
+- Federal income tax: IRS Publication 15-T, Worksheet 1A, with the
+  percentage-method tables for automated payroll (2026 shipped; a year
+  without tables refuses to run).
+- Social Security 6.2% each to the year's wage base ($184,500 in 2026),
+  Medicare 1.45% each plus the employee's 0.9% over $200,000, FUTA 0.6% on
+  each employee's first $7,000 (the full state credit assumed).
+- State and local income tax as a flat percentage of gross per employee;
+  SUTA at the book's rate up to its wage base.
+- Draft figures for Form 941 (per quarter), Form 940 and each W-2, from
+  the paychecks whose entries are still posted.
+
+Not handled: pre-tax deductions, tips, benefits, garnishments, more than
+one state, supplemental wage rules, deposits, filing, direct deposit.
+Employees, accounts and paychecks are kept in the plugin's own data
+(`plugin_data`), so they're in the book's backup.
+
+## EU VAT
+
+**Needs acknowledging** by a Site Admin and then each book's owner before it
+does anything (see "Plugins that need acknowledging").
+
+A business book's **VAT** page keeps its VAT registration (country and
+number), the output VAT (liability) and input VAT (asset) accounts, and
+which customers are VAT-registered businesses in another EU country. VAT
+rates are named sales tax rates crediting the output VAT account: one
+button adds the country's standard rate (a table of the 27 member states'
+standard rates, late 2025; check the Commission's TEDB), and reduced rates
+are added by name. Invoices pick them as any sales tax rate.
+
+Every invoice, and its PDF, ends with the book's VAT number. A
+reverse-charge customer's also gives their VAT number and "Reverse charge:
+VAT to be accounted for by the customer (Article 196, Council Directive
+2006/112/EC)", and an invoice to them that charges VAT is refused.
+
+The **VAT summary** for a period (on the VAT page, and under Financial
+Reports) gives each rate's sales and VAT charged,
+the VAT paid on purchases (what was debited to the input VAT account; book
+a bill's VAT there), what's due or to reclaim, and sales to reverse-charge
+customers and other sales without VAT apart.
+
+Not handled: VIES checks, OSS, imports, reverse charge on purchases,
+distance-selling thresholds, each country's return boxes, filing.
 
 ## Stripe payments
 

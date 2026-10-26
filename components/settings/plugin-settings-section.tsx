@@ -3,9 +3,10 @@
 
 "use client";
 
-import { updatePluginSettings } from "@/app/(dashboard)/settings/actions";
+import { acknowledgePluginForBook, updatePluginSettings } from "@/app/(dashboard)/settings/actions";
+import { AcknowledgeForm, AcknowledgementNotice } from "@/components/plugins/acknowledgement-notice";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
-import type { PluginSettingDefinition, PluginSettingValue } from "@/lib/plugins/types";
+import type { PluginAcknowledgement, PluginSettingDefinition, PluginSettingValue } from "@/lib/plugins/types";
 
 export interface PluginInfo {
   id: string;
@@ -15,6 +16,8 @@ export interface PluginInfo {
   enabled: boolean;
   settingsSchema: PluginSettingDefinition[];
   currentSettings: Record<string, PluginSettingValue>;
+  // A plugin that's off until the instance and this book acknowledge it.
+  acknowledgement?: PluginAcknowledgement & { site: { at: string } | null; book: { at: string } | null };
 }
 
 export interface PluginSettingsSectionProps {
@@ -50,6 +53,24 @@ export function PluginSettingsSection({
               key={plugin.id}
               className="flex flex-col gap-4 rounded-lg border border-slate-200 p-5 bg-slate-50/50"
             >
+              {plugin.acknowledgement && (
+                <AcknowledgementNotice
+                  acknowledgement={plugin.acknowledgement}
+                  site={plugin.acknowledgement.site}
+                  book={plugin.acknowledgement.book}
+                  action={
+                    plugin.acknowledgement.site && !plugin.acknowledgement.book && isOwner ? (
+                      <AcknowledgeForm
+                        action={acknowledgePluginForBook}
+                        hidden={{ organizationId, pluginId: plugin.id }}
+                        label="I have read this. I'll check what this plugin produces with a tax professional before filing or paying anything."
+                      />
+                    ) : !plugin.acknowledgement.site ? (
+                      <p className="text-sm font-medium">A Site Admin has to acknowledge it for this instance first.</p>
+                    ) : null
+                  }
+                />
+              )}
               <form action={updatePluginSettings} className="flex flex-col gap-4">
                 <input type="hidden" name="organizationId" value={organizationId} />
                 <input type="hidden" name="pluginId" value={plugin.id} />

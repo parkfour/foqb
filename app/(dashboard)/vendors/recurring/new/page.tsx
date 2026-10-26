@@ -29,6 +29,7 @@ export default async function NewRecurringBillPage() {
       .select("id, account_number, name")
       .eq("organization_id", orgId)
       .eq("is_active", true)
+      .is("currency", null)
       .in("type", ["expense", "asset"])
       .order("account_number"),
     getUseAccountCodes(orgId),

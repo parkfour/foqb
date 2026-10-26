@@ -16,13 +16,9 @@ import {
   type Webhook,
   type WebhookDelivery,
 } from "./actions";
+import { WEBHOOK_EVENTS, type WebhookEvent } from "./events";
 
-const EVENT_LABELS: Record<string, string> = {
-  "invoice:created": "Invoice created",
-  "bill:created": "Bill created",
-  "invoice_payment:recorded": "Customer payment recorded",
-  "bill_payment:recorded": "Vendor payment recorded",
-};
+const EVENT_LABELS: Record<string, string> = Object.fromEntries(Object.entries(WEBHOOK_EVENTS).map(([e, { label }]) => [e, label]));
 
 const STATUS_STYLES: Record<WebhookDelivery["status"], string> = {
   delivered: "text-emerald-700",
@@ -146,7 +142,7 @@ export const WebhookSettings: SlotComponent<"settings.sections"> = ({ context })
           <legend className="mb-1 text-slate-700">Events</legend>
           {Object.entries(EVENT_LABELS).map(([event, label]) => (
             <label key={event} className="flex items-center gap-2 text-slate-700">
-              <input type="checkbox" name="events" value={event} defaultChecked />
+              <input type="checkbox" name="events" value={event} defaultChecked={WEBHOOK_EVENTS[event as WebhookEvent].byDefault} />
               {label}
             </label>
           ))}

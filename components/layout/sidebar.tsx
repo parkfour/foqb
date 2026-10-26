@@ -30,6 +30,10 @@ import {
   ArrowLeftRight,
   PieChart,
   Puzzle,
+  Clock,
+  Car,
+  LineChart,
+  Repeat,
   type LucideIcon,
 } from "lucide-react";
 
@@ -65,6 +69,8 @@ const BASE_NAV_ENTRIES: NavEntry[] = [
       { href: "/customers/invoices/new", label: "Invoice" },
       { href: "/customers/payments/new", label: "Receive Payment" },
       { href: "/customers/invoices", label: "All Invoices" },
+      { href: "/customers/estimates", label: "Estimates" },
+      { href: "/customers/credit-memos", label: "Credit Memos" },
       { href: "/customers/recurring", label: "Recurring Invoices" },
     ],
   },
@@ -85,9 +91,12 @@ const BASE_NAV_ENTRIES: NavEntry[] = [
   { type: "link", href: "/accounts", label: "Chart of Accounts", icon: BookOpen },
   { type: "link", href: "/items", label: "Items", icon: Tag },
   { type: "link", href: "/fixed-assets", label: "Fixed Assets", icon: Boxes },
+  { type: "link", href: "/time", label: "Time", icon: Clock },
+  { type: "link", href: "/mileage", label: "Mileage", icon: Car },
   { type: "link", href: "/reports", label: "Financial Reports", icon: BarChart3 },
   { type: "link", href: "/between-books", label: "Between Your Books", icon: ArrowLeftRight },
   { type: "link", href: "/rules", label: "Rules", icon: ListFilter },
+  { type: "link", href: "/classes", label: "Classes", icon: Tag },
   { type: "link", href: "/audit-log", label: "Audit Log", icon: History },
 ];
 
@@ -97,7 +106,10 @@ const HOUSEHOLD_NAV_ENTRIES: NavEntry[] = [
   { type: "link", href: "/transactions", label: "Bank Transactions", icon: Landmark },
   { type: "link", href: "/reconcile", label: "Reconcile", icon: ClipboardCheck },
   { type: "link", href: "/budget", label: "Budget", icon: PieChart },
+  { type: "link", href: "/subscriptions", label: "Recurring Charges", icon: Repeat },
   { type: "link", href: "/properties", label: "Properties & Assets", icon: Home },
+  { type: "link", href: "/mileage", label: "Mileage", icon: Car },
+  { type: "link", href: "/investments", label: "Investments", icon: LineChart },
   { type: "link", href: "/cash-flow", label: "Cash Flow", icon: ArrowLeftRight },
   { type: "link", href: "/accounts", label: "Chart of Accounts", icon: BookOpen },
   { type: "link", href: "/journal", label: "Journal Entries", icon: NotebookPen },
@@ -197,7 +209,7 @@ export function Sidebar({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 transform flex-col border-r border-slate-200 bg-white transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 transform flex-col print:hidden border-r border-slate-200 bg-white transition-transform duration-200 md:static md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

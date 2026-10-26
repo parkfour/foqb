@@ -7,6 +7,8 @@ interface ImportResult {
   success: boolean;
   dryRun?: boolean;
   imported: number;
+  // Already imported before, and left alone (journal entries).
+  skipped?: number;
   errors: string[];
 }
 
@@ -103,6 +105,7 @@ export function CsvImportForm({ action, label }: CsvImportFormProps) {
           <p className="text-sm text-slate-700">
             Preview: would import <strong>{preview.imported}</strong> row
             {preview.imported === 1 ? "" : "s"}.
+            {!!preview.skipped && ` ${preview.skipped} already imported, skipped.`}
             {preview.errors.length > 0 && (
               <span className="text-amber-700">
                 {" "}
@@ -136,6 +139,7 @@ export function CsvImportForm({ action, label }: CsvImportFormProps) {
           className={`text-sm ${result.errors.length > 0 ? "text-amber-700" : "text-emerald-700"}`}
         >
           Imported {result.imported} row{result.imported === 1 ? "" : "s"}.
+          {!!result.skipped && ` ${result.skipped} already imported, skipped.`}
           {result.errors.length > 0 &&
             ` ${result.errors.length} error(s): ${result.errors.slice(0, 3).join("; ")}`}
         </p>

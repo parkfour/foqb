@@ -43,6 +43,7 @@ export default async function ReceivePaymentPage() {
         .select("id, account_number, name")
         .eq("organization_id", orgId)
         .eq("is_active", true)
+        .is("currency", null)
         .eq("type", "asset")
         .order("account_number"),
       supabase

@@ -3,13 +3,13 @@
 
 import type { ServerPluginParts } from "@/lib/plugins/types";
 import { deliverDueWebhooks, enqueueWebhookEvent } from "./delivery";
+import { WEBHOOK_EVENTS, type WebhookEvent } from "./events";
 
+// Every event a webhook can subscribe to is queued for the book's webhooks
+// that asked for it.
 export const webhooksServer: ServerPluginParts = {
-  hooks: {
-    "invoice:created": (payload) => enqueueWebhookEvent("invoice:created", payload),
-    "bill:created": (payload) => enqueueWebhookEvent("bill:created", payload),
-    "invoice_payment:recorded": (payload) => enqueueWebhookEvent("invoice_payment:recorded", payload),
-    "bill_payment:recorded": (payload) => enqueueWebhookEvent("bill_payment:recorded", payload),
-  },
+  hooks: Object.fromEntries(
+    (Object.keys(WEBHOOK_EVENTS) as WebhookEvent[]).map((event) => [event, (payload: { orgId: string }) => enqueueWebhookEvent(event, payload)]),
+  ),
   jobs: [{ name: "webhook-deliveries", minIntervalSeconds: 60, run: deliverDueWebhooks }],
 };

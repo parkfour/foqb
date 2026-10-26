@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { InvoiceForm } from "@/components/customers/invoice-form";
 import { ReadOnlyNotice } from "@/components/ui/read-only-notice";
 import { createClient } from "@/lib/supabase/server";
+import { fetchActiveClasses } from "@/lib/org/classes";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 
 export default async function NewInvoicePage() {
@@ -16,6 +17,7 @@ export default async function NewInvoicePage() {
   }
 
   const supabase = await createClient();
+  const classes = await fetchActiveClasses(supabase, orgId);
 
   const [{ data: customers }, { data: accounts }, { data: items }, { data: org }, { data: taxRates }, showAccountCodes] =
     await Promise.all([
@@ -57,6 +59,7 @@ export default async function NewInvoicePage() {
       defaultTaxRate={(org as { default_tax_rate: number | null } | null)?.default_tax_rate ?? 0}
       taxRates={taxRates ?? []}
       showAccountCodes={showAccountCodes}
+      classes={classes}
     />
   );
 }

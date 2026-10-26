@@ -6,6 +6,7 @@ import { request } from "node:https";
 import { isIP } from "node:net";
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
 import { decryptToken } from "@/lib/crypto/token-encryption";
 import { publicLookup, resolvePublicAddress } from "@/lib/net/public-address";
 
@@ -20,7 +21,8 @@ const LEASE_MS = 2 * 60_000;
 const BATCH_SIZE = 20;
 const KEEP_DAYS = 30;
 
-export type WebhookEvent = "invoice:created" | "bill:created" | "invoice_payment:recorded" | "bill_payment:recorded";
+import type { WebhookEvent } from "./events";
+export type { WebhookEvent };
 
 export interface DeliveryResult {
   delivered: boolean;
@@ -92,6 +94,9 @@ export async function postWebhook(url: string, body: string, headers: Record<str
 // response that caused the event has gone out.
 export async function enqueueWebhookEvent(event: WebhookEvent, data: { orgId: string }): Promise<void> {
   const admin = createAdminClient();
+  // Handlers run for every book; a book that has turned webhooks off (or
+  // never turned them on) sends nothing, whatever webhooks it kept.
+  if (!(await getOrgEnabledPluginIds(admin, data.orgId)).includes("webhooks")) return;
   const { data: hooks, error } = await admin
     .from("organization_webhooks")
     .select("id")

@@ -86,6 +86,15 @@ describe("report functions as a signed-in user", () => {
       { debit: 300 },
     ]);
     expect(
+      await call("select account_id, debit::float, credit::float from get_general_ledger($1, '2026-03-01', '2026-12-31')", [s.a]),
+    ).toEqual(
+      expect.arrayContaining([
+        { account_id: s.cash, debit: 300, credit: 0 },
+        { account_id: s.revenue, debit: 0, credit: 300 },
+      ]),
+    );
+    expect(await call("select 1 from get_general_ledger($1, '2026-03-01', '2026-12-31')", [s.a])).toHaveLength(2);
+    expect(
       await call("select code, amount::float from get_tax_line_report($1, '2026-01-01', '2026-12-31') where code is not null", [s.a]),
     ).toEqual([{ code: "line_1", amount: 300 }]);
     expect(
@@ -107,6 +116,7 @@ describe("report functions as a signed-in user", () => {
       ["select * from get_income_statement($1, '2026-01-01', '2026-12-31')", [s.a]],
       ["select * from get_trial_balance($1, '2026-12-31')", [s.a]],
       ["select * from get_account_ledger($1, $2, null, '2026-12-31')", [s.a, s.cash]],
+      ["select * from get_general_ledger($1, '2026-01-01', '2026-12-31')", [s.a]],
       ["select * from get_tax_line_report($1, '2026-01-01', '2026-12-31')", [s.a]],
       ["select * from get_tax_line_accounts($1, $2, 'revenue', '2026-01-01', '2026-12-31')", [s.a, s.salesLine]],
       ["select * from get_net_worth_series($1, array['2026-12-31']::date[])", [s.a]],

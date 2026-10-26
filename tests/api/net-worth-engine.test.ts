@@ -31,6 +31,9 @@ describe("calculateHouseholdNetWorth", () => {
           select: ok([{ id: "id-Bank home" }, { id: "id-Bank Sacings" }, { id: "id-Airline" }, { id: "id-Brokerage ••1234" }, { id: "id-Fidelity 403(b) ••5678" }, { id: "id-Car loan" }]),
         },
         net_worth_snapshots: { select: ok(null), upsert: ok(null) },
+        investment_trades: { select: ok([]) },
+        securities: { select: ok([]) },
+        security_prices: { select: ok([]) },
       },
     });
 
@@ -44,6 +47,27 @@ describe("calculateHouseholdNetWorth", () => {
       loans: 8000,
       other_liabilities: 50,
     });
+  });
+
+  it("counts an account with holdings at market value, in investments whatever its name", async () => {
+    const { client } = createSupabaseMock({
+      rpcs: { get_balance_sheet: ok([row("Schwab ••99", "asset", 2005)]) },
+      tables: {
+        properties: { select: ok([]) },
+        accounts: { select: ok([]) },
+        net_worth_snapshots: { select: ok(null), upsert: ok(null) },
+        investment_trades: {
+          select: ok([{ account_id: "id-Schwab ••99", security_id: "vti", trade_date: "2026-01-02", kind: "buy", quantity: 10, price: 200, fees: 5 }]),
+        },
+        securities: { select: ok([{ id: "vti", symbol: "VTI", name: null }]) },
+        security_prices: { select: ok([{ security_id: "vti", price_date: "2026-10-16", price: 250 }]) },
+      },
+    });
+
+    const { breakdown } = await calculateHouseholdNetWorth("org-1", "2026-10-17", client as never);
+
+    // Cost 2,005, worth 2,500.
+    expect(breakdown).toMatchObject({ cash: 0, investments: 2500 });
   });
 
   it("buckets balances by account name, keeps overdrafts negative, and adds properties", async () => {
@@ -69,6 +93,9 @@ describe("calculateHouseholdNetWorth", () => {
         },
         accounts: { select: ok([]) },
         net_worth_snapshots: { select: ok(null), upsert: ok(null) },
+        investment_trades: { select: ok([]) },
+        securities: { select: ok([]) },
+        security_prices: { select: ok([]) },
       },
     });
 

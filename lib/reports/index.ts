@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { addDays } from "@/lib/time/book-time";
 
 export interface TrialBalanceRow {
   account_id: string;
@@ -159,4 +160,54 @@ export async function fetchAccountLedger(
 
   if (error) throw error;
   return data ?? [];
+}
+
+export interface GeneralLedgerLine {
+  account_id: string;
+  entry_id: string;
+  entry_date: string;
+  memo: string | null;
+  description: string | null;
+  debit: number;
+  credit: number;
+}
+
+export interface GeneralLedgerAccount {
+  account: Pick<TrialBalanceRow, "account_id" | "account_number" | "name" | "type">;
+  opening: number;
+  lines: (GeneralLedgerLine & { balance: number })[];
+  closing: number;
+}
+
+// Each account with activity in the period or a balance going into it:
+// the opening balance (the trial balance the day before), every line with a
+// running balance, and the closing balance. Balances are signed the way the
+// trial balance signs them (debit-normal for assets and expenses).
+export function buildGeneralLedger(opening: TrialBalanceRow[], lines: GeneralLedgerLine[]): GeneralLedgerAccount[] {
+  const byAccount = new Map<string, GeneralLedgerLine[]>();
+  for (const line of lines) {
+    byAccount.set(line.account_id, [...(byAccount.get(line.account_id) ?? []), line]);
+  }
+  return opening
+    .filter((row) => byAccount.has(row.account_id) || Number(row.balance) !== 0)
+    .map((row) => {
+      const sign = row.type === "asset" || row.type === "expense" ? 1 : -1;
+      let balance = Number(row.balance);
+      const withBalance = (byAccount.get(row.account_id) ?? []).map((line) => {
+        balance = Math.round((balance + sign * (Number(line.debit) - Number(line.credit))) * 100) / 100;
+        return { ...line, debit: Number(line.debit), credit: Number(line.credit), balance };
+      });
+      const { account_id, account_number, name, type } = row;
+      return { account: { account_id, account_number, name, type }, opening: Number(row.balance), lines: withBalance, closing: balance };
+    });
+}
+
+export async function fetchGeneralLedger(orgId: string, startDate: string, endDate: string): Promise<GeneralLedgerAccount[]> {
+  const supabase = await createClient();
+  const [opening, { data, error }] = await Promise.all([
+    fetchTrialBalance(orgId, addDays(startDate, -1)),
+    supabase.rpc("get_general_ledger", { p_org_id: orgId, p_start_date: startDate, p_end_date: endDate }),
+  ]);
+  if (error) throw error;
+  return buildGeneralLedger(opening, (data ?? []) as GeneralLedgerLine[]);
 }

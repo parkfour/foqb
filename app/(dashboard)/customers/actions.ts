@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { emitHook } from "@/lib/plugins/hooks";
+import { ensureServerPluginsLoaded } from "@/lib/plugins/server-loader";
 import type { ActionState } from "@/app/(dashboard)/actions";
 
 export async function createCustomer(
@@ -20,17 +22,20 @@ export async function createCustomer(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("customers").insert({
+  const { data: created, error } = await supabase.from("customers").insert({
     organization_id: organizationId,
     name,
     email,
     phone,
     billing_address: billingAddress,
-  });
+  }).select("id").single();
 
   if (error) {
     return { error: error.message };
   }
+
+  ensureServerPluginsLoaded();
+  await emitHook("customer:created", { customerId: created.id as string, name, email, orgId: organizationId });
 
   revalidatePath("/customers");
   redirect("/customers");
@@ -85,32 +90,23 @@ export async function deleteCustomer(formData: FormData): Promise<void> {
   revalidatePath("/customers");
 }
 
-export async function voidInvoice(formData: FormData): Promise<void> {
+// Voids it, with any payments on it: void_invoice reverses their entries
+// and sends their bank transactions back to the feed.
+export async function voidInvoice(_prev: { error: string | null }, formData: FormData): Promise<{ error: string | null }> {
   const id = formData.get("id") as string;
-  if (!id) return;
+  if (!id) return { error: null };
 
   const supabase = await createClient();
-  // Only a fully-open (unpaid) invoice can be voided directly — one with
-  // payments applied would also need those payments' journal entries
-  // reversed, which this simple guard deliberately doesn't attempt.
-  const { data: invoice } = await supabase
-    .from("invoices")
-    .select("journal_entry_id")
-    .eq("id", id)
-    .eq("status", "open")
-    .maybeSingle();
+  const { error } = await supabase.rpc("void_invoice", { p_invoice_id: id });
+  if (error) return { error: error.message };
 
-  if (!invoice) return;
-
-  if (invoice.journal_entry_id) {
-    await supabase
-      .from("journal_entries")
-      .update({ status: "void" })
-      .eq("id", invoice.journal_entry_id)
-      .eq("status", "posted");
+  const { data: voided } = await supabase.from("invoices").select("invoice_number, organization_id").eq("id", id).maybeSingle();
+  if (voided) {
+    ensureServerPluginsLoaded();
+    await emitHook("invoice:voided", { invoiceId: id, invoiceNumber: voided.invoice_number as string, orgId: voided.organization_id as string });
   }
 
-  await supabase.from("invoices").update({ status: "void" }).eq("id", id).eq("status", "open");
-
   revalidatePath("/customers/invoices");
+  revalidatePath("/transactions");
+  return { error: null };
 }

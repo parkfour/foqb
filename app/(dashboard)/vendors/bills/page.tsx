@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VoidButton } from "@/components/ui/void-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current";
@@ -119,16 +120,16 @@ export default async function BillsListPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        {userCanWrite && bill.status === "open" && (
-                          <form action={voidBill}>
-                            <input type="hidden" name="id" value={bill.id} />
-                            <button
-                              type="submit"
-                              className="text-sm text-slate-400 hover:text-red-600"
-                            >
-                              Void
-                            </button>
-                          </form>
+                        {userCanWrite && bill.status !== "void" && (
+                          <VoidButton
+                            id={bill.id}
+                            action={voidBill}
+                            warning={
+                              bill.bill_payments.length > 0
+                                ? "Its payments are undone too, and their bank transactions go back to the feed."
+                                : undefined
+                            }
+                          />
                         )}
                       </td>
                     </tr>

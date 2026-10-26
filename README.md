@@ -29,22 +29,25 @@ comparison for a general-ledger product like this).
 | Bank reconciliation | ✅ | not detailed/limited | ✅ |
 | Auto-categorization rules | ✅ | ❌ (Pro only) | ✅ |
 | Invoicing | ✅ (multi-line; several named sales tax rates, each with its own liability account, and a Sales Tax report) | ✅ | ✅ |
+| Estimates, credit memos, customer statements | ✅ | ✅ estimates | ✅ |
 | Emailing invoices to customers | ✅ (plugin, through your own mail server) | ✅ | ✅ |
-| Recurring invoices/bills | ✅ | ❌ | ❌ (Essentials+) |
+| Recurring invoices/bills | ✅ (generated automatically) | ❌ | ❌ (Essentials+) |
 | Bill entry / accounts payable | ✅ (full AP workflow) | ❌ | ✅ |
 | Partial payments (AR/AP) | ✅ | not detailed | ✅ |
-| Reports: P&L, Balance Sheet, Trial Balance | ✅ all three | "basic reporting" only | ✅ all three, plus General Ledger |
+| Reports: P&L, Balance Sheet, Trial Balance | ✅ all three, plus Cash Flows, General Ledger and P&L by Class | "basic reporting" only | ✅ all three, plus General Ledger |
 | AR/AP aging reports | ✅ | ❌ | unclear/likely Essentials |
 | Fixed assets + depreciation | ✅ | ❌ | ❌ (Advanced tier only) |
-| Inventory tracking | ✅ (basic) | ❌ | ❌ (Plus/Advanced only) |
+| Inventory tracking | ✅ (average cost, to cost of goods sold) | ❌ | ❌ (Plus/Advanced only) |
+| Classes (departments, locations) | ✅ | ❌ | ❌ (Plus only) |
 | Audit log | ✅ | ❌ | not advertised at this tier |
 | Multi-user / roles | ✅ (owner/accountant/viewer) | ❌ single user (Pro adds users) | ❌ 1 user |
 | File attachments (receipts) | ✅ (PDFs and photos, on any entry, bill or bank booking) | ❌ (Pro only) | ✅ |
 | CSV import/export | ✅ | limited | ✅ |
 | Offline support (PWA) | ✅ | ❌ | ❌ |
-| Multi-currency | partial (one currency per book, no conversion) | ❌ | ❌ (Essentials+) |
+| Multi-currency | ✅ (a currency per book, and accounts in other currencies with revaluation) | ❌ | ❌ (Essentials+) |
 | 1099-NEC report (contractor vendors, by payment date, card payments left out) | ✅ | ❌ | ✅ |
-| Mileage / time tracking | ❌ | ❌ | ✅ |
+| Mileage / time tracking | ✅ (IRS rate by trip date; unbilled hours to an invoice) | ❌ | ✅ |
+| Payroll | ⚠️ US plugin, to check with a tax professional; files nothing | ❌ (paid add-on) | ❌ (paid add-on) |
 | Online payment collection | ✅ (Stripe plugin, Stripe's fees) | ✅ (2.9%+$0.60/txn) | ✅ |
 | Self-hosted / open source | ✅ | ❌ | ❌ |
 | Cost | $0 (your infra), plus a live feed's fees¹ | $0 | $38/mo |
@@ -59,9 +62,10 @@ plugin and CSV import still bring in transactions
 
 Receipts and documents attach to any journal entry, so to every bill,
 expense and bank booking; the receipt-scanning plugin keeps the photo it
-read with the bill. Currency is
-per book: a book can be kept in KRW or JPY, but one book can't hold accounts
-in several currencies or convert between them.
+read with the bill. Each book has
+its currency (KRW or JPY, say), and a bank account, card or loan inside it
+can be kept in another, with revaluation to an exchange gain or loss
+([docs/CURRENCY.md](docs/CURRENCY.md)).
 
 ### Open-source alternatives
 
@@ -85,8 +89,10 @@ books beside the business, under one login.
 
 An organization can also be a **household**: the same ledger and bank feed,
 with a net worth page whose every figure opens what's behind it, a
-checkbook-style register with split transactions, a monthly budget, a list
-of properties you value yourself, and accounts tagged with Form 1040 lines
+checkbook-style register with split transactions, a monthly budget (with
+rollover, or zero-based envelopes), investment holdings at market value,
+recurring charges found in the bank feed, a list of properties, and accounts
+tagged with Form 1040 lines
 (Schedule E per rental). Run your
 business and your family finances side by side and switch between them from
 the header. **Between Your Books** posts one event to both at once: a
@@ -99,16 +105,17 @@ compares with Firefly III, Actual, GnuCash, Quicken, Monarch, YNAB and others.
 
 ![Household net worth: accounts and the house by kind, with its history](docs/screenshots/household-net-worth.jpg)
 
-**Investments aren't imported.** Brokerage and retirement accounts count
-through their ledger balances, but FOQB doesn't pull in holdings, prices or
-cost basis. Doing that through Plaid needs its separate Investments product,
-which your Plaid account has to be approved (and billed) for. HOUSEHOLD.md
-lists what adding it would take. Property values are likewise entered by
-hand; there's no automatic valuation.
+**Investment holdings are entered, not imported.** Record buys and sells
+by symbol; prices come from the Security prices plugin or by hand, and
+net worth counts holdings at market value, at average cost (no tax lots).
+Pulling holdings in through Plaid needs its separate Investments product,
+which your Plaid account has to be approved (and billed) for. Property
+values are entered by hand, or updated weekly by the Property values plugin
+through a property-data API you subscribe to.
 
 ## Plugins
 
-Eight optional plugins ship with FOQB. An instance runs them all unless the
+Twelve optional plugins ship with FOQB. An instance runs them all unless the
 operator narrows the list with `FOQB_PLUGINS`; a Site Admin and each book's
 owner then choose where each one is on:
 
@@ -129,6 +136,14 @@ owner then choose where each one is on:
   reference rate, marked as an estimate.
 - **Stripe payments**: a payment link on each invoice for the customer to
   pay by card; Stripe's word that it's paid records the payment.
+- **Security prices**: the latest closing price of each holding on the
+  Investments page, from Stooq's free daily quotes.
+- **Property values**: each property's value, weekly, from a Zillow
+  estimate through a property-data API the instance subscribes to.
+- **Payroll (US)** and **EU VAT**: withholding, paychecks and draft 941,
+  940 and W-2 figures; VAT rates, reverse charge and a VAT summary. Both do
+  nothing until a Site Admin and each book's owner acknowledge that they
+  aren't tax advice and must be checked with a tax professional.
 
 | Email invoices | Receipt scanning |
 |---|---|

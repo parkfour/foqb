@@ -1,5 +1,6 @@
 import { addSalesTaxRate, setSalesTaxRateActive } from "@/app/(dashboard)/settings/sales-tax-actions";
 import { formatAccountLabel } from "@/lib/accounts/format";
+import { SalesTaxLookup } from "./sales-tax-lookup";
 
 interface Rate {
   id: string;
@@ -21,12 +22,15 @@ export function SalesTaxRates({
   liabilityAccounts,
   canWrite,
   showAccountCodes,
+  lookupSources = [],
 }: {
   organizationId: string;
   rates: Rate[];
   liabilityAccounts: AccountOption[];
   canWrite: boolean;
   showAccountCodes: boolean;
+  // Names of the book's plugins that look rates up by address.
+  lookupSources?: string[];
 }) {
   const accountName = (id: string | null) => {
     const account = liabilityAccounts.find((a) => a.id === id);
@@ -91,6 +95,7 @@ export function SalesTaxRates({
           </button>
         </form>
       )}
+      {canWrite && lookupSources.length > 0 && <SalesTaxLookup organizationId={organizationId} sources={lookupSources} />}
     </div>
   );
 }

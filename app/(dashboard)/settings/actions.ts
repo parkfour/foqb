@@ -481,3 +481,22 @@ export async function updatePluginSettings(formData: FormData): Promise<void> {
   revalidatePath("/settings");
   revalidatePath("/", "layout");
 }
+
+// An owner acknowledging a plugin's disclaimer for this book (the database
+// checks they're an owner, and records who and when).
+export async function acknowledgePluginForBook(formData: FormData): Promise<void> {
+  const organizationId = formData.get("organizationId") as string;
+  const pluginId = formData.get("pluginId") as string;
+  const plugin = availablePlugins.find((p) => p.manifest.id === pluginId);
+  if (!organizationId || !plugin?.manifest.acknowledgement || formData.get("confirm") !== "on") return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("acknowledge_plugin", {
+    p_plugin_id: pluginId,
+    p_version: plugin.manifest.acknowledgement.version,
+    p_org_id: organizationId,
+  });
+  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/settings");
+  revalidatePath("/", "layout");
+}

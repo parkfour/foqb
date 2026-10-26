@@ -12,7 +12,7 @@ import { BookClockProvider } from "@/components/providers/book-clock-provider";
 import { BookCurrencyProvider } from "@/components/providers/book-currency-provider";
 import { getBookCurrency } from "@/lib/org/book-currency";
 import { EnabledPluginsProvider } from "@/components/plugins/plugin-slot";
-import { enabledPluginIds } from "@/lib/plugins/loader";
+import { ungatedPluginIds } from "@/lib/plugins/acknowledgements";
 import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
 import { pluginPageLinks } from "@/lib/plugins/pages";
 import { UncategorizedToast } from "@/components/layout/uncategorized-toast";
@@ -33,12 +33,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   ]);
 
   let inventoryEnabled = false;
-  let orgPluginIds = enabledPluginIds();
+  let orgPluginIds = ungatedPluginIds();
   if (currentOrgId) {
     const supabase = await createClient();
     const [orgData, pluginIds] = await Promise.all([
       supabase.from("organizations").select("inventory_enabled").eq("id", currentOrgId).maybeSingle(),
-      getOrgEnabledPluginIds(supabase, currentOrgId).catch(() => enabledPluginIds()),
+      getOrgEnabledPluginIds(supabase, currentOrgId).catch(() => ungatedPluginIds()),
     ]);
     inventoryEnabled = (orgData.data as { inventory_enabled: boolean } | null)?.inventory_enabled ?? false;
     orgPluginIds = pluginIds;

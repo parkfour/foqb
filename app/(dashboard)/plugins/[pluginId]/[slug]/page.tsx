@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PluginPageHost } from "@/components/plugins/plugin-page";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUserOrganizations, getWorkspaceType } from "@/lib/org/current";
 import { createClient } from "@/lib/supabase/server";
-import { enabledPluginIds } from "@/lib/plugins/loader";
+import { ungatedPluginIds } from "@/lib/plugins/acknowledgements";
 import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
 import { findPluginPage } from "@/lib/plugins/pages";
 
@@ -17,7 +17,7 @@ export default async function PluginPageRoute({ params }: { params: Promise<{ pl
     getWorkspaceType(orgId),
     getCurrentUserRole(orgId),
     getUserOrganizations(),
-    getOrgEnabledPluginIds(supabase, orgId).catch(() => enabledPluginIds()),
+    getOrgEnabledPluginIds(supabase, orgId).catch(() => ungatedPluginIds()),
   ]);
   const page = findPluginPage(pluginId, slug, workspaceType, orgPluginIds);
   if (!page) notFound();

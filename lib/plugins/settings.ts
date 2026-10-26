@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { availablePlugins } from "@/plugins";
 import { isPluginEnabled } from "./loader";
+import { fetchAcknowledgements, isAcknowledged, type AcknowledgementStatus } from "./acknowledgements";
 import { getSiteSettings, pluginSiteMode, type PluginSiteMode } from "@/lib/site/settings";
 import type { FOQBPlugin, OrgPluginConfig, PluginSettingDefinition, PluginSettingValue } from "./types";
 
@@ -71,17 +72,23 @@ async function modesOr(supabase: SupabaseClient, modes: Modes | undefined): Prom
 // Whether a plugin the instance runs is on for a book: never when the site
 // turned it off; otherwise the book's own choice, or else the site's
 // default ("on", or "choose", which starts off).
+// A plugin with a disclaimer is off, whatever the book chose, until both
+// the instance and the book have acknowledged it.
 function resolveConfig(
   plugin: FOQBPlugin,
   row: { value: StoredConfig; updated_at?: string } | undefined,
   mode: PluginSiteMode,
+  acknowledgement?: AcknowledgementStatus,
 ): OrgPluginConfig {
   const byDefault = mode === "on";
-  if (!row?.value) return { enabled: mode !== "off" && byDefault, settings: getDefaultPluginSettings(plugin) };
+  const allowed = mode !== "off" && (!plugin.manifest.acknowledgement || isAcknowledged(acknowledgement));
+  const gate = plugin.manifest.acknowledgement ? { acknowledgement: acknowledgement ?? { site: null, book: null } } : {};
+  if (!row?.value) return { enabled: allowed && byDefault, settings: getDefaultPluginSettings(plugin), ...gate };
   return {
-    enabled: mode !== "off" && (typeof row.value.enabled === "boolean" ? row.value.enabled : byDefault),
+    enabled: allowed && (typeof row.value.enabled === "boolean" ? row.value.enabled : byDefault),
     settings: mergeSettingsWithDefaults(row.value.settings, plugin),
     updatedAt: row.updated_at,
+    ...gate,
   };
 }
 
@@ -109,7 +116,8 @@ export async function getOrgPluginConfig(
   if (error) throw new Error(error.message);
 
   const mode = pluginSiteMode(await modesOr(supabase, modes), pluginId);
-  return resolveConfig(plugin, (data as { value: StoredConfig; updated_at?: string } | null) ?? undefined, mode);
+  const acks = plugin.manifest.acknowledgement ? await fetchAcknowledgements(supabase, orgId, [plugin]) : undefined;
+  return resolveConfig(plugin, (data as { value: StoredConfig; updated_at?: string } | null) ?? undefined, mode, acks?.get(pluginId));
 }
 
 // Gets configs for all instance-available plugins for an organization
@@ -130,12 +138,12 @@ export async function getAllOrgPluginConfigs(
   const rows = new Map(
     ((data as { plugin_id: string; value: StoredConfig; updated_at?: string }[] | null) ?? []).map((r) => [r.plugin_id, r]),
   );
+  const running = available.filter((p) => isPluginEnabled(p.manifest.id));
+  const acks = running.some((p) => p.manifest.acknowledgement) ? await fetchAcknowledgements(supabase, orgId, running) : new Map();
   const result: Record<string, OrgPluginConfig> = {};
-  for (const plugin of available) {
+  for (const plugin of running) {
     const id = plugin.manifest.id;
-    if (isPluginEnabled(id)) {
-      result[id] = resolveConfig(plugin, rows.get(id), pluginSiteMode(siteModes, id));
-    }
+    result[id] = resolveConfig(plugin, rows.get(id), pluginSiteMode(siteModes, id), acks.get(id));
   }
   return result;
 }

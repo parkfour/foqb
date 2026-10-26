@@ -22,7 +22,7 @@ export function Header({ organizations, currentOrgId, role }: HeaderProps) {
   const currentOrg = organizations.find((org) => org.id === currentOrgId);
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
+    <header className="flex h-16 items-center justify-between print:hidden border-b border-slate-200 bg-white px-4 md:px-6">
       <div className="ml-12 flex items-center gap-2 md:ml-0">
         {organizations.length > 0 ? (
           <>

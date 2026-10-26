@@ -4,7 +4,8 @@
 "use client";
 
 import { availablePlugins } from "@/plugins";
-import type { PluginPageContext } from "@/lib/plugins/types";
+import type { PluginPageContext, PluginReportContext } from "@/lib/plugins/types";
+import { findPluginReport } from "@/lib/plugins/pages";
 
 // A plugin's page, found again in the browser: the server already checked
 // that the plugin is enabled and has this page for this book.
@@ -13,4 +14,12 @@ export function PluginPageHost({ pluginId, slug, context }: { pluginId: string; 
   if (!page) return null;
   const Page = page.component;
   return <Page context={context} />;
+}
+
+// A plugin's report, likewise checked by the server first.
+export function PluginReportHost({ value, context }: { value: string; context: PluginReportContext }) {
+  const report = findPluginReport(value);
+  if (!report) return null;
+  const Report = report.component;
+  return <Report context={context} />;
 }

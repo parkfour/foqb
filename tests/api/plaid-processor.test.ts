@@ -82,8 +82,8 @@ describe("processBankTransactions", () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it("holds a changed amount/date on a matched transaction for review, updating only the name", async () => {
-    const { tables } = existingRow({ status: "matched", amount: -42.5, date: "2026-01-15" });
+  it("holds a changed amount/date on a matched transaction, then asks the database to apply it if it safely can", async () => {
+    const { client, tables } = existingRow({ status: "matched", amount: -42.5, date: "2026-01-15" });
 
     await processBankTransactions("org-1", "bank-account-1", [
       tx({ amount: 45, name: "COFFEE SHOP #12", date: "2026-01-16" }),
@@ -93,6 +93,7 @@ describe("processBankTransactions", () => {
       name: "COFFEE SHOP #12",
       bank_change: { amount: -45, date: "2026-01-16" },
     });
+    expect(client.rpc).toHaveBeenCalledWith("apply_bank_change", { p_bank_transaction_id: "bt-1" });
   });
 
   it("clears the review flag when a matched transaction's amount/date match what was booked", async () => {

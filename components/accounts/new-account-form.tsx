@@ -60,6 +60,13 @@ export function NewAccountForm({
           placeholder="Description (optional)"
           className="rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
+        <input
+          name="currency"
+          placeholder="Currency, if not the book's (e.g. EUR)"
+          maxLength={3}
+          title="For a bank account, card or loan kept in another currency. Assets and liabilities only."
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm uppercase"
+        />
         {taxLines.length > 0 && (
           <select
             name="taxLineId"

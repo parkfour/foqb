@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { emitHook } from "@/lib/plugins/hooks";
+import { ensureServerPluginsLoaded } from "@/lib/plugins/server-loader";
 import { getCurrentOrgId } from "@/lib/org/current";
 import { parseVendorsCsv } from "@/lib/csv/vendors";
 
@@ -57,19 +59,21 @@ export async function POST(req: NextRequest) {
   const importErrors: string[] = [...validatedErrors];
 
   for (const record of validRecords) {
-    const { error } = await supabase.from("vendors").insert({
+    const { data: created, error } = await supabase.from("vendors").insert({
       organization_id: orgId,
       name: record.name,
       email: record.email,
       phone: record.phone,
       address: record.address,
       is_active: record.is_active,
-    });
+    }).select("id").single();
 
     if (error) {
       importErrors.push(`${record.name}: ${error.message}`);
     } else {
       imported += 1;
+      ensureServerPluginsLoaded();
+      await emitHook("vendor:created", { vendorId: created.id as string, name: record.name, email: record.email ?? null, orgId });
     }
   }
 

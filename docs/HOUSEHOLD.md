@@ -124,7 +124,13 @@ next month, or what was overspent out of it, for sinking funds: car
 repairs, holidays, gifts. A rollover category's month shows its own
 budget plus what was carried over. What's carried is every earlier month's
 budget for it, less everything spent on it since its first budgeted month,
-so changing an old month's budget changes what's carried today. The start-up assistant plugin can
+so changing an old month's budget changes what's carried today.
+
+**To assign** is zero-based budgeting: the income since the first month
+anything was budgeted, less every budget through this month. Budget until
+it's zero and every dollar has a job; below zero, more was budgeted than
+came in. **Make every category an envelope** turns on roll over for all of
+them, so each one carries its balance forward. The start-up assistant plugin can
 start a budget from your average spending ([PLUGINS.md](PLUGINS.md#start-up-assistant)).
 
 ![September's budget: spending against plan, with two categories over](screenshots/household-budget.jpg)
@@ -195,16 +201,22 @@ belongs to, so each rental gets its own column. The Tax Line report
 (`/reports?report=tax-line-items`; the household menu has no Reports entry) totals
 each line, per property for Schedule E, and opens the accounts behind it.
 
-## Investments: not included
+## Investments
 
-Brokerage and retirement accounts count toward net worth through their ledger
-balances, like any other account. FOQB doesn't import holdings (shares,
-prices, cost basis). Doing that through Plaid needs its **Investments**
-product, which is separate from the Transactions product the bank feed uses:
-your Plaid account has to be approved for it, and Plaid charges for it
-separately. If you want to add it, the pieces are Plaid's
-`/investments/holdings/get`, a holdings table with the same row-level
-security as the others, and requesting `investments` in the link token.
+**Investments** (in the menu) keeps what's in each brokerage or retirement
+account: record each buy and sell (shares, price, fees), and set prices or
+press **Update prices** with the Security prices plugin on (Stooq's daily
+closes; only the symbols are sent). It shows each holding's value, cost
+and gain, at average cost.
+
+The account's ledger balance stays what was paid; net worth counts an
+account with holdings at market value instead. A trade can also be booked:
+a buy moves cash into the account at cost, a sell moves the average cost
+out and the difference to the gain or loss account you pick. Leave it
+unbooked when the bank feed already brought the cash in.
+
+Holdings aren't imported: Plaid's Investments product is separate from the
+Transactions product the feed uses, approved and charged separately.
 
 ## Backups
 

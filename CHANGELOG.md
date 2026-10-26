@@ -3,6 +3,107 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.8.0 (alpha) — 2026-10-26
+
+The alpha: FOQB is now largely feature complete for a small business and a
+household. 0.9.0, the beta, is for cleanup.
+
+### Business books
+
+- **Estimates.** Quote a customer, mark it accepted or declined, and turn
+  it into an invoice in one step. Nothing is booked until it's an invoice.
+- **Credit memos.** Give credit back to a customer, applied to one of
+  their open invoices or held until it is.
+- **Void a paid invoice or bill.** Its payments are undone too, and their
+  bank transactions go back to the feed to match again. Reconciled entries
+  and closed periods are still protected.
+- **Cost of goods sold.** Give a tracked item an inventory account and a
+  cost of goods sold account. Bills buy it into inventory at average cost;
+  invoices move that cost to cost of goods sold and take it off the count.
+- **Classes.** Tag invoices, bills and journal lines with a class (a
+  department, a location), and see the **Profit & Loss by Class**.
+- **Time tracking.** Log hours by customer and service, and turn a
+  customer's unbilled hours into an invoice.
+- **Mileage log.** Business trips at the IRS standard rate for each
+  trip's date, booked as one entry when you're ready.
+- **Customer statements.** A printable statement for any customer and
+  period: what they owed coming in, each invoice and payment, and what's
+  due.
+- **Recurring invoices and bills create themselves** on their dates, in
+  the book's timezone, catching up on any days missed.
+- **New reports:** Statement of Cash Flows, General Ledger, Profit & Loss
+  by Class, and Foreign Currency Balances.
+- **Accounts in other currencies.** A bank, card or loan account can be
+  kept in another currency. Lines on it carry the foreign amount and the
+  rate; **Foreign Currency Balances** revalues them at today's rate.
+
+### Household
+
+- **Investments.** Record buys and sells by symbol, set prices by hand or
+  with the new **Security prices** plugin, and see each holding's value,
+  cost and gain. Net worth counts holdings at market value.
+- **Envelope budgeting.** A **To assign** figure shows income not yet
+  budgeted, and one button makes every category an envelope that carries
+  its balance from month to month.
+- **Recurring Charges.** Subscriptions and other repeating charges, found
+  in the bank feed, with what they cost a year.
+- **Property values plugin (new).** Updates each property's estimated
+  value weekly from a Zillow estimate, through a property-data API the
+  instance subscribes to.
+
+### Everywhere
+
+- **Re-importing a journal entry CSV books each entry once.** Entries
+  already imported are skipped and counted.
+- **A bank's correction to a transaction is applied by itself** when it's
+  a plain categorized one; anything else is still held for you.
+- **The email-invoices plugin sends overdue reminders**, a set number of
+  days apart.
+
+### Plugins that need a tax professional
+
+- **Payroll (US) and EU VAT (new).** Both carry a large disclaimer and do
+  nothing until a Site Admin acknowledges it for the instance and each
+  book's owner acknowledges it for their book. A new version of the
+  disclaimer asks again.
+- **Payroll** withholds federal income tax from the IRS Publication 15-T
+  tables (2026), Social Security, Medicare and FUTA, and state and local
+  tax at flat rates you enter; posts one entry per paycheck; and drafts the
+  figures for Forms 941, 940 and W-2. It files and pays nothing.
+- **EU VAT** keeps your country's rates as tax rates, marks reverse-charge
+  customers, and totals output and input VAT for a period. It files
+  nothing and doesn't handle OSS or each country's return boxes.
+
+### For plugin authors
+
+- **Ten new events:** invoices and bills voided, estimates created and
+  accepted, declined or invoiced, credit memos, customers and vendors
+  added, and, recorded by the database whatever made the change, every
+  journal entry posted, every bank transaction imported, and the books
+  being closed. A credit memo applied to an invoice now fires
+  `invoice_payment:recorded`, as every payment should.
+- **Invoice notes and checks.** A plugin can print lines at the foot of an
+  invoice and its PDF, and refuse an invoice before it's saved. The EU VAT
+  plugin uses both: your VAT number, the reverse-charge wording, and no VAT
+  charged to a reverse-charge customer.
+- **Reports** of a plugin's own, under Financial Reports (the VAT summary
+  and payroll's draft forms are there now).
+- **Slots on estimates and customer statements**, which the email plugin
+  uses to email them.
+- **Shared mail, bank feeds and sales tax lookup.** A plugin can send mail
+  as the book through whichever plugin has a mail server, bring in a bank
+  feed FOQB doesn't build in (GoCardless, say), or look up sales tax rates
+  by address under Settings → Sales tax.
+- **Webhooks** can subscribe to all of these events.
+
+### Not yet (planned for 0.9.0)
+
+- Unapplied credit memos lower Accounts Receivable but aren't in AR Aging
+  or on statements.
+- Voiding a bill doesn't undo its change to an item's average cost.
+- Bank feeds on accounts in another currency aren't converted.
+- Net worth history doesn't include investment gains; today's figure does.
+
 ## 0.7.0 — 2026-10-25
 
 ### Business books

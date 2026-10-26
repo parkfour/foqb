@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { addDays } from "@/lib/time/book-time";
+import { fetchHoldings, unrealizedByAccount } from "@/lib/investments/value";
 
 export interface NetWorthBreakdown {
   cash: number;
@@ -79,11 +80,14 @@ export async function calculateHouseholdNetWorth(
 ): Promise<NetWorthSnapshotData> {
   const supabase = supabaseClient ?? (await createClient());
 
-  const [{ data: balances, error }, { data: properties }, { data: fed }] = await Promise.all([
+  const [{ data: balances, error }, { data: properties }, { data: fed }, holdings] = await Promise.all([
     supabase.rpc("get_balance_sheet", { p_org_id: orgId, p_as_of_date: today }),
     supabase.from("properties").select("name, estimated_value, purchase_price").eq("organization_id", orgId),
     supabase.from("accounts").select("id").eq("organization_id", orgId).eq("has_bank_feed", true),
+    fetchHoldings(supabase, orgId, today),
   ]);
+  // An account with holdings counts at what they're worth, not what they cost.
+  const unrealized = unrealizedByAccount(holdings);
   const bankFed = new Set(((fed ?? []) as { id: string }[]).map((a) => a.id));
   if (error) throw new Error(`Failed to load account balances: ${error.message}`);
 
@@ -108,8 +112,9 @@ export async function calculateHouseholdNetWorth(
   // credit for liabilities); an overdrawn account stays negative.
   for (const row of (balances ?? []) as { account_id: string | null; account_number: string; name: string; type: string; balance: number | string }[]) {
     if (!row.account_id) continue;
-    const bucket = bucketOf(row, bankFed.has(row.account_id));
-    if (bucket) add({ bucket, name: row.name, amount: Number(row.balance), href: `/reports/account/${row.account_id}?from=networth` });
+    const gain = unrealized.get(row.account_id);
+    const bucket = gain === undefined ? bucketOf(row, bankFed.has(row.account_id)) : "investments";
+    if (bucket) add({ bucket, name: row.name, amount: Number(row.balance) + (gain ?? 0), href: `/reports/account/${row.account_id}?from=networth` });
   }
 
   for (const p of (properties ?? []) as { name: string | null; estimated_value: number | string | null; purchase_price: number | string | null }[]) {

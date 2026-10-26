@@ -2,7 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanupUnclaimedMembers } from "./cleanup-unclaimed-members";
 import { cleanupRateLimits } from "./cleanup-rate-limits";
 import { SIMPLEFIN_SYNC_INTERVAL_SECONDS, syncAllSimplefin } from "@/lib/simplefin/sync";
+import { RECURRING_INTERVAL_SECONDS, generateDueRecurring } from "@/lib/recurring/generate";
 import { enabledPluginJobs, runningPluginIds } from "@/lib/plugins/server-loader";
+import { PLUGIN_EVENTS_INTERVAL_SECONDS, deliverPluginEvents } from "@/lib/plugins/events-outbox";
 
 // Runs maintenance jobs inline off real traffic instead of a scheduled
 // job — Vercel's Hobby plan caps cron jobs at one per account, and two
@@ -17,6 +19,10 @@ const JOBS: { name: string; minIntervalSeconds: number; run: () => Promise<unkno
   { name: "cleanup-rate-limits", minIntervalSeconds: 60 * 60, run: cleanupRateLimits },
   // SimpleFIN has no webhooks, so its banks are asked for news on a timer.
   { name: "simplefin-sync", minIntervalSeconds: SIMPLEFIN_SYNC_INTERVAL_SECONDS, run: syncAllSimplefin },
+  // Recurring invoices and bills whose next date has come.
+  { name: "recurring-generate", minIntervalSeconds: RECURRING_INTERVAL_SECONDS, run: generateDueRecurring },
+  // Events the database recorded for plugins (posted entries, new bank rows, period locks).
+  { name: "plugin-events", minIntervalSeconds: PLUGIN_EVENTS_INTERVAL_SECONDS, run: deliverPluginEvents },
 ];
 
 export async function maybeRunDueCronJobs(): Promise<void> {

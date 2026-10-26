@@ -10,6 +10,10 @@ import { mortgageNotesPlugin } from "./mortgage-notes";
 import { startupAssistantPlugin } from "./startup-assistant";
 import { exchangeRatesPlugin } from "./exchange-rates";
 import { stripePaymentsPlugin } from "./stripe-payments";
+import { securityPricesPlugin } from "./security-prices";
+import { propertyValuesPlugin } from "./property-values";
+import { payrollPlugin } from "./payroll";
+import { euVatPlugin } from "./eu-vat";
 import { localPlugins } from "./local.generated";
 
 // Plugins shipped in this repository. The instance runs them all unless
@@ -23,6 +27,10 @@ export const builtInPlugins: FOQBPlugin[] = [
   startupAssistantPlugin,
   exchangeRatesPlugin,
   stripePaymentsPlugin,
+  securityPricesPlugin,
+  propertyValuesPlugin,
+  payrollPlugin,
+  euVatPlugin,
 ];
 
 // Those plus the private plugins checked out under plugins/local. A private

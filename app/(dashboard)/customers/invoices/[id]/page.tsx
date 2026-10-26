@@ -2,9 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { InvoiceDetail } from "@/components/customers/invoice-detail";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/org/current";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { invoiceNotes } from "@/lib/plugins/server-loader";
 
 interface RawInvoice {
   id: string;
+  customer_id: string | null;
   invoice_number: string;
   invoice_date: string;
   due_date: string | null;
@@ -40,7 +43,7 @@ export default async function InvoiceDetailPage({
     supabase
       .from("invoices")
       .select(
-        "id, invoice_number, invoice_date, due_date, status, tax_rate, tax_amount, customers(name, email, billing_address), invoice_lines(description, quantity, unit_price, amount), invoice_payments(amount), invoice_taxes(name, rate, amount)",
+        "id, customer_id, invoice_number, invoice_date, due_date, status, tax_rate, tax_amount, customers(name, email, billing_address), invoice_lines(description, quantity, unit_price, amount), invoice_payments(amount), invoice_taxes(name, rate, amount)",
       )
       .eq("id", id)
       .eq("organization_id", orgId)
@@ -57,6 +60,8 @@ export default async function InvoiceDetailPage({
   const taxAmount = Number(typedInvoice.tax_amount);
   const total = subtotal + taxAmount;
   const paid = typedInvoice.invoice_payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  // Read after RLS let this member see the invoice.
+  const notes = await invoiceNotes(createAdminClient(), { id, organizationId: orgId, customerId: typedInvoice.customer_id });
 
   return (
     <InvoiceDetail
@@ -75,6 +80,7 @@ export default async function InvoiceDetailPage({
       taxes={typedInvoice.invoice_taxes.map((t) => ({ name: t.name, rate: Number(t.rate), amount: Number(t.amount) }))}
       total={total}
       remaining={Math.round((total - paid) * 100) / 100}
+      notes={notes}
     />
   );
 }

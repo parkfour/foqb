@@ -2,11 +2,17 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { RANGE_REPORTS } from "./report-types";
+import type { PluginReportOption } from "@/lib/plugins/pages";
 
 const REPORT_TYPES = [
   { value: "trial-balance", label: "Trial Balance" },
   { value: "income-statement", label: "Income Statement (P&L)" },
+  { value: "income-statement-by-class", label: "Profit & Loss by Class" },
   { value: "balance-sheet", label: "Balance Sheet" },
+  { value: "cash-flow-statement", label: "Statement of Cash Flows" },
+  { value: "general-ledger", label: "General Ledger" },
+  { value: "foreign-balances", label: "Foreign Currency Balances" },
   { value: "ar-aging", label: "AR Aging" },
   { value: "ap-aging", label: "AP Aging" },
   { value: "tax-line-items", label: "Tax Line Report" },
@@ -20,15 +26,18 @@ export function ReportControls({
   start,
   end,
   year,
+  pluginReports = [],
 }: {
   report: string;
   asOf: string;
   start: string;
   end: string;
   year: number;
+  pluginReports?: PluginReportOption[];
 }) {
   const router = useRouter();
   const [selectedReport, setSelectedReport] = useState(report);
+  const isRange = RANGE_REPORTS.has(selectedReport) || pluginReports.some((r) => r.value === selectedReport && r.range);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,7 +47,7 @@ export function ReportControls({
 
     if (selectedReport === "1099-nec") {
       params.set("year", formData.get("year") as string);
-    } else if (selectedReport === "income-statement" || selectedReport === "tax-line-items" || selectedReport === "sales-tax") {
+    } else if (isRange) {
       params.set("start", formData.get("start") as string);
       params.set("end", formData.get("end") as string);
     } else {
@@ -66,6 +75,15 @@ export function ReportControls({
               {r.label}
             </option>
           ))}
+          {pluginReports.length > 0 && (
+            <optgroup label="From plugins">
+              {pluginReports.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </div>
 
@@ -84,7 +102,7 @@ export function ReportControls({
             className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
         </div>
-      ) : selectedReport === "income-statement" || selectedReport === "tax-line-items" || selectedReport === "sales-tax" ? (
+      ) : isRange ? (
         <>
           <div className="flex flex-col gap-1">
             <label htmlFor="start" className="text-xs font-medium text-slate-600">

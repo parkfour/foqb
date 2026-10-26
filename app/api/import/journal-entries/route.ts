@@ -5,6 +5,11 @@ import { parseJournalEntriesCsv, type JournalEntryRecord } from "@/lib/csv/journ
 import { isWaveJournalCsv, parseWaveJournalEntriesCsv } from "@/lib/csv/wave-journal-entries";
 import { nextAccountNumbers } from "@/lib/org/account-numbering";
 import type { AccountType } from "@/lib/csv/accounts";
+import { entryFingerprint } from "@/lib/csv/entry-fingerprint";
+import { readAllRows } from "@/lib/supabase/read-all";
+
+// journal_entries.source for entries this importer made (migration 091).
+const SOURCE = "csv-import";
 
 export async function POST(req: NextRequest) {
   const orgId = await getCurrentOrgId();
@@ -106,9 +111,29 @@ export async function POST(req: NextRequest) {
   // dry-run mode.
   const validatedErrors: string[] = [...errors];
   let wouldImport = 0;
-  const validEntries: typeof entries = [];
+  const validEntries: (JournalEntryRecord & { externalId: string })[] = [];
+
+  // Entries already brought in by an earlier import are skipped.
+  const previous = await readAllRows<{ external_id: string }>((from, to) =>
+    supabase
+      .from("journal_entries")
+      .select("external_id")
+      .eq("organization_id", orgId)
+      .eq("source", SOURCE)
+      .order("id")
+      .range(from, to),
+  );
+  const alreadyImported = new Set(previous.map((r) => r.external_id));
+  let skipped = 0;
 
   for (const entry of entries) {
+    const externalId = entryFingerprint(entry);
+    if (alreadyImported.has(externalId)) {
+      skipped += 1;
+      continue;
+    }
+    alreadyImported.add(externalId);
+
     const missingAccounts = [
       ...new Set(entry.lines.map((l) => l.accountNumber).filter((num) => !accountIdByNumber.has(num))),
     ];
@@ -119,7 +144,7 @@ export async function POST(req: NextRequest) {
     }
 
     wouldImport += 1;
-    validEntries.push(entry);
+    validEntries.push({ ...entry, externalId });
   }
 
   if (dryRun) {
@@ -127,6 +152,7 @@ export async function POST(req: NextRequest) {
       success: true,
       dryRun: true,
       imported: wouldImport,
+      skipped,
       errors: validatedErrors,
     });
   }
@@ -144,10 +170,16 @@ export async function POST(req: NextRequest) {
         entry_date: entry.entryDate,
         memo: entry.memo,
         status: "draft",
+        source: SOURCE,
+        external_id: entry.externalId,
       })
       .select("id")
       .single();
 
+    if (entryError?.code === "23505") {
+      skipped += 1;
+      continue;
+    }
     if (entryError || !draft) {
       importErrors.push(`Entry ${entry.ref}: ${entryError?.message ?? "failed to create"}`);
       continue;
@@ -182,5 +214,5 @@ export async function POST(req: NextRequest) {
     imported += 1;
   }
 
-  return NextResponse.json({ success: true, dryRun: false, imported, errors: importErrors });
+  return NextResponse.json({ success: true, dryRun: false, imported, skipped, errors: importErrors });
 }

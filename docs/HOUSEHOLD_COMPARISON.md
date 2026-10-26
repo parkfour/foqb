@@ -14,9 +14,9 @@ marks something we couldn't confirm.
 | Runs as | Web app / PWA, self-hosted or hosted | Web app, self-hosted | Web or desktop app, local-first with an optional sync server | Desktop | Desktop |
 | Double-entry ledger | ✅ | ✅ | ❌ (budget-first) | ✅ | ✅ |
 | Live bank feed | ✅ Plaid (pushed as it happens) or SimpleFIN (every few hours) | Separate Data Importer (SimpleFIN, GoCardless and others) | "Bank Sync" button (SimpleFIN, GoCardless, Pluggy) | File import (OFX/QIF/CSV); AqBanking for some banks | File import (OFX/QIF/CSV); AqBanking for some banks |
-| Budgeting | Monthly amount per expense account, optional rollover (sinking funds) | Budgets, piggy banks | Envelope (zero-based) budgeting | Budgets | Budgets |
+| Budgeting | Monthly per expense account, rollover (sinking funds), envelopes with income to assign | Budgets, piggy banks | Envelope (zero-based) budgeting | Budgets | Budgets |
 | Net worth | ✅ every figure opens its accounts; history chart | ✅ | ✅ report | ✅ report | ✅ report |
-| Investment holdings and prices | ❌ balances only | ❌ balances only | ❌ balances only | ✅ | ✅ |
+| Investment holdings and prices | ✅ trades, prices (plugin or by hand), average cost | ❌ balances only | ❌ balances only | ✅ | ✅ |
 | Property values | ✅ entered by hand | as an asset account | as an account | as an asset account | as an asset account |
 | Several people, with roles | ✅ owner / accountant / viewer, two-factor | mostly one user | ✅ with a sync server | ❌ | ❌ |
 | Business books beside the household | ✅ same login; business equity rolls into net worth; one event posts to both books | ❌ | ❌ | ✅ in one file (invoices, bills) | ❌ |
@@ -38,8 +38,8 @@ investment lots and prices, and don't need a web app or several users.
 | Runs as | Web app / PWA | Windows / Mac desktop, with a mobile companion | Web and mobile | Web and mobile | Web and mobile | iPhone, iPad, Mac |
 | Double-entry ledger | ✅ | ❌ (register-based) | ❌ | ❌ | ❌ | ❌ |
 | Bank feed | ✅ Plaid | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Budgeting | Monthly per account, with rollover | ✅ | Spending plan | ✅ | Zero-based, its core | ✅ |
-| Investment holdings | ❌ | ✅ (more tools in Premier) | ✅ | ✅ | ❌ balances only | ✅ |
+| Budgeting | Monthly, rollover, zero-based envelopes | ✅ | Spending plan | ✅ | Zero-based, its core | ✅ |
+| Investment holdings | ✅ entered, not imported | ✅ (more tools in Premier) | ✅ | ✅ | ❌ balances only | ✅ |
 | Property values | entered by hand | entered by hand | ? | ✅ automatic home value (Zillow) | as a tracking account | ? |
 | Business or rentals | ✅ full business books; per-rental Schedule E | Business & Personal plan: Schedule C/E, invoices, rentals | ❌ | ❌ | ❌ | ❌ |
 | Household members | ✅ any number, with roles | one data file | ? | shared household | up to 6 people | one person per subscription |
@@ -57,12 +57,13 @@ data on your own server.
 
 ## FOQB's gaps for households
 
-- **No investment holdings.** Brokerage and retirement accounts count only
-  through their ledger balances (see [HOUSEHOLD.md](HOUSEHOLD.md#investments-not-included)).
+- **Holdings are entered, not imported.** Trades go in by hand; prices come
+  from a plugin or by hand, and there are no tax lots, only average cost (see
+  [HOUSEHOLD.md](HOUSEHOLD.md#investments)).
 - **No automatic property values.** They're entered by hand.
-- **Budgets are simple:** a monthly amount per expense account, which can
-  roll over, but no zero-based envelope budgeting (giving every dollar of
-  income a job, as YNAB and Actual do).
+- **Envelopes, simply.** Zero-based budgeting works by account and month,
+  with income to assign; there are no goals, targets or moving money
+  between envelopes mid-month as YNAB does.
 - **No native phone app.** It's an installable web app (PWA).
 - **Bank feeds for self-hosters.** SimpleFIN (about $15 a year) needs no
   approval; Plaid needs your own approved account. Without either, the

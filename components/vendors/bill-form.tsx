@@ -9,6 +9,7 @@ import { PluginSlot } from "@/components/plugins/plugin-slot";
 import type { BillPrefill } from "@/lib/plugins/types";
 import { useMoney } from "@/components/providers/book-currency-provider";
 import { uploadAttachment } from "@/components/attachments/attachments";
+import { ClassSelect, type ClassOption } from "@/components/classes/class-select";
 
 interface VendorOption {
   id: string;
@@ -21,7 +22,16 @@ interface AccountOption {
   name: string;
 }
 
+// An item that is stock (migration 086): a bill line for it goes to its
+// inventory account and adds to its count.
+interface StockItemOption {
+  id: string;
+  name: string;
+  inventory_account_id: string;
+}
+
 interface LineDraft {
+  itemId: string;
   accountId: string;
   description: string;
   quantity: string;
@@ -29,7 +39,7 @@ interface LineDraft {
 }
 
 function emptyLine(): LineDraft {
-  return { accountId: "", description: "", quantity: "1", unitPrice: "" };
+  return { itemId: "", accountId: "", description: "", quantity: "1", unitPrice: "" };
 }
 
 export function BillForm({
@@ -37,11 +47,15 @@ export function BillForm({
   vendors,
   accounts,
   showAccountCodes = true,
+  stockItems = [],
+  classes = [],
 }: {
   organizationId: string;
   vendors: VendorOption[];
   accounts: AccountOption[];
   showAccountCodes?: boolean;
+  stockItems?: StockItemOption[];
+  classes?: ClassOption[];
 }) {
   const formatCurrency = useMoney();
   const router = useRouter();
@@ -52,6 +66,7 @@ export function BillForm({
   const [dueDate, setDueDate] = useState("");
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
   const [files, setFiles] = useState<File[]>([]);
+  const [classId, setClassId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,6 +93,7 @@ export function BillForm({
     if (bill.lines?.length) {
       setLines(
         bill.lines.map((line) => ({
+          itemId: "",
           accountId: line.accountId ?? "",
           description: line.description,
           quantity: String(line.quantity),
@@ -104,6 +120,7 @@ export function BillForm({
     const parsedLines = lines
       .filter((line) => line.accountId)
       .map((line) => ({
+        ...(line.itemId ? { item_id: line.itemId } : {}),
         account_id: line.accountId,
         description: line.description,
         quantity: Number(line.quantity || 0),
@@ -128,6 +145,7 @@ export function BillForm({
           bill_date: billDate,
           due_date: dueDate || null,
           lines: parsedLines,
+          class_id: classId || null,
         }),
       });
 
@@ -193,11 +211,34 @@ export function BillForm({
             placeholder="Due date"
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
+          <ClassSelect classes={classes} value={classId} onChange={setClassId} />
         </div>
 
         <div className="flex flex-col gap-2">
           {lines.map((line, index) => (
             <div key={index} className="flex flex-wrap items-center gap-2">
+              {stockItems.length > 0 && (
+                <select
+                  value={line.itemId}
+                  onChange={(e) => {
+                    const item = stockItems.find((i) => i.id === e.target.value);
+                    updateLine(
+                      index,
+                      item
+                        ? { itemId: item.id, accountId: item.inventory_account_id, description: line.description || item.name }
+                        : { itemId: "" },
+                    );
+                  }}
+                  className="min-w-[140px] rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Stock item… (optional)</option>
+                  {stockItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               <input
                 value={line.description}
                 onChange={(e) => updateLine(index, { description: e.target.value })}
@@ -207,7 +248,8 @@ export function BillForm({
               <select
                 value={line.accountId}
                 onChange={(e) => updateLine(index, { accountId: e.target.value })}
-                className="min-w-[200px] rounded-md border border-slate-300 px-3 py-2 text-sm"
+                disabled={!!line.itemId}
+                className="min-w-[200px] rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50"
               >
                 <option value="">Expense account…</option>
                 {accounts.map((account) => (

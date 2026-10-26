@@ -33,20 +33,22 @@ export default async function ItemsPage() {
   }
 
   const supabase = await createClient();
-  const [{ data }, { data: orgData }, role, showAccountCodes] = await Promise.all([
+  const [{ data }, { data: stockData }, { data: orgData }, role, showAccountCodes] = await Promise.all([
     supabase
       .from("items")
       .select(
-        "id, name, sale_price, track_quantity, quantity_on_hand, is_active, accounts(account_number, name)",
+        "id, name, sale_price, track_quantity, quantity_on_hand, is_active, accounts!items_income_account_id_fkey(account_number, name)",
       )
       .eq("organization_id", orgId)
       .order("name"),
+    supabase.from("item_stock").select("item_id, on_hand").eq("organization_id", orgId),
     supabase.from("organizations").select("inventory_enabled").eq("id", orgId).maybeSingle(),
     getCurrentUserRole(orgId),
     getUseAccountCodes(orgId),
   ]);
 
   const items = (data as unknown as ItemRow[] | null) ?? [];
+  const onHand = new Map(((stockData ?? []) as { item_id: string; on_hand: number }[]).map((r) => [r.item_id, Number(r.on_hand)]));
   const inventoryEnabled = (orgData as { inventory_enabled: boolean } | null)?.inventory_enabled ?? false;
   const userCanWrite = canWrite(role);
 
@@ -112,7 +114,7 @@ export default async function ItemsPage() {
                       {item.sale_price != null ? formatMoney(item.sale_price, currency) : "—"}
                     </td>
                     <td className="px-5 py-3 text-slate-600">
-                      {item.track_quantity ? item.quantity_on_hand : "—"}
+                      {item.track_quantity ? (onHand.get(item.id) ?? item.quantity_on_hand) : "—"}
                     </td>
                     <td className="px-5 py-3">
                       <span

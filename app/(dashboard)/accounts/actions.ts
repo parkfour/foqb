@@ -1,5 +1,6 @@
 "use server";
 
+import { isValidCurrency } from "@/lib/money";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/app/(dashboard)/actions";
@@ -17,19 +18,27 @@ export async function createAccount(
   const type = formData.get("type") as DefaultAccount["type"];
   const description = ((formData.get("description") as string) || "").trim() || null;
   const taxLineId = (formData.get("taxLineId") as string) || null;
+  const currencyInput = ((formData.get("currency") as string) || "").trim().toUpperCase();
 
   if (!organizationId || !name || !type) {
     return { error: "Name and type are required" };
+  }
+  if (currencyInput && !isValidCurrency(currencyInput)) {
+    return { error: `${currencyInput} isn't a currency code` };
+  }
+  if (currencyInput && type !== "asset" && type !== "liability") {
+    return { error: "Only an asset or liability account can be in another currency" };
   }
 
   const supabase = await createClient();
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("use_account_codes")
+    .select("use_account_codes, currency")
     .eq("id", organizationId)
     .maybeSingle();
   const useAccountCodes = (org as { use_account_codes: boolean } | null)?.use_account_codes ?? true;
+  const bookCurrency = (org as { currency: string | null } | null)?.currency ?? "USD";
 
   if (useAccountCodes && !accountNumberInput) {
     return { error: "Account number, name, and type are required" };
@@ -46,6 +55,7 @@ export async function createAccount(
     type,
     description,
     tax_line_id: taxLineId,
+    currency: currencyInput && currencyInput !== bookCurrency ? currencyInput : null,
   });
 
   if (error) {

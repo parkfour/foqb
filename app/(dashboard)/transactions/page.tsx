@@ -6,6 +6,7 @@ import { JournalEntryForm } from "@/components/transactions/journal-entry-form";
 import { CsvImportForm } from "@/components/csv/import-form";
 import { SplitBankTransactionButton } from "@/components/transactions/split-bank-transaction-button";
 import { createClient } from "@/lib/supabase/server";
+import { fetchActiveClasses } from "@/lib/org/classes";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes, getWorkspaceType } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
@@ -37,6 +38,7 @@ interface AccountOption {
   name: string;
   type: string;
   has_bank_feed: boolean;
+  currency: string | null;
 }
 
 interface BankTransactionRow {
@@ -108,10 +110,11 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     showAccountCodes,
     { data: openData },
     workspaceType,
+    classes,
   ] = await Promise.all([
       supabase
         .from("accounts")
-        .select("id, account_number, name, type, has_bank_feed")
+        .select("id, account_number, name, type, has_bank_feed, currency")
         .eq("organization_id", orgId)
         .eq("is_active", true)
         .order("account_number"),
@@ -137,9 +140,14 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         .eq("status", "unreconciled")
         .limit(1000),
       getWorkspaceType(orgId),
+      fetchActiveClasses(supabase, orgId),
     ]);
 
-  const accounts = (accountsData as AccountOption[] | null) ?? [];
+  // Only another currency than the book's counts as foreign.
+  const accounts = ((accountsData as AccountOption[] | null) ?? []).map((a) => ({
+    ...a,
+    currency: a.currency && a.currency !== currency ? a.currency : null,
+  }));
   const transactions = (transactionsData as BankTransactionRow[] | null) ?? [];
   const journalEntries = (journalEntriesData as JournalEntryRow[] | null) ?? [];
   const userCanWrite = canWrite(role);
@@ -177,7 +185,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         <ReadOnlyNotice />
       ) : (
         !isHousehold && (
-          <JournalEntryForm organizationId={orgId} accounts={accounts} showAccountCodes={showAccountCodes} />
+          <JournalEntryForm organizationId={orgId} accounts={accounts} showAccountCodes={showAccountCodes} classes={classes} />
         )
       )}
 

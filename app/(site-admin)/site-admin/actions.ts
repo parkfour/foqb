@@ -7,6 +7,7 @@ import { adminCreateUser } from "@/lib/auth/admin-create-user";
 import { isSiteAdmin } from "@/lib/org/site-admin";
 import { getSiteSettings, PLUGIN_SITE_MODES, type PluginSiteMode } from "@/lib/site/settings";
 import { enabledPluginIds } from "@/lib/plugins/loader";
+import { availablePlugins } from "@/plugins";
 import { generatePassword } from "@/lib/auth/generate-password";
 import { removeItem } from "@/lib/plaid/client";
 import { decryptToken } from "@/lib/crypto/token-encryption";
@@ -185,5 +186,21 @@ export async function updateSiteSettings(formData: FormData): Promise<void> {
     })
     .eq("id", true);
 
+  revalidatePath("/site-admin");
+}
+
+// A Site Admin acknowledging a plugin's disclaimer for the instance.
+export async function acknowledgePluginForSite(formData: FormData): Promise<void> {
+  const pluginId = formData.get("pluginId") as string;
+  const plugin = availablePlugins.find((p) => p.manifest.id === pluginId);
+  if (!plugin?.manifest.acknowledgement || formData.get("confirm") !== "on") return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("acknowledge_plugin", {
+    p_plugin_id: pluginId,
+    p_version: plugin.manifest.acknowledgement.version,
+    p_org_id: null,
+  });
+  if (error) throw new Error(error.message);
   revalidatePath("/site-admin");
 }

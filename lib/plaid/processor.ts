@@ -77,6 +77,13 @@ async function applyBankEdit(supabase: AdminClient, tx: PlaidTransaction, amount
   if (updateError) {
     throw new Error(`Failed to update bank transaction ${tx.id}: ${updateError.message}`);
   }
+
+  // A plain categorized entry is re-booked at the bank's values by itself;
+  // anything else stays held for review (apply_bank_change).
+  if (update.bank_change) {
+    const { error: applyError } = await supabase.rpc("apply_bank_change", { p_bank_transaction_id: existing.id });
+    if (applyError) console.error(`Couldn't apply the bank's change to ${tx.id}`, applyError);
+  }
 }
 
 // A bank connected again gives every account and transaction new Plaid ids.

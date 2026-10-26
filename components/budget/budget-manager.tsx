@@ -16,13 +16,15 @@ import {
   Check,
   X,
 } from "lucide-react";
-import type { MonthlyBudgetReport, BudgetCategoryItem } from "@/lib/budget/engine";
-import { updateBudgetCategoryAction, copyPreviousMonthAction, setBudgetRolloverAction } from "@/app/(dashboard)/budget/actions";
+import type { MonthlyBudgetReport, BudgetCategoryItem, ToAssign } from "@/lib/budget/engine";
+import { updateBudgetCategoryAction, copyPreviousMonthAction, setBudgetRolloverAction, setAllBudgetRolloverAction } from "@/app/(dashboard)/budget/actions";
 import { useBookCurrency, useMoney } from "@/components/providers/book-currency-provider";
 
 interface BudgetManagerProps {
   report: MonthlyBudgetReport;
   canWrite: boolean;
+  // Zero-based: income not yet given a budget (absent in older callers).
+  toAssign?: ToAssign;
 }
 
 function parseMonthLabel(yearMonth: string): string {
@@ -41,7 +43,7 @@ function getAdjacentMonth(yearMonth: string, offset: number): string {
   return `${nextYear}-${nextMonth}`;
 }
 
-export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
+export function BudgetManager({ report, canWrite, toAssign }: BudgetManagerProps) {
   const currency = useBookCurrency();
   const formatCurrency = useMoney();
   const router = useRouter();
@@ -194,6 +196,46 @@ export function BudgetManager({ report, canWrite }: BudgetManagerProps) {
         <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs font-medium text-red-800 flex items-center gap-2">
           <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
           <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {toAssign?.since && (
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 shadow-sm ${
+            toAssign.toAssign < 0 ? "border-rose-200 bg-rose-50" : "border-sky-200 bg-sky-50"
+          }`}
+        >
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              {toAssign.toAssign < 0 ? "Budgeted more than came in" : "To assign"}
+            </p>
+            <p className={`mt-1 text-2xl font-bold ${toAssign.toAssign < 0 ? "text-rose-700" : "text-slate-900"}`}>
+              {formatCurrency(Math.abs(toAssign.toAssign))}
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              {formatCurrency(toAssign.income)} of income since {toAssign.since}, less {formatCurrency(toAssign.budgeted)} budgeted.
+              Give every dollar a job: budget it until this is zero.
+            </p>
+          </div>
+          {canWrite && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await setAllBudgetRolloverAction(true);
+                    if (!result.success) setErrorMessage(result.error ?? "Couldn't change rollover");
+                    else router.refresh();
+                  })
+                }
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+                title="Every category carries what's left, or overspent, into the next month"
+              >
+                Make every category an envelope
+              </button>
+            </div>
+          )}
         </div>
       )}
 

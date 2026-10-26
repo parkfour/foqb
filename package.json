@@ -1,6 +1,6 @@
 {
   "name": "foqb",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "author": "Park Four, LLC",
@@ -49,12 +49,14 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/smtp-server": "3.5.13",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9",
     "eslint-config-next": "^16.4.2",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.1.0",
     "pg": "^8.23.0",
+    "smtp-server": "3.19.16",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.1"

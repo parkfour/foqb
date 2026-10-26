@@ -7,6 +7,7 @@ import { useBookToday } from "@/components/providers/book-clock-provider";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { useMoney } from "@/components/providers/book-currency-provider";
 import { applyTaxes, type SalesTaxRate } from "@/lib/sales-tax";
+import { ClassSelect, type ClassOption } from "@/components/classes/class-select";
 
 interface CustomerOption {
   id: string;
@@ -34,6 +35,13 @@ interface LineDraft {
   unitPrice: string;
 }
 
+// The same form makes an estimate: no due date but an expiry, and no
+// journal entry until it's turned into an invoice.
+const KINDS = {
+  invoice: { title: "New Invoice", number: "Invoice number", second: "Due date", submit: "Create Invoice", endpoint: "/api/invoices", done: "/customers" },
+  estimate: { title: "New Estimate", number: "Estimate number", second: "Expires on", submit: "Create Estimate", endpoint: "/api/estimates", done: "/customers/estimates" },
+} as const;
+
 function emptyLine(): LineDraft {
   return { itemId: "", accountId: "", description: "", quantity: "1", unitPrice: "" };
 }
@@ -46,6 +54,8 @@ export function InvoiceForm({
   defaultTaxRate = 0,
   taxRates = [],
   showAccountCodes = true,
+  kind = "invoice",
+  classes = [],
 }: {
   organizationId: string;
   customers: CustomerOption[];
@@ -55,7 +65,10 @@ export function InvoiceForm({
   // The book's named rates; when there are any, the invoice picks from them.
   taxRates?: SalesTaxRate[];
   showAccountCodes?: boolean;
+  kind?: keyof typeof KINDS;
+  classes?: ClassOption[];
 }) {
+  const labels = KINDS[kind];
   const formatCurrency = useMoney();
   const router = useRouter();
   const [customerId, setCustomerId] = useState("");
@@ -65,6 +78,7 @@ export function InvoiceForm({
   const [dueDate, setDueDate] = useState("");
   const [taxRate, setTaxRate] = useState(String(defaultTaxRate || ""));
   const [taxRateIds, setTaxRateIds] = useState<string[]>([]);
+  const [classId, setClassId] = useState("");
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,7 +123,7 @@ export function InvoiceForm({
     setError(null);
 
     if (!customerId || !invoiceNumber) {
-      setError("Customer and invoice number are required");
+      setError(`Customer and ${labels.number.toLowerCase()} are required`);
       return;
     }
 
@@ -131,28 +145,29 @@ export function InvoiceForm({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/invoices", {
+      const response = await fetch(labels.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           organization_id: organizationId,
           customer_id: customerId,
-          invoice_number: invoiceNumber,
-          invoice_date: invoiceDate,
-          due_date: dueDate || null,
+          ...(kind === "invoice"
+            ? { invoice_number: invoiceNumber, invoice_date: invoiceDate, due_date: dueDate || null }
+            : { estimate_number: invoiceNumber, estimate_date: invoiceDate, expiry_date: dueDate || null }),
           ...(taxRates.length > 0 ? { tax_rate_ids: taxRateIds } : { tax_rate: Number(taxRate) || 0 }),
           lines: parsedLines,
+          class_id: classId || null,
         }),
       });
 
       if (!response.ok) {
         const responseBody = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(responseBody.error ?? "Failed to create invoice");
+        throw new Error(responseBody.error ?? `Failed to save the ${kind}`);
       }
 
-      router.push("/customers");
+      router.push(labels.done);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create invoice");
+      setError(err instanceof Error ? err.message : `Failed to save the ${kind}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +175,7 @@ export function InvoiceForm({
 
   return (
     <div className="mx-auto max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h1 className="text-lg font-semibold text-slate-900">New Invoice</h1>
+      <h1 className="text-lg font-semibold text-slate-900">{labels.title}</h1>
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
         <TimezoneChangeNotice from={invoiceDate} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -180,7 +195,7 @@ export function InvoiceForm({
           <input
             value={invoiceNumber}
             onChange={(e) => setInvoiceNumber(e.target.value)}
-            placeholder="Invoice number"
+            placeholder={labels.number}
             required
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
@@ -197,9 +212,12 @@ export function InvoiceForm({
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            placeholder="Due date"
+            placeholder={labels.second}
+            aria-label={labels.second}
+            title={labels.second}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
+          <ClassSelect classes={classes} value={classId} onChange={setClassId} />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -317,7 +335,7 @@ export function InvoiceForm({
           disabled={isSubmitting}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {isSubmitting ? "Saving…" : "Create Invoice"}
+          {isSubmitting ? "Saving…" : labels.submit}
         </button>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

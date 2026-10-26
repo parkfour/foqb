@@ -8,10 +8,20 @@ import { ApAgingReport } from "@/components/reports/ap-aging-report";
 import { TaxLineReport } from "@/components/reports/tax-line-report";
 import { Form1099Report } from "@/components/reports/form-1099-report";
 import { SalesTaxReport } from "@/components/reports/sales-tax-report";
+import { CashFlowStatementReport } from "@/components/reports/cash-flow-statement-report";
+import { GeneralLedgerReport } from "@/components/reports/general-ledger-report";
+import { ForeignBalancesReport } from "@/components/reports/foreign-balances-report";
+import { IncomeStatementByClassReport } from "@/components/reports/income-statement-by-class-report";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
-import { getCurrentOrgId } from "@/lib/org/current";
+import { getCurrentOrgId, getWorkspaceType } from "@/lib/org/current";
+import { createClient } from "@/lib/supabase/server";
+import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
+import { ungatedPluginIds } from "@/lib/plugins/acknowledgements";
+import { pluginReportOptions } from "@/lib/plugins/pages";
+import { PluginReportHost } from "@/components/plugins/plugin-page";
 import { bookToday } from "@/lib/org/book-clock";
 import { monthStart } from "@/lib/time/book-time";
+import { RANGE_REPORTS } from "@/components/reports/report-types";
 
 interface ReportsPageProps {
   searchParams: Promise<{ report?: string; asOf?: string; start?: string; end?: string; year?: string }>;
@@ -38,7 +48,13 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const asOf = params.asOf ?? today;
   const start = params.start ?? monthStart(today);
   const end = params.end ?? today;
-  const isRange = report === "income-statement" || report === "tax-line-items" || report === "sales-tax";
+  const [workspaceType, enabledIds] = await Promise.all([
+    getWorkspaceType(orgId),
+    getOrgEnabledPluginIds(await createClient(), orgId).catch(() => ungatedPluginIds()),
+  ]);
+  const pluginReports = pluginReportOptions(workspaceType, enabledIds);
+  const pluginReport = pluginReports.find((r) => r.value === report);
+  const isRange = RANGE_REPORTS.has(report) || Boolean(pluginReport?.range);
   // 1099s are filed for the year just ended, so that's the default.
   const year = Number(params.year) || Number(today.slice(0, 4)) - 1;
 
@@ -50,14 +66,22 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       />
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <ReportControls report={report} asOf={asOf} start={start} end={end} year={year} />
+        <ReportControls report={report} asOf={asOf} start={start} end={end} year={year} pluginReports={pluginReports} />
       </div>
 
       {/* A range report covers every day in it; an as-of report turns on its last day. */}
       {report !== "1099-nec" && <TimezoneChangeNotice from={isRange ? start : asOf} to={isRange ? end : asOf} />}
 
-      {report === "income-statement" ? (
+      {pluginReport ? (
+        <PluginReportHost value={pluginReport.value} context={{ organizationId: orgId, start, end, asOf }} />
+      ) : report === "income-statement" ? (
         <IncomeStatementReport orgId={orgId} start={start} end={end} />
+      ) : report === "cash-flow-statement" ? (
+        <CashFlowStatementReport orgId={orgId} start={start} end={end} />
+      ) : report === "general-ledger" ? (
+        <GeneralLedgerReport orgId={orgId} start={start} end={end} />
+      ) : report === "income-statement-by-class" ? (
+        <IncomeStatementByClassReport orgId={orgId} start={start} end={end} />
       ) : report === "tax-line-items" ? (
         <TaxLineReport orgId={orgId} start={start} end={end} />
       ) : report === "sales-tax" ? (
@@ -66,6 +90,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <Form1099Report orgId={orgId} year={year} />
       ) : report === "balance-sheet" ? (
         <BalanceSheetReport orgId={orgId} asOf={asOf} />
+      ) : report === "foreign-balances" ? (
+        <ForeignBalancesReport orgId={orgId} asOf={asOf} />
       ) : report === "ar-aging" ? (
         <ArAgingReport orgId={orgId} asOf={asOf} />
       ) : report === "ap-aging" ? (

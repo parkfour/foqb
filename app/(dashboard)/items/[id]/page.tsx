@@ -36,7 +36,7 @@ export default async function ItemSalesPage({ params }: { params: Promise<{ id: 
   const [{ data: itemData }, sales, showAccountCodes] = await Promise.all([
     supabase
       .from("items")
-      .select("id, name, sale_price, accounts(account_number, name)")
+      .select("id, name, sale_price, accounts!items_income_account_id_fkey(account_number, name)")
       .eq("id", id)
       .eq("organization_id", orgId)
       .maybeSingle(),

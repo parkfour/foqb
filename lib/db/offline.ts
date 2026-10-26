@@ -4,6 +4,9 @@ export interface OfflineJournalLine {
   account_id: string;
   debit: number;
   credit: number;
+  class_id?: string | null;
+  foreign_amount?: number;
+  exchange_rate?: number;
 }
 
 export type OfflineEntryStatus = "pending" | "synced" | "failed";

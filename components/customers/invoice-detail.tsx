@@ -40,6 +40,8 @@ interface InvoiceDetailProps {
   taxes: { name: string; rate: number; amount: number }[];
   total: number;
   remaining: number;
+  // Printed at the foot, from the book's plugins (a VAT number, "Reverse charge").
+  notes?: string[];
 }
 
 // Renders the invoice to an off-DOM canvas (html2canvas) and embeds that as
@@ -84,6 +86,7 @@ export function InvoiceDetail({
   taxes,
   total,
   remaining,
+  notes = [],
 }: InvoiceDetailProps) {
   const formatCurrency = useMoney();
   const printableRef = useRef<HTMLDivElement>(null);
@@ -249,6 +252,13 @@ export function InvoiceDetail({
             </p>
           )}
         </div>
+        {notes.length > 0 && (
+          <div className="mt-8 border-t border-slate-200 pt-3 text-xs text-slate-600">
+            {notes.map((note) => (
+              <p key={note}>{note}</p>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

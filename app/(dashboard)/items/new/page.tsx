@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ItemForm } from "@/components/items/item-form";
 import { ReadOnlyNotice } from "@/components/ui/read-only-notice";
 import { createClient } from "@/lib/supabase/server";
+import { byType } from "@/lib/accounts/by-type";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 
 export default async function NewItemPage() {
@@ -19,13 +20,23 @@ export default async function NewItemPage() {
   const [{ data: accounts }, showAccountCodes] = await Promise.all([
     supabase
       .from("accounts")
-      .select("id, account_number, name")
+      .select("id, account_number, name, type")
       .eq("organization_id", orgId)
       .eq("is_active", true)
-      .eq("type", "revenue")
+      .is("currency", null)
+      .in("type", ["revenue", "asset", "expense"])
       .order("account_number"),
     getUseAccountCodes(orgId),
   ]);
 
-  return <ItemForm organizationId={orgId} accounts={accounts ?? []} showAccountCodes={showAccountCodes} />;
+  const all = accounts ?? [];
+  return (
+    <ItemForm
+      organizationId={orgId}
+      accounts={byType(all, "revenue")}
+      assetAccounts={byType(all, "asset")}
+      expenseAccounts={byType(all, "expense")}
+      showAccountCodes={showAccountCodes}
+    />
+  );
 }

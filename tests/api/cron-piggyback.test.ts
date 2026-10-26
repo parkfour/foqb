@@ -12,6 +12,7 @@ vi.mock("@/lib/cron/cleanup-unclaimed-members", () => ({
   cleanupUnclaimedMembers: cleanupUnclaimedMembersMock,
 }));
 vi.mock("@/lib/cron/cleanup-rate-limits", () => ({ cleanupRateLimits: cleanupRateLimitsMock }));
+vi.mock("@/lib/recurring/generate", () => ({ RECURRING_INTERVAL_SECONDS: 3600, generateDueRecurring: vi.fn() }));
 
 import { maybeRunDueCronJobs } from "@/lib/cron/piggyback";
 

@@ -5,6 +5,10 @@ interface JournalLineInput {
   account_id: string;
   debit: number;
   credit: number;
+  class_id?: string | null;
+  // A line on an account in another currency (migration 093).
+  foreign_amount?: number;
+  exchange_rate?: number;
 }
 
 interface JournalEntryRequestBody {
@@ -82,6 +86,8 @@ export async function POST(req: NextRequest) {
       account_id: line.account_id,
       debit: line.debit,
       credit: line.credit,
+      ...(line.class_id ? { class_id: line.class_id } : {}),
+      ...(line.foreign_amount !== undefined ? { foreign_amount: line.foreign_amount, exchange_rate: line.exchange_rate } : {}),
     })),
   });
 

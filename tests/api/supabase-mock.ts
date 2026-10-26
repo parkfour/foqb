@@ -29,6 +29,7 @@ interface TableQueryBuilder {
   eq: Mock<(...args: unknown[]) => TableQueryBuilder>;
   neq: Mock<(...args: unknown[]) => TableQueryBuilder>;
   in: Mock<(...args: unknown[]) => TableQueryBuilder>;
+  or: Mock<(...args: unknown[]) => TableQueryBuilder>;
   lt: Mock<(...args: unknown[]) => TableQueryBuilder>;
   lte: Mock<(...args: unknown[]) => TableQueryBuilder>;
   gte: Mock<(...args: unknown[]) => TableQueryBuilder>;
@@ -107,6 +108,7 @@ export function createTableMock(config: TableConfig): TableQueryBuilder {
     eq: vi.fn<(...args: unknown[]) => TableQueryBuilder>(() => builder),
     neq: vi.fn<(...args: unknown[]) => TableQueryBuilder>(() => builder),
     in: vi.fn<(...args: unknown[]) => TableQueryBuilder>(() => builder),
+    or: vi.fn<(...args: unknown[]) => TableQueryBuilder>(() => builder),
     lt: vi.fn<(...args: unknown[]) => TableQueryBuilder>(() => builder),
     lte: vi.fn<(...args: unknown[]) => TableQueryBuilder>(() => builder),
     gte: vi.fn<(...args: unknown[]) => TableQueryBuilder>(() => builder),

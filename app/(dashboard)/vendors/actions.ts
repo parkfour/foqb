@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { emitHook } from "@/lib/plugins/hooks";
+import { ensureServerPluginsLoaded } from "@/lib/plugins/server-loader";
 import type { ActionState } from "@/app/(dashboard)/actions";
 
 export async function createVendor(
@@ -21,18 +23,21 @@ export async function createVendor(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("vendors").insert({
+  const { data: created, error } = await supabase.from("vendors").insert({
     organization_id: organizationId,
     name,
     email,
     phone,
     address,
     is_1099,
-  });
+  }).select("id").single();
 
   if (error) {
     return { error: error.message };
   }
+
+  ensureServerPluginsLoaded();
+  await emitHook("vendor:created", { vendorId: created.id as string, name, email, orgId: organizationId });
 
   revalidatePath("/vendors");
   redirect("/vendors");
@@ -88,32 +93,23 @@ export async function deleteVendor(formData: FormData): Promise<void> {
   revalidatePath("/vendors");
 }
 
-export async function voidBill(formData: FormData): Promise<void> {
+// Voids it, with any payments on it: void_bill reverses their entries
+// and sends their bank transactions back to the feed.
+export async function voidBill(_prev: { error: string | null }, formData: FormData): Promise<{ error: string | null }> {
   const id = formData.get("id") as string;
-  if (!id) return;
+  if (!id) return { error: null };
 
   const supabase = await createClient();
-  // Only a fully-open (unpaid) bill can be voided directly — one with
-  // payments applied would also need those payments' journal entries
-  // reversed, which this simple guard deliberately doesn't attempt.
-  const { data: bill } = await supabase
-    .from("bills")
-    .select("journal_entry_id")
-    .eq("id", id)
-    .eq("status", "open")
-    .maybeSingle();
+  const { error } = await supabase.rpc("void_bill", { p_bill_id: id });
+  if (error) return { error: error.message };
 
-  if (!bill) return;
-
-  if (bill.journal_entry_id) {
-    await supabase
-      .from("journal_entries")
-      .update({ status: "void" })
-      .eq("id", bill.journal_entry_id)
-      .eq("status", "posted");
+  const { data: voided } = await supabase.from("bills").select("bill_number, organization_id").eq("id", id).maybeSingle();
+  if (voided) {
+    ensureServerPluginsLoaded();
+    await emitHook("bill:voided", { billId: id, billNumber: voided.bill_number as string, orgId: voided.organization_id as string });
   }
 
-  await supabase.from("bills").update({ status: "void" }).eq("id", id).eq("status", "open");
-
   revalidatePath("/vendors/bills");
+  revalidatePath("/transactions");
+  return { error: null };
 }

@@ -10,7 +10,7 @@ import { PersonalWealthDashboard } from "@/components/dashboard/personal-wealth-
 import { calculateHouseholdNetWorth, fetchNetWorthHistory, withTodaysPoint } from "@/lib/net-worth/engine";
 import { calculateUserBusinessEquity } from "@/lib/org/equity-rollup";
 import { exchangeRate } from "@/lib/plugins/server-loader";
-import { enabledPluginIds } from "@/lib/plugins/loader";
+import { ungatedPluginIds } from "@/lib/plugins/acknowledgements";
 import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
 import { bookToday } from "@/lib/org/book-clock";
 import { monthStart } from "@/lib/time/book-time";
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
     const [user, today, pluginIds] = await Promise.all([
       getAuthUser(),
       bookToday(orgId),
-      getOrgEnabledPluginIds(supabase, orgId).catch(() => enabledPluginIds()),
+      getOrgEnabledPluginIds(supabase, orgId).catch(() => ungatedPluginIds()),
     ]);
     // Rates from the plugins this household runs (Settings → Plugins).
     const rateFor = (from: string, to: string) => exchangeRate(from, to, pluginIds);
