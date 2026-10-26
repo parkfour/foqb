@@ -3,7 +3,8 @@
 FOQB has a small, in-repo plugin system: **events** a plugin can react to on
 the server, **slots** where a plugin can put its own controls in the UI, and
 **pages** of its own in the menu.
-Eight plugins ship with FOQB, each off until you turn it on:
+Eight plugins ship with FOQB. An instance runs them all, and each book's
+owner turns on the ones the book uses:
 [email invoices](#email-invoices), [webhooks](#webhooks),
 [receipt scanning](#receipt-scanning),
 [statement import](#statement-import),
@@ -18,19 +19,20 @@ plugin runs with the signed-in user's access to their books.
 
 ## Turning plugins on
 
-A plugin runs only if the operator turns it on, with `FOQB_PLUGINS` in the
-app's environment:
+`FOQB_PLUGINS` in the app's environment says which plugins the instance
+runs:
 
 | `FOQB_PLUGINS` | Runs |
 |---|---|
-| unset or `*` | plugins whose manifest says `enabledByDefault: true` (none, so far) |
+| unset or `*` | every plugin, including [private ones](#private-plugins) |
 | `none` | nothing |
-| `email-invoices,webhooks,receipt-ocr,statement-import,mortgage-notes,startup-assistant,exchange-rates` | exactly those |
+| `email-invoices,webhooks,stripe-payments` | exactly those |
 
 Then, in the app, three layers decide where each one runs:
 
-1. **`FOQB_PLUGINS`**, above: what the instance may run. An operator can
-   name every plugin here and decide the rest in the app.
+1. **`FOQB_PLUGINS`**, above: what the instance may run. Leave it unset
+   and decide the rest in the app, or list plugins to keep the others out
+   of the instance altogether.
 2. **Site Admin → Plugins**, per plugin: *Off* hides it in every book and
    stops its server work (event handlers, jobs, categorizers, exchange
    rates); *Books choose* (the default) leaves it off in a book until the
@@ -88,7 +90,7 @@ repo of your own, checked out as `plugins/local/`, which this repo ignores.
 Each folder there is a plugin: its `index.ts` (or `.tsx`) exports `plugin`,
 and an optional `server.ts` exports `server` (its `ServerPluginParts`).
 `scripts/local-plugins.mjs` registers them after `npm install` and before
-every build and dev server; `FOQB_PLUGINS` turns them on like any other.
+every build and dev server, and they're turned on like any other.
 A private plugin can't reuse a shipped plugin's id.
 
 ```
@@ -138,7 +140,7 @@ properly means a database trigger feeding a queue.
 | Slot | Where | Context |
 |---|---|---|
 | `invoice.actions` | beside "Download / Share PDF" on an invoice | `invoiceId`, `invoiceNumber`, `customer` (`name`, `email`), `total`, `remaining`, `dueDate`, `status`, `buildPdf()` (the same PDF the button makes) |
-| `settings.sections` | a section of its own on the Settings page | `organizationId` |
+| `settings.sections` | the plugin's own settings, in its card under Settings → Plugins | `organizationId` |
 | `dashboard.sections` | below the dashboard's own figures, household or business | `organizationId`, `workspaceType`, `canWrite` |
 | `properties.sections` | a section of its own on Properties & Assets | `organizationId`, `canWrite` |
 | `reconcile.header` | at the top of the Reconcile page, for writers | `accounts` (`id`, `name`, `account_number`, `type`) |
@@ -162,9 +164,9 @@ converts them itself.
 
 ## Email invoices
 
-`FOQB_PLUGINS=email-invoices`. Adds an **Email invoice** button to each
+Plugin id `email-invoices`. Adds an **Email invoice** button to each
 invoice, which sends the customer the invoice PDF, and an **Email** section
-to Settings.
+to its card in Settings → Plugins.
 
 ![Emailing an invoice: recipient, subject and message, with the PDF attached](screenshots/plugin-email-invoice.jpg)
 
@@ -192,7 +194,7 @@ to Settings.
 
 ## Webhooks
 
-`FOQB_PLUGINS=webhooks`. Adds a **Webhooks** section to Settings, for
+Plugin id `webhooks`. Adds a **Webhooks** section to its card in Settings → Plugins, for
 owners: each webhook is an `https` URL and the events it wants (any of the
 four [events](#events)). On each event, FOQB POSTs:
 
@@ -243,7 +245,7 @@ organization can have up to 10 webhooks. Secrets are encrypted with
 
 ## Receipt scanning
 
-`FOQB_PLUGINS=receipt-ocr`. Adds a drop zone above the Enter Bill form:
+Plugin id `receipt-ocr`. Adds a drop zone above the Enter Bill form:
 drop a photo or PDF of a receipt (or, on a phone, take one), and the form
 fills in what could be read. Nothing is entered until the person clicks Enter Bill,
 and then the receipt is kept with the bill as an attachment, opened from
@@ -274,7 +276,7 @@ the bill's number in Bills.
 
 ## Statement import
 
-`FOQB_PLUGINS=statement-import`. Adds "Import a Statement" to the Reconcile
+Plugin id `statement-import`. Adds "Import a Statement" to the Reconcile
 page: choose a bank or card statement PDF, check what was read, pick the
 account (one named with the statement's last four digits is picked for
 you; when there's none, a new account named for the statement is offered,
@@ -354,7 +356,7 @@ export const plugin: FOQBPlugin = {
 };
 ```
 
-Turn it on alongside `statement-import` in `FOQB_PLUGINS`. When more than
+Turn it on alongside `statement-import`. When more than
 one reader's `detect` matches, the one whose bank is named first in the
 statement wins, since another bank's name can turn up later in a
 transfer's description. Some tips:
@@ -377,7 +379,7 @@ transfer's description. Some tips:
 
 ## Mortgage notes
 
-`FOQB_PLUGINS=mortgage-notes`. For mortgages the book holds, the borrower
+Plugin id `mortgage-notes`. For mortgages the book holds, the borrower
 paying you. Adds "Mortgage Notes You Hold" to Properties & Assets, for
 owners and accountants.
 
@@ -413,7 +415,7 @@ owners and accountants.
 
 ## Exchange rates
 
-`FOQB_PLUGINS=exchange-rates`. A household's net worth lists the businesses
+Plugin id `exchange-rates`. A household's net worth lists the businesses
 you own; one kept in another currency is otherwise listed but left out of
 the total, as nothing converts between currencies. With this plugin it's
 added at the European Central Bank's reference rate, from
@@ -433,10 +435,10 @@ codes are sent), marked "≈" with the rate and its date.
 
 ## Stripe payments
 
-`FOQB_PLUGINS=stripe-payments` (needs `ENCRYPTION_KEY`). Each book uses its
+Plugin id `stripe-payments` (needs `ENCRYPTION_KEY`). Each book uses its
 own Stripe account.
 
-1. **Settings → Stripe** (owner): paste a secret key, or a restricted key
+1. **Settings → Plugins → Stripe payments** (owner): turn it on, then paste a secret key, or a restricted key
    with write access to Prices and Payment Links, and choose the asset
    account payments go into (make one called "Stripe balance").
 2. In Stripe, add a webhook endpoint for the address shown there
@@ -462,7 +464,7 @@ and a webhook not signed with the book's secret is refused.
 
 ## Start-up assistant
 
-`FOQB_PLUGINS=startup-assistant`. For starting a book from statements and
+Plugin id `startup-assistant`. For starting a book from statements and
 bank feeds that reach back different distances. Each account's opening
 balance already holds everything dated on or before it, so history from
 before it, like another bank's old transfer to it, belongs to equity.

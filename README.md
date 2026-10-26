@@ -108,9 +108,9 @@ hand; there's no automatic valuation.
 
 ## Plugins
 
-Eight optional plugins ship with FOQB, each off until the operator lists it
-in `FOQB_PLUGINS`; then a Site Admin and each book's owner choose where it
-runs:
+Eight optional plugins ship with FOQB. An instance runs them all unless the
+operator narrows the list with `FOQB_PLUGINS`; a Site Admin and each book's
+owner then choose where each one is on:
 
 - **Email invoices**: send the invoice PDF to the customer through the
   organization's own mail server.

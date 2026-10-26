@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { exchangeRate } from "@/lib/plugins/server-loader";
 import { clearRateCache, fetchRate } from "@/plugins/exchange-rates/server";
-import { calculateUserBusinessEquity } from "@/lib/org/equity-rollup";
+import { calculateUserBusinessEquity, suspendedBeforeClose } from "@/lib/org/equity-rollup";
 import type { ExchangeRate, ServerPluginParts } from "@/lib/plugins/types";
 
 const quote = (rate: number, asOf = "2026-10-23"): ExchangeRate => ({ rate, asOf, source: "Test" });
@@ -85,5 +85,41 @@ describe("calculateUserBusinessEquity", () => {
     ]);
     expect(businesses[1].quote).toEqual(quote(0.00075));
     expect(totalBusinessEquity).toBe(2500);
+  });
+});
+
+describe("suspendedBeforeClose", () => {
+  it("is true only when the business was suspended before the day its books were closed through", () => {
+    expect(suspendedBeforeClose("2025-06-01T12:00:00Z", "2025-12-31", "UTC")).toBe(true);
+    expect(suspendedBeforeClose("2026-01-15T12:00:00Z", "2025-12-31", "UTC")).toBe(false);
+    // Early on Jan 1 in UTC is still Dec 31 in Chicago, the close day itself: not before it.
+    expect(suspendedBeforeClose("2026-01-01T03:00:00Z", "2025-12-31", "America/Chicago")).toBe(false);
+    expect(suspendedBeforeClose("2025-12-30T23:00:00Z", "2025-12-31", "America/Chicago")).toBe(true);
+    expect(suspendedBeforeClose(null, "2025-12-31", "UTC")).toBe(false);
+    expect(suspendedBeforeClose("2025-06-01T12:00:00Z", null, "UTC")).toBe(false);
+  });
+
+  it("leaves a business suspended before its close out of the roll-up altogether", async () => {
+    const supabase = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            eq: async () => ({
+              data: [
+                {
+                  organization_id: "old",
+                  role: "owner",
+                  organizations: { id: "old", name: "Old Co", workspace_type: "business", currency: "USD", status: "suspended", suspended_at: "2025-06-01T12:00:00Z", period_lock_date: "2025-12-31" },
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      }),
+      rpc: async () => ({ data: [] }),
+    };
+    const { businesses } = await calculateUserBusinessEquity("u1", supabase as never, "USD", async () => null);
+    expect(businesses).toEqual([]);
   });
 });

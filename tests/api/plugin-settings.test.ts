@@ -21,7 +21,6 @@ const testPluginA: FOQBPlugin = {
     name: "Plugin A",
     version: "1.0.0",
     description: "First test plugin",
-    enabledByDefault: true,
   },
   settings: [
     {
@@ -72,7 +71,6 @@ const testPluginB: FOQBPlugin = {
     name: "Plugin B",
     version: "1.0.0",
     description: "Second test plugin",
-    enabledByDefault: false,
   },
   settings: [
     {

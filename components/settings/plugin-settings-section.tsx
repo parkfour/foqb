@@ -40,8 +40,8 @@ export function PluginSettingsSection({
 
       {plugins.length === 0 ? (
         <p className="text-sm text-slate-500 italic py-2">
-          No plugins are enabled on this instance. The instance operator can turn them on via the
-          FOQB_PLUGINS environment variable.
+          No plugins are available here: the instance operator has turned them off (FOQB_PLUGINS), or
+          a Site Admin has.
         </p>
       ) : (
         <div className="flex flex-col gap-6">

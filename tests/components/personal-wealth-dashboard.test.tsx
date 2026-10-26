@@ -115,6 +115,26 @@ describe("PersonalWealthDashboard", () => {
     expect(dialog().queryByText(/Dormant Co/)).toBeNull();
   });
 
+  it("says what a suspended business booked after its books were closed", () => {
+    const businessEquity = {
+      total: 0,
+      businesses: [
+        {
+          id: "s1",
+          name: "Dormant Co",
+          equity: null,
+          currency: "USD",
+          ownEquity: 9000,
+          suspended: true,
+          afterClose: { closedThrough: "2025-12-31", entries: 3, equityChange: -250 },
+        },
+      ],
+    };
+    render(<PersonalWealthDashboard data={data} history={[]} businessEquity={businessEquity} />);
+
+    expect(screen.getByText(/After the books closed on 2025-12-31: 3 entries, -\$250\.00 equity/)).toBeInTheDocument();
+  });
+
   it("draws daily points for 1M and 6M, and month-ends with today for 1Y and All-time", () => {
     // As fetchNetWorthHistory gives it: month-ends from June 2024, then every
     // day of the last six months, through today (2026-10-20).

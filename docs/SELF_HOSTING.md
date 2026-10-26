@@ -49,10 +49,11 @@ can get your copy of the code. The AGPL requires this if you've modified it),
 timezone of any organization that hasn't chosen its own in Settings; new ones
 start in their creator's browser timezone).
 
-**Optional, plugins**: `FOQB_PLUGINS`, a comma-separated list of the
-plugins the instance may run (`email-invoices`, `webhooks`, `receipt-ocr`,
-`statement-import`, `mortgage-notes`, `startup-assistant`,
-`exchange-rates`). All are off unless listed. A Site Admin then sets each
+**Optional, plugins**: `FOQB_PLUGINS`. Unset (or `*`), the instance runs
+every plugin; a comma-separated list (`email-invoices`, `webhooks`,
+`receipt-ocr`, `statement-import`, `mortgage-notes`, `startup-assistant`,
+`exchange-rates`, `stripe-payments`) runs just those, and `none` runs none.
+A Site Admin then sets each
 one to off, books choose (the default) or on for every book, and each
 book's owner turns it on or off; see [PLUGINS.md](PLUGINS.md#turning-plugins-on).
 `ALLOW_PRIVATE_NETWORK_HOSTS=true` lets organizations' mail servers and

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emitHook, getPlugins, getSlotComponents, on, registerPlugin, resetRegistry } from "@/lib/plugins/hooks";
 import { enabledPluginIds, ensurePluginsLoaded, isPluginEnabled, resetLoaderState } from "@/lib/plugins/loader";
 import type { FOQBPlugin } from "@/lib/plugins/types";
+import { availablePlugins } from "@/plugins";
 
 const payload = { invoiceId: "inv-1", invoiceNumber: "1001", customerId: null, total: 100, orgId: "org-1" };
 
@@ -68,21 +69,22 @@ describe("plugin hooks", () => {
 });
 
 describe("plugin loader", () => {
-  it("runs nothing unless the operator turns it on", () => {
-    expect(isPluginEnabled("emailer")).toBe(false);
-    expect(isPluginEnabled("emailer", true)).toBe(true);
+  it("runs every plugin unless the operator names some, or none", () => {
+    expect(isPluginEnabled("emailer")).toBe(true);
+    vi.stubEnv("FOQB_PLUGINS", "*");
+    expect(isPluginEnabled("emailer")).toBe(true);
 
     vi.stubEnv("FOQB_PLUGINS", "emailer, Webhooks");
     expect(isPluginEnabled("emailer")).toBe(true);
     expect(isPluginEnabled("webhooks")).toBe(true);
-    expect(isPluginEnabled("ocr", true)).toBe(false);
+    expect(isPluginEnabled("ocr")).toBe(false);
 
     vi.stubEnv("FOQB_PLUGINS", "none");
-    expect(isPluginEnabled("emailer", true)).toBe(false);
+    expect(isPluginEnabled("emailer")).toBe(false);
   });
 
   it("registers only the enabled plugins", () => {
-    const available = [plugin("a"), plugin("b"), plugin("c", { manifest: { ...plugin("c").manifest, enabledByDefault: true } })];
+    const available = [plugin("a"), plugin("b"), plugin("c")];
     vi.stubEnv("FOQB_PLUGINS", "a");
     expect(enabledPluginIds(available)).toEqual(["a"]);
 
@@ -97,7 +99,8 @@ describe("plugin loader", () => {
     expect(getPlugins().map((p) => p.manifest.id)).toEqual(["b"]);
   });
 
-  it("ships no plugins", () => {
-    expect(enabledPluginIds()).toEqual([]);
+  it("runs every shipped plugin when FOQB_PLUGINS is unset", () => {
+    expect(enabledPluginIds()).toEqual(availablePlugins.map((p) => p.manifest.id));
+    expect(enabledPluginIds().length).toBeGreaterThan(0);
   });
 });

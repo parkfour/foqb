@@ -5,12 +5,13 @@ import { availablePlugins } from "@/plugins";
 import { registerPlugin } from "./hooks";
 import type { FOQBPlugin } from "./types";
 
-// FOQB_PLUGINS: unset or "*" runs the plugins that are on by default,
-// "none" runs none, and "a,b" runs exactly those.
-export function isPluginEnabled(pluginId: string, enabledByDefault = false): boolean {
+// FOQB_PLUGINS: unset or "*" runs every plugin, "none" runs none, and
+// "a,b" runs exactly those. Site Admin and each book then turn them on or
+// off for themselves.
+export function isPluginEnabled(pluginId: string): boolean {
   const setting = process.env.FOQB_PLUGINS?.trim();
   if (setting === "none") return false;
-  if (!setting || setting === "*") return enabledByDefault;
+  if (!setting || setting === "*") return true;
   return setting
     .split(",")
     .map((s) => s.trim().toLowerCase())
@@ -21,7 +22,7 @@ export function isPluginEnabled(pluginId: string, enabledByDefault = false): boo
 // environment); the dashboard layout passes the result to the browser.
 export function enabledPluginIds(available: FOQBPlugin[] = availablePlugins): string[] {
   return available
-    .filter((p) => isPluginEnabled(p.manifest.id, p.manifest.enabledByDefault))
+    .filter((p) => isPluginEnabled(p.manifest.id))
     .map((p) => p.manifest.id);
 }
 

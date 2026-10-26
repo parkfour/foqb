@@ -47,9 +47,6 @@ export interface PluginManifest {
   homepage?: string;
   // Environment variables the plugin needs, for its own docs and checks.
   requiredEnv?: string[];
-  // On unless FOQB_PLUGINS says otherwise. Default false: an instance only
-  // runs a plugin its operator turned on.
-  enabledByDefault?: boolean;
   // Dynamic settings configurable by an organization administrator.
   settings?: PluginSettingDefinition[];
 }

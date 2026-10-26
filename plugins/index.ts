@@ -12,8 +12,8 @@ import { exchangeRatesPlugin } from "./exchange-rates";
 import { stripePaymentsPlugin } from "./stripe-payments";
 import { localPlugins } from "./local.generated";
 
-// Plugins shipped in this repository, each off until FOQB_PLUGINS names it
-// (see docs/PLUGINS.md).
+// Plugins shipped in this repository. The instance runs them all unless
+// FOQB_PLUGINS narrows the list (see docs/PLUGINS.md).
 export const builtInPlugins: FOQBPlugin[] = [
   emailInvoicesPlugin,
   webhooksPlugin,

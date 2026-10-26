@@ -60,7 +60,7 @@ const MODE_LABELS: Record<PluginSiteMode, string> = {
 };
 
 export default async function SiteAdminPage() {
-  const instancePlugins = availablePlugins.filter((p) => isPluginEnabled(p.manifest.id, p.manifest.enabledByDefault));
+  const instancePlugins = availablePlugins.filter((p) => isPluginEnabled(p.manifest.id));
   const supabase = await createClient();
 
   const [{ data: orgData }, { data: adminData }, { data: actionData }, siteSettings] = await Promise.all([
@@ -128,7 +128,7 @@ export default async function SiteAdminPage() {
           from the choice here.
         </p>
         {instancePlugins.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">FOQB_PLUGINS names no plugins.</p>
+          <p className="mt-3 text-sm text-slate-500">FOQB_PLUGINS turns every plugin off.</p>
         ) : (
           <form action={updatePluginSiteModes} className="mt-3 flex flex-col gap-3">
             {instancePlugins.map((p) => (

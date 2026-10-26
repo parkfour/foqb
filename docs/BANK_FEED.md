@@ -44,6 +44,8 @@ Settings → Bank Connections → **Connect through SimpleFIN instead**.
 - **Updates.** SimpleFIN doesn't call back, so the app asks every 4 hours
   (the `simplefin-sync` job), about the last week each time, for
   transactions that post late. Already-recorded ones are skipped.
+- **Dates.** SimpleFIN gives the moment a transaction posted, not a day;
+  it's dated on that day in the book's timezone ([TIMEZONES.md](TIMEZONES.md)).
 - **Pending transactions aren't booked**, as with Plaid.
 - **Disconnecting** stops the syncing; revoke the token at the Bridge too.
   If SimpleFIN stops accepting the connection, Settings says so; connect

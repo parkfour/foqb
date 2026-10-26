@@ -56,7 +56,11 @@ menu just leaves them out.
   kept in another currency is listed but left out, unless the
   exchange-rates plugin ([PLUGINS.md](PLUGINS.md#exchange-rates)) can
   give a rate: then it's added at that rate, marked "≈", as an estimate
-  that isn't recorded anywhere.
+  that isn't recorded anywhere. A business a Site Admin has suspended is
+  never counted. If it was suspended before its books were closed (its
+  period lock date), it isn't listed at all. If it was suspended after, it's
+  listed greyed out, with what was booked after the close: how many
+  entries, and how much they changed its equity.
 - **History**: the chart and the 30-day change are worked out from the
   books (`get_net_worth_series`): a point for every day of the last six
   months (1M, 6M) and for each month-end back to the first entry (1Y,

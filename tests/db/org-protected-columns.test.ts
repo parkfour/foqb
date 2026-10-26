@@ -66,6 +66,13 @@ describe("organization columns writers can't change directly", () => {
     await refused("update organizations set status = 'suspended' where id = $1", [orgId], /Site Admin/);
   });
 
+  it("refuses an owner backdating or clearing when their organization was suspended", async () => {
+    const { orgId, accountant } = await org();
+    await asUser(client, accountant);
+
+    await refused("update organizations set suspended_at = '2020-01-01' where id = $1", [orgId], /Site Admin/);
+  });
+
   it("still lets writers change ordinary settings", async () => {
     const { orgId, accountant } = await org();
     await asUser(client, accountant);

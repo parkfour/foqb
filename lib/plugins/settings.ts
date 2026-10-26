@@ -95,7 +95,7 @@ export async function getOrgPluginConfig(
   modes?: Modes,
 ): Promise<OrgPluginConfig> {
   const plugin = available.find((p) => p.manifest.id === pluginId);
-  if (!plugin || !isPluginEnabled(plugin.manifest.id, plugin.manifest.enabledByDefault)) {
+  if (!plugin || !isPluginEnabled(plugin.manifest.id)) {
     return { enabled: false, settings: plugin ? getDefaultPluginSettings(plugin) : {} };
   }
 
@@ -133,7 +133,7 @@ export async function getAllOrgPluginConfigs(
   const result: Record<string, OrgPluginConfig> = {};
   for (const plugin of available) {
     const id = plugin.manifest.id;
-    if (isPluginEnabled(id, plugin.manifest.enabledByDefault)) {
+    if (isPluginEnabled(id)) {
       result[id] = resolveConfig(plugin, rows.get(id), pluginSiteMode(siteModes, id));
     }
   }

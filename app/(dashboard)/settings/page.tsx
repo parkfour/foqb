@@ -162,7 +162,7 @@ export default async function SettingsPage({
   // The plugins this instance runs that the site hasn't turned off.
   const instancePlugins = availablePlugins.filter(
     (p) =>
-      isPluginEnabled(p.manifest.id, p.manifest.enabledByDefault) &&
+      isPluginEnabled(p.manifest.id) &&
       pluginSiteMode(siteSettings.pluginModes, p.manifest.id) !== "off",
   );
   const pluginsData = instancePlugins.map((p) => {

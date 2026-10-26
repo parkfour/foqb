@@ -3,6 +3,58 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.7.0 — 2026-10-25
+
+### Business books
+
+- **Sales tax rates.** Name each rate you collect (state, city, county),
+  each with its own liability account. An invoice can carry several; each
+  is rounded on its own and listed on its own line on the invoice and its
+  PDF. A new **Sales Tax** report shows what's owed to each agency.
+- **1099-NEC.** Mark a vendor as a contractor, and the **1099-NEC** report
+  totals what you paid each one in the year, by payment date, and flags
+  those over the filing threshold ($600 through 2025, $2,000 from 2026).
+  Payments by card are left out, as the IRS asks.
+- **Stripe payments plugin (new).** Each invoice gets a payment link the
+  customer pays by card. When Stripe says it's paid, the payment is
+  recorded against the invoice, once, in the account you choose. Each book
+  uses its own Stripe account.
+
+### Household
+
+- **Budget rollover.** Mark a category **Roll over** and what's left of
+  its budget carries into the next month: a sinking fund for car repairs,
+  say, or the holidays.
+- **Between Your Books.** One event posted to your household and a
+  business at once: a business expense on a personal card, an owner's
+  draw, money put into the business. Each side links to the other.
+- **Suspended businesses in net worth.** One suspended before its books
+  were closed (its period lock date) is no longer listed. One suspended
+  after is listed greyed out, with what was booked after the close.
+
+### Everywhere
+
+- **Attachments.** Add receipts and documents (PDFs and photos) to any
+  journal entry, bill or bank booking. The receipt-scanning plugin keeps
+  the photo it read.
+- **SimpleFIN bank feed.** Connect banks through a SimpleFIN Bridge
+  (about $15 a year, no approval needed) as well as Plaid. Accounts and the
+  last 90 days come in, then new transactions every few hours, dated in
+  the book's timezone.
+
+### Plugins
+
+- **Every plugin is available unless the operator says otherwise.** With
+  `FOQB_PLUGINS` unset, an instance runs all of them; a list still narrows
+  it, and `none` still turns them all off. Site Admin and each book's owner
+  choose from there, as before, so nothing turns on in a book by itself.
+- A plugin's own settings (keys, mail server, webhooks) are now inside its
+  card under **Settings → Plugins**, and show as soon as it's turned on.
+
+### Fixes
+
+- A balance that rounds to zero shows as $0.00, not -$0.00.
+
 ## 0.6.0 — 2026-10-25
 
 ### Plugins, book by book

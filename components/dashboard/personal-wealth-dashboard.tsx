@@ -23,9 +23,20 @@ interface WealthDashboardProps {
       currency: string;
       ownEquity: number;
       suspended?: boolean;
+      // Suspended with closed books: what was booked after the close.
+      afterClose?: { closedThrough: string; entries: number; equityChange: number };
       quote?: { rate: number; asOf: string; source: string };
     }[];
   };
+}
+
+// What a suspended business booked after its books were closed.
+function afterCloseNote(b: { currency: string; afterClose?: { closedThrough: string; entries: number; equityChange: number } }): string {
+  const a = b.afterClose;
+  if (!a) return "";
+  if (a.entries === 0) return `. Nothing booked after the books closed on ${a.closedThrough}`;
+  const change = `${a.equityChange >= 0 ? "+" : ""}${formatMoney(a.equityChange, b.currency)}`;
+  return `. After the books closed on ${a.closedThrough}: ${a.entries} ${a.entries === 1 ? "entry" : "entries"}, ${change} equity`;
 }
 
 export function PersonalWealthDashboard({
@@ -402,7 +413,7 @@ export function PersonalWealthDashboard({
                   <p className={`text-xs font-bold ${b.suspended ? "text-slate-500" : "text-slate-900"}`}>{b.name}</p>
                   <p className="text-[11px] text-slate-500">
                     {b.suspended
-                      ? `Book equity ${formatMoney(b.ownEquity, b.currency)}: suspended, not included`
+                      ? `Book equity ${formatMoney(b.ownEquity, b.currency)}: suspended, not included${afterCloseNote(b)}`
                       : b.quote
                       ? `Book equity ${formatMoney(b.ownEquity, b.currency)}, at ${b.quote.rate} (${b.quote.asOf})`
                       : b.equity === null

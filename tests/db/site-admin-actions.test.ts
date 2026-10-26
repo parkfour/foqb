@@ -45,6 +45,27 @@ describe("site admin action logging", () => {
     ]);
   });
 
+  it("records when an organization was suspended, keeps the first date, and clears it on unsuspend", async () => {
+    const orgId = await createOrg(client, "Dated Org");
+    const admin = await createUser(client, "admin@example.com");
+    await makeSiteAdmin(client, admin);
+    const suspendedAt = async () =>
+      (await client.query("select suspended_at from organizations where id = $1", [orgId])).rows[0].suspended_at;
+
+    await asUser(client, admin);
+    await client.query("select set_organization_status($1, 'suspended')", [orgId]);
+    expect(await suspendedAt()).not.toBeNull();
+
+    await client.query("RESET ROLE");
+    await client.query("update organizations set suspended_at = '2026-01-15T12:00:00Z' where id = $1", [orgId]);
+    await asUser(client, admin);
+    await client.query("select set_organization_status($1, 'suspended')", [orgId]);
+    expect((await suspendedAt()).toISOString()).toBe("2026-01-15T12:00:00.000Z");
+
+    await client.query("select set_organization_status($1, 'active')", [orgId]);
+    expect(await suspendedAt()).toBeNull();
+  });
+
   it("logs delete with organization_name and former_member_ids surviving the org's removal", async () => {
     const orgId = await createOrg(client, "Doomed Org");
     const owner = await createUser(client, "doomed-owner@example.com");
