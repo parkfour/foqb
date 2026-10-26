@@ -133,7 +133,7 @@ The DB tests spin up their own ephemeral PostgreSQL container using Docker, run 
 
 ### Upgrade check (before a release)
 
-Production applies new migrations on top of real books before the new app deploys. `node scripts/upgrade-check.mjs v0.7.0` (the last release's tag) builds a throwaway database the way that release left it, fills a company and a household with that release's sample data, applies the migrations added since, and checks every trial balance and row count is unchanged and that posting, voiding and the reports still work. It needs Docker and psql, and removes its container afterwards.
+Production applies new migrations on top of real books before the new app deploys. `node scripts/upgrade-check.mjs <tag>`, with the last release's tag (`v0.8.0`, say), builds a throwaway database the way that release left it, fills a company and a household with that release's sample data, applies the migrations added since, and checks every trial balance and row count is unchanged and that posting, voiding and the reports still work. It needs Docker and psql, and removes its container afterwards.
 
 ---
 

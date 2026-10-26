@@ -157,8 +157,10 @@ asset account.
 With the mortgage notes plugin, mortgages you hold as the lender are
 listed here too ([PLUGINS.md](PLUGINS.md#mortgage-notes)).
 
-There's no automatic valuation. Doing that well needs a paid property-data
-service; scraping Zillow and similar sites is against their terms.
+Values are entered by hand, or updated weekly by the Property values plugin
+from a Zillow estimate, through a property-data API the instance subscribes
+to ([PLUGINS.md](PLUGINS.md#property-values)). Scraping Zillow and similar
+sites directly is against their terms.
 
 ## Chart of accounts and journal entries
 

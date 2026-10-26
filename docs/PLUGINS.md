@@ -3,14 +3,18 @@
 FOQB has a small, in-repo plugin system: **events** a plugin can react to on
 the server, **slots** where a plugin can put its own controls in the UI, and
 **pages** of its own in the menu.
-Eight plugins ship with FOQB. An instance runs them all, and each book's
+Twelve plugins ship with FOQB. An instance runs them all, and each book's
 owner turns on the ones the book uses:
 [email invoices](#email-invoices), [webhooks](#webhooks),
 [receipt scanning](#receipt-scanning),
 [statement import](#statement-import),
 [mortgage notes](#mortgage-notes), [exchange rates](#exchange-rates),
+[security prices](#security-prices), [property values](#property-values),
+[payroll (US)](#payroll-us), [EU VAT](#eu-vat),
 [Stripe payments](#stripe-payments) and the
-[start-up assistant](#start-up-assistant).
+[start-up assistant](#start-up-assistant). Payroll and EU VAT stay off until
+they're acknowledged (see
+[Plugins that need acknowledging](#plugins-that-need-acknowledging)).
 
 Plugins live in this repository (`plugins/<id>/`), or in a private repo of
 your own (see [Private plugins](#private-plugins)), and are compiled in
@@ -506,6 +510,15 @@ codes are sent), marked "≈" with the rate and its date.
 - Another plugin can supply rates from somewhere else: an `exchangeRates`
   source in its server parts (`rate(from, to)`, giving `{ rate, asOf,
   source }` or null). The first enabled one with a rate is used.
+
+## Security prices
+
+Plugin id `security-prices`. With it on, **Update prices** on a household's
+Investments page fills in each holding's latest closing price from Stooq's
+free daily quotes; no key is needed, and only the symbols are sent. A US
+symbol is looked up as `SYMBOL.US`; one with its own market suffix (`VOD.UK`)
+as written. A symbol Stooq doesn't know is listed, for a price entered by
+hand. Updating prices is for owners and accountants.
 
 ## Property values
 

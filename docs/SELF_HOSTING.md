@@ -52,7 +52,9 @@ start in their creator's browser timezone).
 **Optional, plugins**: `FOQB_PLUGINS`. Unset (or `*`), the instance runs
 every plugin; a comma-separated list (`email-invoices`, `webhooks`,
 `receipt-ocr`, `statement-import`, `mortgage-notes`, `startup-assistant`,
-`exchange-rates`, `stripe-payments`) runs just those, and `none` runs none.
+`exchange-rates`, `stripe-payments`, `security-prices`, `property-values`,
+`payroll`, `eu-vat`) runs just those, and `none` runs none. Payroll and EU
+VAT also need acknowledging by a Site Admin and each book's owner.
 A Site Admin then sets each
 one to off, books choose (the default) or on for every book, and each
 book's owner turns it on or off; see [PLUGINS.md](PLUGINS.md#turning-plugins-on).

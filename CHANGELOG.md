@@ -96,6 +96,17 @@ household. 0.9.0, the beta, is for cleanup.
   by address under Settings → Sales tax.
 - **Webhooks** can subscribe to all of these events.
 
+### Fixes
+
+- **Webhooks respect the book's switch.** A book with the Webhooks plugin
+  turned off now sends nothing, even to webhooks it set up earlier.
+  Previously they kept receiving events.
+- Accounts in another currency are no longer offered in forms that can't
+  record a foreign amount (bills, payments, items, credit memos and
+  others), where choosing one failed.
+- Updating investment prices is for owners and accountants, and a price
+  that couldn't be saved is reported.
+
 ### Not yet (planned for 0.9.0)
 
 - Unapplied credit memos lower Accounts Receivable but aren't in AR Aging

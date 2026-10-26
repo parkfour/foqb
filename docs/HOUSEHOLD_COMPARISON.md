@@ -17,7 +17,7 @@ marks something we couldn't confirm.
 | Budgeting | Monthly per expense account, rollover (sinking funds), envelopes with income to assign | Budgets, piggy banks | Envelope (zero-based) budgeting | Budgets | Budgets |
 | Net worth | ✅ every figure opens its accounts; history chart | ✅ | ✅ report | ✅ report | ✅ report |
 | Investment holdings and prices | ✅ trades, prices (plugin or by hand), average cost | ❌ balances only | ❌ balances only | ✅ | ✅ |
-| Property values | ✅ entered by hand | as an asset account | as an account | as an asset account | as an asset account |
+| Property values | ✅ by hand, or weekly from a Zillow estimate (plugin, your own data API) | as an asset account | as an account | as an asset account | as an asset account |
 | Several people, with roles | ✅ owner / accountant / viewer, two-factor | mostly one user | ✅ with a sync server | ❌ | ❌ |
 | Business books beside the household | ✅ same login; business equity rolls into net worth; one event posts to both books | ❌ | ❌ | ✅ in one file (invoices, bills) | ❌ |
 | Tax lines | ✅ Form 1040 with Schedules 1, B, C, D, E; per-rental Schedule E | ❌ | ❌ | ✅ US tax report (TXF) | ✅ tax report |
@@ -40,7 +40,7 @@ investment lots and prices, and don't need a web app or several users.
 | Bank feed | ✅ Plaid | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Budgeting | Monthly, rollover, zero-based envelopes | ✅ | Spending plan | ✅ | Zero-based, its core | ✅ |
 | Investment holdings | ✅ entered, not imported | ✅ (more tools in Premier) | ✅ | ✅ | ❌ balances only | ✅ |
-| Property values | entered by hand | entered by hand | ? | ✅ automatic home value (Zillow) | as a tracking account | ? |
+| Property values | by hand, or a Zillow estimate (plugin) | entered by hand | ? | ✅ automatic home value (Zillow) | as a tracking account | ? |
 | Business or rentals | ✅ full business books; per-rental Schedule E | Business & Personal plan: Schedule C/E, invoices, rentals | ❌ | ❌ | ❌ | ❌ |
 | Household members | ✅ any number, with roles | one data file | ? | shared household | up to 6 people | one person per subscription |
 | Your data | in your own database; full backup and restore | local file | vendor's cloud | vendor's cloud | vendor's cloud | vendor's cloud |
@@ -60,7 +60,9 @@ data on your own server.
 - **Holdings are entered, not imported.** Trades go in by hand; prices come
   from a plugin or by hand, and there are no tax lots, only average cost (see
   [HOUSEHOLD.md](HOUSEHOLD.md#investments)).
-- **No automatic property values.** They're entered by hand.
+- **Automatic property values need your own data API.** The Property
+  values plugin fetches a Zillow estimate weekly, but the instance has to
+  subscribe to a property-data API that returns one.
 - **Envelopes, simply.** Zero-based budgeting works by account and month,
   with income to assign; there are no goals, targets or moving money
   between envelopes mid-month as YNAB does.
