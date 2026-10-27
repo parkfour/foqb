@@ -3,6 +3,35 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.8.1 (alpha) — 2026-10-27
+
+- **Property values, side by side.** The Property values plugin now
+  values each property, and the property securing each mortgage note, from
+  up to three sources, each with its date:
+  - FHFA's house price index: what was paid × the area's index now ÷ its
+    index the quarter it was bought (metro division, metro area, state or
+    US, picked from the address), with both quarters shown. Needs a free
+    FRED API key.
+  - RentCast's estimate from nearby sales, weekly, with its range. Needs a
+    RentCast key; its free plan's 50 lookups a month are guarded by a
+    monthly limit per book (40 unless changed).
+  - A Zillow estimate, where the instance has a property-data API.
+  Keys go in Settings → Plugins → Property values. Estimated values are
+  replaced only when the book asks, with the source it picks; **Replace
+  estimated values weekly** now uses the index value unless the book picks
+  another, so a book that had it on for Zillow should pick Zillow again.
+- **Other assets.** Properties & Assets has a list of its own for
+  anything else of value (collectibles, jewelry, art, a vehicle): a name and
+  a value, with what it cost and when if you like. Net worth's "Vehicles &
+  Other" is now **Other Assets**, and includes them.
+- **Plugin on/off is a choice, not a checkbox.** *Active* or *Off*, with
+  the one in force marked "(now)"; Save lights up when anything in the card
+  has changed. The old checkbox's label said what was saved, not what was
+  ticked. After a save each setting now shows what was saved (a select used
+  to jump back to its first option).
+- **New books start with the start-up assistant on**, unless a Site Admin
+  turned it off.
+
 ## 0.8.0 (alpha) — 2026-10-26
 
 The alpha: FOQB is now largely feature complete for a small business and a

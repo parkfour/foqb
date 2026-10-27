@@ -180,6 +180,9 @@ export interface SlotContextMap {
   "properties.sections": {
     organizationId: string;
     canWrite: boolean;
+    // New each time the page is rendered again, as it is after any change
+    // to the book's properties or a plugin's section: reload on it.
+    revision: string;
   };
   // Beside an estimate's status buttons.
   "estimate.actions": {

@@ -297,14 +297,14 @@ export function PersonalWealthDashboard({
             </button>
 
             {data.breakdown.vehicles > 0 && (
-              <button type="button" onClick={() => show("Vehicles & Other", data.breakdown.vehicles, linesIn("vehicles"))} className="flex w-full items-center justify-between rounded-lg bg-slate-50 p-3 text-left hover:bg-slate-100">
+              <button type="button" onClick={() => show("Other Assets", data.breakdown.vehicles, linesIn("vehicles"))} className="flex w-full items-center justify-between rounded-lg bg-slate-50 p-3 text-left hover:bg-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="rounded-md bg-purple-100 p-2 text-purple-700">
                     <Landmark className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-800">Vehicles & Other</p>
-                    <p className="text-[11px] text-slate-500">Automobiles & physical assets</p>
+                    <p className="text-xs font-semibold text-slate-800">Other Assets</p>
+                    <p className="text-[11px] text-slate-500">Collectibles and other things of value</p>
                   </div>
                 </div>
                 <span className="font-mono text-xs font-bold text-slate-900">

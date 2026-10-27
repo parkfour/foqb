@@ -110,8 +110,8 @@ by symbol; prices come from the Security prices plugin or by hand, and
 net worth counts holdings at market value, at average cost (no tax lots).
 Pulling holdings in through Plaid needs its separate Investments product,
 which your Plaid account has to be approved (and billed) for. Property
-values are entered by hand, or updated weekly by the Property values plugin
-through a property-data API you subscribe to.
+values are entered by hand, or valued by the Property values plugin from
+FHFA's house price index (a free FRED key).
 
 ## Plugins
 
@@ -138,8 +138,10 @@ owner then choose where each one is on:
   pay by card; Stripe's word that it's paid records the payment.
 - **Security prices**: the latest closing price of each holding on the
   Investments page, from Stooq's free daily quotes.
-- **Property values**: each property's value, weekly, from a Zillow
-  estimate through a property-data API the instance subscribes to.
+- **Property values**: each property's value, and each mortgage note's
+  collateral, side by side from FHFA's house price index for its area (a
+  free FRED key), RentCast's estimate, and a Zillow estimate where the
+  instance has one.
 - **Payroll (US)** and **EU VAT**: withholding, paychecks and draft 941,
   940 and W-2 figures; VAT rates, reverse charge and a VAT summary. Both do
   nothing until a Site Admin and each book's owner acknowledge that they

@@ -43,6 +43,11 @@ Then, in the app, three layers decide where each one runs:
    book's owner turns it on; *On for every book* starts it on, and an owner
    can still turn it off.
 3. **A book's Settings → Plugins**: its owner's choice, kept once made.
+   Each plugin has an *Active* / *Off* choice: the one in force is marked
+   "(now)", and Save lights up once anything in the card has changed.
+   One exception to *Books choose*: a **new** book starts with the
+   start-up assistant on, since a new book is the one it's for; the site
+   setting *Off* still keeps it off.
    It hides or shows the plugin's slots, pages and menu links in that
    book. Server work that isn't tied to a book's own data (webhook
    delivery, statement readers) runs for every book unless the site turns
@@ -206,7 +211,7 @@ mid-delivery isn't retried. Restoring a backup records none.
 | `invoice.actions` | beside "Download / Share PDF" on an invoice | `invoiceId`, `invoiceNumber`, `customer` (`name`, `email`), `total`, `remaining`, `dueDate`, `status`, `buildPdf()` (the same PDF the button makes) |
 | `settings.sections` | the plugin's own settings, in its card under Settings → Plugins | `organizationId` |
 | `dashboard.sections` | below the dashboard's own figures, household or business | `organizationId`, `workspaceType`, `canWrite` |
-| `properties.sections` | a section of its own on Properties & Assets | `organizationId`, `canWrite` |
+| `properties.sections` | a section of its own on Properties & Assets | `organizationId`, `canWrite`, `revision` (new each time the page renders again: reload on it) |
 | `reconcile.header` | at the top of the Reconcile page, for writers | `accounts` (`id`, `name`, `account_number`, `type`) |
 | `bill.header` | above the Enter Bill form | `vendors`, `accounts`, `prefill(bill)`: fills in any of `vendorId`, `billNumber`, `billDate`, `lines` |
 | `estimate.actions` | beside an estimate's status | `estimateId`, `estimateNumber`, `customer` (`name`, `email`), `subtotal`, `status` |
@@ -522,19 +527,90 @@ hand. Updating prices is for owners and accountants.
 
 ## Property values
 
-Updates each property's estimated value once a week from a Zillow estimate
-(a "Zestimate"). Zillow has no public API, so the instance subscribes to a
-property-data API that returns one (the unofficial Zillow APIs on RapidAPI,
-for example) and names it in `PROPERTY_VALUE_API_URL` (with `{address}` in
-it), `PROPERTY_VALUE_API_KEY` and, for RapidAPI, `PROPERTY_VALUE_API_HOST`.
-The value is the first `zestimate` field anywhere in the reply; check your
-provider returns one before relying on it.
+Plugin id `property-values`. Values each property on a household's
+Properties & Assets page, and the property securing each mortgage note,
+from up to three sources shown side by side, each with its date:
 
-A book turns it on with **Update property values weekly** in the plugin's
-settings. Each property with a street and a zip (or city and state) has its
-address sent to the provider, the longest-unvalued first, 20 a week
-(free tiers allow about 100 lookups a month). The value replaces what was
-entered by hand.
+- **House price index** (a free FRED key): changes quarterly; below.
+- **RentCast's estimate** (a RentCast key): from nearby sales, weekly; below.
+- **A Zillow estimate**, where the instance subscribes to a property-data
+  API and the book turns on **Show Zillow estimates**; below.
+
+Each needs its key or setup before anything is looked up; without any, no
+address leaves the instance.
+
+### House price index
+
+The index value comes from FHFA's all-transactions house price index
+(quarterly, not seasonally adjusted), through the St. Louis Fed's FRED API:
+
+> value = what was paid × (latest quarter's index ÷ the purchase quarter's index)
+
+- **Which index.** The address goes to the US Census Bureau's geocoder
+  (free, no key), which says what metro division, metro area and state it
+  is in. The plugin uses the most local index FHFA publishes that covers
+  the purchase quarter: the metro division (big metros like Chicago are
+  only published by division), else the metro area, else the state, else
+  the US. A property with only a state uses the state's. Each address is
+  placed once, and again only if it changes.
+- **Dates shown.** Next to each value: the index used and both quarters
+  with their index levels, e.g. "Q3 2019 200.1 → Q2 2026 296.2". FHFA
+  publishes a quarter about two months after it ends, so the latest is
+  usually one or two quarters back. A property bought in a quarter not yet
+  published has no value until it is.
+- **What it needs.** A property needs a purchase price and date. A mortgage
+  note needs the property's value when the loan was made, entered in the
+  plugin's section (its date is the note's origination date).
+- **A FRED key per book.** An owner pastes one under **Settings → Plugins
+  → Property values → FRED API key**; it's free from
+  [fredaccount.stlouisfed.org/apikeys](https://fredaccount.stlouisfed.org/apikeys).
+  It's stored encrypted (`ENCRYPTION_KEY`). You can use the same key in
+  each of your books; someone else keeping books on the instance should
+  get their own (FRED's terms tie a key to the person who requested it).
+- **Replacing estimated values.** Off by default: the values are shown
+  beside yours. With **Replace estimated values weekly**, each property's
+  estimated value (what net worth counts) is replaced by the source picked
+  in **With**: the index value, RentCast's estimate or a Zillow estimate.
+- **When.** Weekly for every book it's on in (suspended books skipped), or
+  now with **Refresh values** (owners and accountants, at most every few
+  minutes).
+
+FRED requires this notice, which the plugin shows with a link to its terms:
+"This product uses the FRED® API but is not endorsed or certified by the
+Federal Reserve Bank of St. Louis."
+
+### RentCast
+
+RentCast ([rentcast.io/api](https://www.rentcast.io/api)) estimates a
+property's value from nearby sales (its "AVM"). An owner pastes the book's
+key under **Settings → Plugins → Property values → RentCast API key**. Each
+property with a street, city, state and zip, and each mortgage note's
+property address, is sent to it.
+
+**It can cost money.** RentCast's free plan includes 50 lookups a month and
+charges for each one past that ($0.20 as of October 2026). So each property
+is looked up at most once a week (Refresh values doesn't look it up again
+sooner), and the book makes at most **RentCast lookups a month, at most**
+(40 unless changed) in a calendar month; the section shows how many are
+used. The limit is per book: a key used in more than one book adds up their
+lookups, so split the 50 between them.
+
+### Zillow
+
+Zillow has no public API, so an instance
+that wants Zestimates subscribes to a property-data API that returns one
+(the unofficial Zillow APIs on RapidAPI, for example) and names it in
+`PROPERTY_VALUE_API_URL` (with `{address}` in it), `PROPERTY_VALUE_API_KEY`
+and, for RapidAPI, `PROPERTY_VALUE_API_HOST`. The value is the first
+`zestimate` field anywhere in the reply; check your provider returns one
+before relying on it. A book shows it with **Show Zillow estimates**, or
+picks it with **With: a Zillow estimate**.
+Each property with a street and a zip (or city and state) has its address
+sent to the provider, the longest-unvalued first, 20 a week across the
+instance (free tiers allow about 100 lookups a month).
+
+Redfin isn't a source: it has no public API, its site refuses automated
+requests, and its terms forbid them.
 
 ## Payroll (US)
 
@@ -627,6 +703,9 @@ Plugin id `startup-assistant`. For starting a book from statements and
 bank feeds that reach back different distances. Each account's opening
 balance already holds everything dated on or before it, so history from
 before it, like another bank's old transfer to it, belongs to equity.
+
+A new book starts with it on (unless a Site Admin set it to *Off*); an
+existing book's owner turns it on under Settings → Plugins.
 
 - **The guard.** Until the book is done, nothing can be booked to an
   account on or before its opening balance's date; the error says to book

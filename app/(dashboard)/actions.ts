@@ -9,6 +9,7 @@ import { CURRENT_ORG_COOKIE } from "@/lib/org/current";
 import { safeNextPath } from "@/lib/http/proxy-headers";
 import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/org/default-accounts";
 import { isValidTimezone } from "@/lib/time/book-time";
+import { enablePluginsForNewBook } from "@/lib/plugins/settings";
 
 export interface ActionState {
   error: string | null;
@@ -104,6 +105,13 @@ export async function createOrganization(
 
   if (seedError) {
     console.error("Failed to seed default chart of accounts", seedError);
+  }
+
+  // Best-effort too: the owner can turn it on under Settings.
+  try {
+    await enablePluginsForNewBook(supabase, orgId);
+  } catch (pluginError) {
+    console.error("Failed to turn on the new book's default plugins", pluginError);
   }
 
   revalidatePath("/");

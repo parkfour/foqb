@@ -321,9 +321,10 @@ mail server, set in Settings.)
 
 Plugins are set in `docker/.env` too: `FOQB_PLUGINS`, if your
 organizations' mail servers are on your LAN `ALLOW_PRIVATE_NETWORK_HOSTS`
-(both in §2), and for the Property values plugin `PROPERTY_VALUE_API_URL`,
-`PROPERTY_VALUE_API_KEY` and `PROPERTY_VALUE_API_HOST` (see
-[PLUGINS.md](PLUGINS.md#property-values)).
+(both in §2), and, only for Zillow estimates in the Property values
+plugin, `PROPERTY_VALUE_API_URL`, `PROPERTY_VALUE_API_KEY` and
+`PROPERTY_VALUE_API_HOST` (see [PLUGINS.md](PLUGINS.md#property-values);
+its house price index values need only a FRED key, set in each book).
 
 **The first account created becomes Site Admin.** Create yours before
 sharing the URL. Back up the `db-data` volume like any Postgres database,

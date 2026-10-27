@@ -89,6 +89,7 @@ describe("calculateHouseholdNetWorth", () => {
           select: ok([
             { name: "Lake house", estimated_value: 250000, purchase_price: 200000 },
             { name: "Lot", estimated_value: null, purchase_price: 90000 },
+            { name: "Coin collection", kind: "other", estimated_value: 12000, purchase_price: 8000 },
           ]),
         },
         accounts: { select: ok([]) },
@@ -105,15 +106,15 @@ describe("calculateHouseholdNetWorth", () => {
       cash: 950,
       investments: 5000,
       real_estate: 340000,
-      vehicles: 200, // "Childcare" isn't a car: unrecognized assets land in Vehicles & Other
+      vehicles: 12200, // Other assets: the coin collection, and "Childcare fund", an asset account it can't place
       credit_cards: 300,
       mortgages: 100000,
       loans: 8000,
       other_liabilities: 0,
     });
-    expect(result.totalAssets).toBe(346150);
+    expect(result.totalAssets).toBe(358150);
     expect(result.totalLiabilities).toBe(108300);
-    expect(result.netWorth).toBe(237850);
+    expect(result.netWorth).toBe(249850);
     // What's in each figure, biggest first, each linked to where it's kept.
     expect(result.items?.filter((i) => i.bucket === "cash")).toEqual([
       { bucket: "cash", name: "Savings", amount: 1000, href: "/reports/account/id-Savings?from=networth" },

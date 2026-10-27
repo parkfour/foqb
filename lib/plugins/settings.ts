@@ -203,3 +203,20 @@ export async function getPluginSettings<T = Settings>(
   const config = await getOrgPluginConfig(supabase, orgId, pluginId, available, modes);
   return config.settings as T;
 }
+
+// Plugins a new book starts with on, unless the site turned them off: a
+// book is new exactly when the start-up assistant is needed.
+export const ON_IN_NEW_BOOKS = ["startup-assistant"];
+
+export async function enablePluginsForNewBook(
+  supabase: SupabaseClient,
+  orgId: string,
+  available: FOQBPlugin[] = availablePlugins,
+  modes?: Modes,
+): Promise<void> {
+  const siteModes = await modesOr(supabase, modes);
+  for (const id of ON_IN_NEW_BOOKS) {
+    if (!isPluginEnabled(id) || pluginSiteMode(siteModes, id) === "off") continue;
+    await setOrgPluginConfig(supabase, orgId, id, { enabled: true }, available);
+  }
+}

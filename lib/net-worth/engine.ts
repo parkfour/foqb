@@ -6,6 +6,8 @@ export interface NetWorthBreakdown {
   cash: number;
   investments: number;
   real_estate: number;
+  // Other assets (shown as such). Named for its old label: saved
+  // snapshots' breakdowns use the key.
   vehicles: number;
   credit_cards: number;
   mortgages: number;
@@ -82,7 +84,7 @@ export async function calculateHouseholdNetWorth(
 
   const [{ data: balances, error }, { data: properties }, { data: fed }, holdings] = await Promise.all([
     supabase.rpc("get_balance_sheet", { p_org_id: orgId, p_as_of_date: today }),
-    supabase.from("properties").select("name, estimated_value, purchase_price").eq("organization_id", orgId),
+    supabase.from("properties").select("name, kind, estimated_value, purchase_price").eq("organization_id", orgId),
     supabase.from("accounts").select("id").eq("organization_id", orgId).eq("has_bank_feed", true),
     fetchHoldings(supabase, orgId, today),
   ]);
@@ -117,8 +119,8 @@ export async function calculateHouseholdNetWorth(
     if (bucket) add({ bucket, name: row.name, amount: Number(row.balance) + (gain ?? 0), href: `/reports/account/${row.account_id}?from=networth` });
   }
 
-  for (const p of (properties ?? []) as { name: string | null; estimated_value: number | string | null; purchase_price: number | string | null }[]) {
-    add({ bucket: "real_estate", name: p.name ?? "Property", amount: Number(p.estimated_value ?? p.purchase_price ?? 0), href: "/properties" });
+  for (const p of (properties ?? []) as { name: string | null; kind: string | null; estimated_value: number | string | null; purchase_price: number | string | null }[]) {
+    add({ bucket: p.kind === "other" ? "vehicles" : "real_estate", name: p.name ?? "Property", amount: Number(p.estimated_value ?? p.purchase_price ?? 0), href: "/properties" });
   }
 
   for (const key of Object.keys(breakdown) as (keyof NetWorthBreakdown)[]) {

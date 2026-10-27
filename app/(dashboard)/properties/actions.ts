@@ -25,14 +25,17 @@ export async function createPropertyAction(formData: FormData): Promise<void> {
   if (!orgId || !name) return;
 
   const purchasePrice = amount(formData, "purchasePrice");
+  // Another asset (collectibles, jewelry) has no address.
+  const other = formData.get("kind") === "other";
   const supabase = await createClient();
   const { error } = await supabase.from("properties").insert({
     organization_id: orgId,
     name,
-    address_street: text(formData, "street"),
-    address_city: text(formData, "city"),
-    address_state: text(formData, "state"),
-    address_zip: text(formData, "zip"),
+    kind: other ? "other" : "real_estate",
+    address_street: other ? null : text(formData, "street"),
+    address_city: other ? null : text(formData, "city"),
+    address_state: other ? null : text(formData, "state"),
+    address_zip: other ? null : text(formData, "zip"),
     purchase_price: purchasePrice,
     purchase_date: text(formData, "purchaseDate"),
     estimated_value: amount(formData, "estimatedValue") ?? purchasePrice,

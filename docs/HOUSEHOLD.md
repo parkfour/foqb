@@ -41,7 +41,7 @@ menu just leaves them out.
   only knows asset and liability: cash (cash, checking, savings, money
   market, or a number starting `10`), investments (brokerage, IRA, 401k, 403b, 457b, HSA,
   stock…), real estate (home, house, property…), and everything else under
-  "Vehicles & Other". Debts split into mortgages, credit cards, loans and
+  "Other Assets", alongside the other assets listed on Properties & Assets. Debts split into mortgages, credit cards, loans and
   other. An account with a bank feed (linked through Plaid, or with
   imported transactions) whose name doesn't say counts as cash, or as a
   credit card if it's owed (`has_bank_feed` in
@@ -152,15 +152,24 @@ site). Properties sit outside the ledger: they're added to net worth directly
 and no journal entries are made, so don't also record the same property as an
 asset account.
 
+**Other assets** are listed the same way below them: anything else of value
+you want in net worth (collectibles, jewelry, art, a vehicle), with a value
+and, if you like, what it cost and when you got it. They count under
+"Other Assets" on the Net Worth page. They have no address, aren't valued by
+the Property values plugin, and aren't offered as a Schedule E property.
+
 ![Two properties, their purchase prices and current estimates](screenshots/household-properties.jpg)
 
 With the mortgage notes plugin, mortgages you hold as the lender are
 listed here too ([PLUGINS.md](PLUGINS.md#mortgage-notes)).
 
-Values are entered by hand, or updated weekly by the Property values plugin
-from a Zillow estimate, through a property-data API the instance subscribes
-to ([PLUGINS.md](PLUGINS.md#property-values)). Scraping Zillow and similar
-sites directly is against their terms.
+Values are entered by hand. The Property values plugin shows, beside them,
+each property's purchase price moved with FHFA's house price index for its
+area (a free FRED key), RentCast's estimate from nearby sales (a RentCast
+key), and a Zillow estimate where the instance subscribes to a
+property-data API, and can replace the estimated values with one of them
+weekly ([PLUGINS.md](PLUGINS.md#property-values)). Scraping
+Zillow, Redfin and similar sites directly is against their terms.
 
 ## Chart of accounts and journal entries
 

@@ -119,6 +119,12 @@ async function main() {
   await client.query("update organizations set period_lock_date = current_date - 92 where id = $1", [orgs.company]);
 
   const before = await figures(client, orgs);
+  // Older tags have no outbox; newer ones record the seeds' own events.
+  const eventCount = async () =>
+    (await client.query("select to_regclass('plugin_events') is not null t")).rows[0].t
+      ? (await client.query("select count(*)::int n from plugin_events")).rows[0].n
+      : 0;
+  const eventsBefore = await eventCount();
   console.log("before:", JSON.stringify(Object.fromEntries(Object.entries(before).map(([k, v]) => [k, v.counts]))));
   for (const f of added) psql(["-f", path.join(root, f)]);
   psql([], sqlConst("GRANTS_SQL"));
@@ -128,7 +134,7 @@ async function main() {
     check(JSON.stringify(after[name].counts) === JSON.stringify(before[name].counts), `${name}: row counts unchanged ${JSON.stringify(after[name].counts)}`);
     check(JSON.stringify(after[name].tb) === JSON.stringify(before[name].tb), `${name}: trial balance unchanged (${after[name].tb.length} accounts)`);
   }
-  check((await client.query("select count(*)::int n from plugin_events")).rows[0].n === 0, "migrating recorded no plugin events");
+  check((await eventCount()) === eventsBefore, "migrating recorded no plugin events");
   check(
     (await client.query("select on_hand::int n from item_stock where organization_id = $1", [orgs.company])).rows[0]?.n === 12,
     "stock item's count carried over",

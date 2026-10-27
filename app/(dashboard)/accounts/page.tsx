@@ -64,7 +64,7 @@ export default async function AccountsPage() {
       ? Promise.resolve({ data: null })
       : supabase.from("tax_lines").select("id, form, code, label").in("form", forms).order("sort_order"),
     forms.includes(PER_PROPERTY_FORM)
-      ? supabase.from("properties").select("id, name").eq("organization_id", orgId).order("name")
+      ? supabase.from("properties").select("id, name").eq("organization_id", orgId).eq("kind", "real_estate").order("name")
       : Promise.resolve({ data: null }),
   ]);
   // A book with several forms names the form with each line.
