@@ -66,6 +66,21 @@ describe("processBankTransactions", () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
+  it("records a $0 transaction as ignored and doesn't try to categorize it", async () => {
+    const { client, tables } = createSupabaseMock({
+      tables: { bank_transactions: { upsert: ok([{ id: "bt-3", status: "ignored" }]) } },
+    });
+    createAdminClientMock.mockReturnValue(client);
+
+    await processBankTransactions("org-1", "bank-account-1", [tx({ amount: 0 })]);
+
+    expect(tables.bank_transactions.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "ignored" }),
+      expect.anything(),
+    );
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
   it("applies Plaid's new details directly to an unreconciled transaction", async () => {
     const { client, tables } = existingRow({ status: "unreconciled", amount: -42.5, date: "2026-01-15" });
 

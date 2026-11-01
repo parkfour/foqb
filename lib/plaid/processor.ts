@@ -198,6 +198,8 @@ export async function processBankTransactions(
 
     // Recorded first, as unreconciled: if categorizing it below fails for
     // any reason, it stays visible for manual review instead of vanishing.
+    // A $0 row (a bank notice, say) has nothing to book and could never be
+    // categorized, so it comes in ignored; Re-open still brings it back.
     // The unique external_transaction_id makes a re-delivered transaction
     // a no-op (empty result) rather than a duplicate.
     const { data: inserted, error: insertError } = await supabase
@@ -211,7 +213,7 @@ export async function processBankTransactions(
           date: tx.date,
           name: tx.name,
           amount,
-          status: "unreconciled",
+          status: amount === 0 ? "ignored" : "unreconciled",
           journal_entry_id: null,
         },
         { onConflict: "external_transaction_id", ignoreDuplicates: true },
@@ -232,8 +234,9 @@ export async function processBankTransactions(
       continue;
     }
     // The other side of a transfer that's already booked: the database
-    // matched it to that entry on insert (match_booked_transfer).
-    if (row.status === "matched") continue;
+    // matched it to that entry on insert (match_booked_transfer). A $0 row
+    // was recorded ignored above.
+    if (row.status === "matched" || amount === 0) continue;
     const bankTransactionId = row.id;
 
     await categorizeByRules(supabase, organizationId, bankAccountId, {

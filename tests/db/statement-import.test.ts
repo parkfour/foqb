@@ -205,6 +205,22 @@ describe("importStatement", () => {
     expect(rows).toEqual([{ status: "in_progress" }]);
   });
 
+  it("adds a $0 row ignored, so it doesn't hold the reconciliation open", async () => {
+    const b = await book();
+    const s = statement("2026-03-01", "2026-03-31", 1000, [
+      { date: "2026-03-05", description: "COFFEE SHOP", amount: -50 },
+      { date: "2026-03-06", description: "NOTICE", amount: 0 },
+    ]);
+
+    const result = await importStatement(b.supabase, b.orgId, b.userId, b.checking, s);
+
+    expect(result).toMatchObject({ success: true, added: 2, uncategorized: 0, reconciled: true });
+    const { rows } = await client.query("select status from bank_transactions where account_id = $1 and amount = 0", [
+      b.checking,
+    ]);
+    expect(rows).toEqual([{ status: "ignored" }]);
+  });
+
   it("settles the history before a statement: earlier rows ignored, the difference adjusted, all cleared", async () => {
     const b = await book();
     // Older feed rows: one booked (coffee), one never categorized.

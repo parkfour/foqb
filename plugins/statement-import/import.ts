@@ -204,7 +204,8 @@ export async function importStatement(
       date: row.date,
       name: row.description.slice(0, 500),
       amount: row.amount,
-      status: "unreconciled",
+      // Nothing to book on a $0 row, so it can't be categorized.
+      status: row.amount === 0 ? "ignored" : "unreconciled",
     };
   });
   const added: { id: string; date: string; name: string; amount: number; status: string }[] = [];
