@@ -28,7 +28,7 @@ export function validateSplitTransaction(
   const allLinesValid =
     splitLines.length >= 1 &&
     splitLines.every((line) => Boolean(line.account_id) && Number(line.amount) > 0);
-  const isValid = Math.abs(difference) < 0.005 && allLinesValid;
+  const isValid = difference === 0 && allLinesValid;
 
   return {
     isValid,

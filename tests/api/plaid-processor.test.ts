@@ -55,6 +55,23 @@ describe("processBankTransactions", () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
+  it("prefers adopting a row with the exact matching name when relinking", async () => {
+    const { tables } = existingRow({ status: "matched", amount: -42.5, date: "2026-01-15" });
+    tables.bank_transactions.maybeSingle
+      .mockResolvedValueOnce(ok(null))
+      .mockResolvedValueOnce(ok({ id: "bt-exact-name" }));
+
+    await processBankTransactions("org-1", "bank-account-1", [
+      tx({ id: "txn_new", account_id: "acc_new", name: "TARGET PAYEE" }),
+    ]);
+
+    expect(tables.bank_transactions.eq).toHaveBeenCalledWith("name", "TARGET PAYEE");
+    expect(tables.bank_transactions.update).toHaveBeenCalledWith({
+      external_transaction_id: "txn_new",
+      external_account_id: "acc_new",
+    });
+  });
+
   it("doesn't post a row the database matched to an already-booked transfer", async () => {
     const { client } = createSupabaseMock({
       tables: { bank_transactions: { upsert: ok([{ id: "bt-2", status: "matched" }]), select: ok(null) } },

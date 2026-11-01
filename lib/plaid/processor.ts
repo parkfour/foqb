@@ -106,16 +106,34 @@ async function adoptRelinkedRow(
     .maybeSingle();
   if (known) return false;
 
-  const { data: old } = await supabase
+  // Prefer matching by payee name first if there are multiple same-day,
+  // same-amount rows, preserving distinct transaction memos across re-enrollment.
+  const { data: namedMatch } = await supabase
     .from("bank_transactions")
     .select("id")
     .eq("account_id", bankAccountId)
     .neq("external_account_id", tx.account_id)
     .eq("date", tx.date)
     .eq("amount", amount)
+    .eq("name", tx.name)
     .order("id")
     .limit(1)
     .maybeSingle();
+
+  const old =
+    namedMatch ??
+    (
+      await supabase
+        .from("bank_transactions")
+        .select("id")
+        .eq("account_id", bankAccountId)
+        .neq("external_account_id", tx.account_id)
+        .eq("date", tx.date)
+        .eq("amount", amount)
+        .order("id")
+        .limit(1)
+        .maybeSingle()
+    ).data;
   if (!old) return false;
 
   const { error } = await supabase

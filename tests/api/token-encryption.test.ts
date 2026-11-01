@@ -24,4 +24,10 @@ describe("token-encryption", () => {
 
     expect(() => decryptToken(tampered)).toThrow();
   });
+
+  it("rejects truncated or too-short ciphertext payloads", () => {
+    expect(() => decryptToken("")).toThrow("payload is too short");
+    expect(() => decryptToken(Buffer.from("short").toString("base64"))).toThrow("payload is too short");
+    expect(() => decryptToken(Buffer.alloc(27).toString("base64"))).toThrow("payload is too short");
+  });
 });

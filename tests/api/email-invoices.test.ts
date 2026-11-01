@@ -74,13 +74,35 @@ beforeEach(() => {
 
 describe("public addresses", () => {
   it("refuses loopback, private, link-local and mapped private addresses", () => {
-    for (const address of ["127.0.0.1", "10.1.2.3", "172.20.0.1", "192.168.1.1", "169.254.169.254", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "0.0.0.0"]) {
+    for (const address of [
+      "127.0.0.1",
+      "10.1.2.3",
+      "172.20.0.1",
+      "192.168.1.1",
+      "169.254.169.254",
+      "::1",
+      "fd00::1",
+      "fe80::1",
+      "::ffff:10.0.0.1",
+      "::ffff:7f00:1",
+      "::ffff:a9fe:a9fe",
+      "0:0:0:0:0:ffff:127.0.0.1",
+      "::7f00:1",
+      "::ffff:0:7f00:1",
+      "0.0.0.0",
+    ]) {
       expect(isPublicAddress(address), address).toBe(false);
     }
   });
 
   it("accepts public addresses", () => {
-    for (const address of ["8.8.8.8", "172.32.0.1", "2606:4700::1111", "::ffff:1.1.1.1"]) {
+    for (const address of [
+      "8.8.8.8",
+      "172.32.0.1",
+      "2606:4700::1111",
+      "::ffff:1.1.1.1",
+      "::ffff:0808:0808",
+    ]) {
       expect(isPublicAddress(address), address).toBe(true);
     }
   });

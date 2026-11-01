@@ -34,6 +34,10 @@ export function encryptToken(plaintext: string): string {
 export function decryptToken(encoded: string): string {
   const data = Buffer.from(encoded, "base64");
 
+  if (data.length < IV_LENGTH + 16) {
+    throw new Error("Invalid encrypted token: payload is too short");
+  }
+
   const iv = data.subarray(0, IV_LENGTH);
   const authTag = data.subarray(IV_LENGTH, IV_LENGTH + 16);
   const ciphertext = data.subarray(IV_LENGTH + 16);

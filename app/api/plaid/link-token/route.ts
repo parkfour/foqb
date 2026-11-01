@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createLinkToken, describePlaidError } from "@/lib/plaid/client";
 import { findWritableEnrollment } from "@/lib/plaid/writable-enrollment";
 import { decryptToken } from "@/lib/crypto/token-encryption";
+import { canWrite, type MemberRole } from "@/lib/org/current";
 import { bankLinkingBlockedReason } from "@/lib/plaid/bank-linking";
 
 // { organizationId }: a Link token for connecting a new bank to that org.
@@ -45,6 +46,19 @@ export async function POST(req: NextRequest) {
   const blocked = await bankLinkingBlockedReason(supabase, organizationId);
   if (blocked) {
     return NextResponse.json({ error: blocked }, { status: 403 });
+  }
+
+  if (!enrollment) {
+    const { data: membership } = await supabase
+      .from("organization_members")
+      .select("role")
+      .eq("organization_id", organizationId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!canWrite((membership?.role as MemberRole | undefined) ?? null)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   let accessToken: string | undefined;

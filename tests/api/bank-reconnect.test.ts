@@ -173,6 +173,15 @@ describe("Plaid update mode (reconnecting a bank)", () => {
     expect(createLinkTokenMock).not.toHaveBeenCalled();
   });
 
+  it("refuses a new link token to a viewer", async () => {
+    mockUser("viewer");
+
+    const response = await linkToken(request("/api/plaid/link-token", { organizationId: "org-1" }));
+
+    expect(response.status).toBe(403);
+    expect(createLinkTokenMock).not.toHaveBeenCalled();
+  });
+
   it("marks the enrollment active after reconnecting, then catches up the sync", async () => {
     const tables = mockUser("owner");
 

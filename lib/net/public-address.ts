@@ -22,8 +22,10 @@ for (const [net, prefix] of [
   blocked.addSubnet(net, prefix, "ipv4");
 }
 for (const [net, prefix] of [
-  ["::", 128],
-  ["::1", 128],
+  // Unspecified, loopback, and IPv4-compatible (::7f00:1).
+  ["::", 96],
+  // IPv4-translated (::ffff:0:7f00:1).
+  ["::ffff:0:0:0", 96],
   ["64:ff9b::", 96],
   ["fc00::", 7],
   ["fe80::", 10],
@@ -36,9 +38,8 @@ export function isPublicAddress(address: string): boolean {
   const family = isIP(address);
   if (family === 4) return !blocked.check(address, "ipv4");
   if (family !== 6) return false;
-  // An IPv4 address written as IPv6 (::ffff:10.0.0.1) is judged as IPv4.
-  const mapped = address.toLowerCase().match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isPublicAddress(mapped[1]);
+  // BlockList judges an IPv4-mapped address (::ffff:10.0.0.1, ::ffff:a00:1,
+  // or written out in full) against the IPv4 rules itself.
   return !blocked.check(address, "ipv6");
 }
 
