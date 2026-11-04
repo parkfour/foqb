@@ -3,6 +3,20 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.8.2 (alpha) — 2026-11-04
+
+- **$0 bank rows come in ignored.** A $0 row from a bank feed or a
+  statement import can't be categorized, so it no longer sits in
+  Unreviewed and keeps the uncategorized reminder up. Rows already stuck
+  there can be cleared with **Ignore** on the Bank Feed.
+- **Security fixes.** Connecting a new bank now needs a role that can
+  write to the book; a damaged stored bank token is refused cleanly;
+  outgoing requests (webhooks, plugins) also refuse IPv4-compatible and
+  IPv4-translated IPv6 addresses.
+- **Re-linking a bank** matches each incoming transaction to the one
+  already booked by payee name first, so two same-day rows for the same
+  amount keep their own categories and memos.
+
 ## 0.8.1 (alpha) — 2026-10-27
 
 - **Property values, side by side.** The Property values plugin now
