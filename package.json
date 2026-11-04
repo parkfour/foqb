@@ -1,6 +1,6 @@
 {
   "name": "foqb",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "private": true,
   "license": "AGPL-3.0-only",
   "author": "Park Four, LLC",
@@ -30,7 +30,7 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^1.47.0",
     "next": "^16.4.2",
-    "nodemailer": "^10.0.13",
+    "nodemailer": "^10.3.1",
     "papaparse": "^5.7.0",
     "pdfjs-dist": "^6.3.289",
     "plaid": "^47.0.0",

@@ -3,6 +3,14 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.8.3 (alpha) — 2026-11-04
+
+- **Dependency security updates.** follow-redirects 1.16.2 (used by the
+  Plaid client; a high-severity advisory about credentials following a
+  redirect) and nodemailer 10.3.1 (used by the email-invoices plugin;
+  advisories where a crafted address could add a recipient). No other
+  changes from 0.8.2.
+
 ## 0.8.2 (alpha) — 2026-11-04
 
 - **$0 bank rows come in ignored.** A $0 row from a bank feed or a
