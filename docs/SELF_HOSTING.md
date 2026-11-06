@@ -363,8 +363,9 @@ development history from before publishing stays private. To set it up:
    `mirror-key.pub` to the GitHub repository as a deploy key with write
    access.
 3. In the private repository, add the secrets `MIRROR_REPO` (e.g.
-   `git@github.com:you/foqb.git`) and `MIRROR_DEPLOY_KEY` (the contents
-   of `mirror-key`). Optionally add `MIRROR_AUTHOR_NAME` and
+   `git@github.com:you/foqb.git`) and `MIRROR_DEPLOY_KEY` (the output
+   of `base64 -w0 mirror-key`: one line, because Gitea's runner logs a
+   multi-line secret unmasked). Optionally add `MIRROR_AUTHOR_NAME` and
    `MIRROR_AUTHOR_EMAIL` to publish your commits under another identity (such
    as your GitHub noreply address). Also add `MIRROR_REPLACE_EMAILS` (your
    own git email addresses, comma-separated), so only your commits are

@@ -167,7 +167,8 @@ plugins/local/            # git clone <your repo> plugins/local
 - **Deploying.** The CI deploy job clones `paul/foqb-private` into
   `plugins/local` when the `FOQB_PRIVATE_DEPLOY_KEY` secret holds the
   private half of a read-only deploy key on that repo (a key that reads
-  that one repo, unlike a user's access token); `vercel deploy` uploads the
+  that one repo, unlike a user's access token), base64-encoded on one line
+  (`base64 -w0 keyfile`) so Gitea's log masking hides it; `vercel deploy` uploads the
   folder (it doesn't follow `.gitignore`). On another host, clone your repo
   there before building.
 - **License.** FOQB is AGPL: if people other than you use an instance

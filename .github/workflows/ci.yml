@@ -80,6 +80,11 @@ jobs:
       # folder, and the build registers what's in it. Only the yes/no goes
       # in the environment; the key is written to a file for the clone and
       # removed after.
+      #
+      # The secret holds the key base64-encoded on one line
+      # (`base64 -w0 keyfile`). Gitea's runner prints each step's env with
+      # newlines written as "\n", which its log masking doesn't recognize,
+      # so a key stored as-is ends up in the log in full.
       - name: Look for private plugins
         run: echo "PRIVATE_PLUGINS=${{ secrets.FOQB_PRIVATE_DEPLOY_KEY != '' }}" >> "$GITHUB_ENV"
 
@@ -88,7 +93,10 @@ jobs:
         run: |
           key="$RUNNER_TEMP/foqb-private-key"
           trap 'rm -f "$key"' EXIT
-          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          case "$DEPLOY_KEY" in -----*)
+            echo "::error::FOQB_PRIVATE_DEPLOY_KEY must be base64 on one line (base64 -w0 keyfile)"; exit 1 ;;
+          esac
+          printf '%s' "$DEPLOY_KEY" | base64 -d > "$key"
           chmod 600 "$key"
           GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
             git clone --depth 1 ssh://git@center.n.parkfour.com/paul/foqb-private.git plugins/local
@@ -102,10 +110,12 @@ jobs:
       - uses: supabase/setup-cli@v1
         if: github.ref == 'refs/heads/main'
         with:
-          version: latest
+          # Pinned: CLI 3.0.0 made `db push` target the local database
+          # unless --remote is passed, which broke the "latest" deploy.
+          version: 3.0.0
 
       # `link` authenticates the CLI to the project via the access token;
-      # `db push` then opens a direct Postgres connection to actually run
+      # `db push --remote` then opens a direct Postgres connection to run
       # pending migrations, which needs the DB password separately — the
       # access token alone only covers the Management API. Secret name
       # keeps its _PUBLIC suffix from when this repo ran two instances —
@@ -115,7 +125,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push --password "$SUPABASE_DB_PASSWORD_PUBLIC"
+          supabase db push --remote --password "$SUPABASE_DB_PASSWORD_PUBLIC"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -193,8 +203,14 @@ jobs:
             echo "Mirror secrets not set; skipping"
             exit 0
           fi
+          # Base64 on one line, like FOQB_PRIVATE_DEPLOY_KEY (see deploy).
+          case "$MIRROR_DEPLOY_KEY" in -----*)
+            echo "::error::MIRROR_DEPLOY_KEY must be base64 on one line (base64 -w0 keyfile)"; exit 1 ;;
+          esac
           key=$(mktemp)
-          printf '%s\n' "$MIRROR_DEPLOY_KEY" > "$key"
+          trap 'rm -f "$key" "$key.known_hosts"' EXIT
+          printf '%s' "$MIRROR_DEPLOY_KEY" | base64 -d > "$key"
+          chmod 600 "$key"
           # GitHub's published SSH host key, so the push can't be intercepted.
           echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$key.known_hosts"
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$key.known_hosts"
