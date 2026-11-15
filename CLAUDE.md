@@ -1,16 +1,19 @@
 <!-- rtk-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
+# RTK (Rust Token Killer) - Token-Optimized Commands (Optional)
 
-## Golden Rule
+## Usage & Verification
 
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
+RTK (Rust Token Killer) is an optional command wrapper that filters verbose CLI outputs to reduce context consumption.
 
-**Important**: Even in command chains with `&&`, use `rtk`:
+### Installation & Verification
+When opting to use RTK:
+1. Install from a trusted source (e.g. `cargo install --locked rtk-cli` or official release binaries).
+2. Verify the binary in your PATH before use (`which rtk`).
+3. Note that RTK acts as a command proxy; do not treat external binaries as unconditionally safe by default.
+
+### Command Execution
+When RTK is available and desired in the environment, commands may be prefixed with `rtk`:
 ```bash
-# ❌ Wrong
-git add . && git commit -m "msg" && git push
-
-# ✅ Correct
 rtk git add . && rtk git commit -m "msg" && rtk git push
 ```
 
@@ -118,8 +121,7 @@ rtk gain                # View token savings statistics
 rtk gain --history      # View command history with savings
 rtk discover            # Analyze Claude Code sessions for missed RTK usage
 rtk proxy <cmd>         # Run command without filtering (for debugging)
-rtk init                # Add RTK instructions to CLAUDE.md
-rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
+rtk init                # Add RTK instructions to project instructions
 ```
 
 ## Token Savings Overview

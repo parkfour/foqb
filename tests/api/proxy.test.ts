@@ -1,67 +1,64 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { updateSessionMock } = vi.hoisted(() => ({ updateSessionMock: vi.fn() }));
+vi.mock("@/lib/supabase/middleware", () => ({
+  updateSession: vi.fn(async () => new Response("session-ok", { status: 200 })),
+}));
 
-vi.mock("@/lib/supabase/middleware", () => ({ updateSession: updateSessionMock }));
+import { proxy } from "@/proxy";
 
-function makeRequest(xForwardedFor?: string): NextRequest {
-  return new NextRequest("https://foqb.vercel.app/", {
-    headers: xForwardedFor ? { "x-forwarded-for": xForwardedFor } : {},
-  });
-}
-
-describe("proxy", () => {
+describe("proxy middleware allow-list", () => {
   const originalEnv = process.env.ALLOWED_PROXY_IP;
 
-  beforeEach(() => {
-    updateSessionMock.mockReset();
-    updateSessionMock.mockResolvedValue(new Response("ok"));
-  });
-
   afterEach(() => {
-    process.env.ALLOWED_PROXY_IP = originalEnv;
-    vi.resetModules();
+    if (originalEnv !== undefined) {
+      process.env.ALLOWED_PROXY_IP = originalEnv;
+    } else {
+      delete process.env.ALLOWED_PROXY_IP;
+    }
   });
 
-  it("skips the IP check entirely when ALLOWED_PROXY_IP is unset", async () => {
+  it("passes through when ALLOWED_PROXY_IP is unset", async () => {
     delete process.env.ALLOWED_PROXY_IP;
-    const { proxy } = await import("@/proxy");
-
-    await proxy(makeRequest("1.2.3.4"));
-    expect(updateSessionMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("blocks a request whose x-forwarded-for doesn't match the allowed IP", async () => {
-    process.env.ALLOWED_PROXY_IP = "216.144.227.186";
-    const { proxy } = await import("@/proxy");
-
-    const response = await proxy(makeRequest("1.2.3.4"));
-    expect(response.status).toBe(403);
-    expect(updateSessionMock).not.toHaveBeenCalled();
+    const req = new NextRequest("https://foqb.example.com/welcome", {
+      headers: { "x-forwarded-for": "198.51.100.1" },
+    });
+    const res = await proxy(req);
+    expect(res.status).toBe(200);
   });
 
   it("blocks a request with no x-forwarded-for header at all", async () => {
-    process.env.ALLOWED_PROXY_IP = "216.144.227.186";
-    const { proxy } = await import("@/proxy");
-
-    const response = await proxy(makeRequest());
-    expect(response.status).toBe(403);
+    process.env.ALLOWED_PROXY_IP = "10.0.0.5";
+    const req = new NextRequest("https://foqb.example.com/dashboard");
+    const res = await proxy(req);
+    expect(res.status).toBe(403);
   });
 
-  it("allows a request whose x-forwarded-for matches the allowed IP", async () => {
-    process.env.ALLOWED_PROXY_IP = "216.144.227.186";
-    const { proxy } = await import("@/proxy");
-
-    await proxy(makeRequest("216.144.227.186"));
-    expect(updateSessionMock).toHaveBeenCalledTimes(1);
+  it("allows when single x-forwarded-for matches ALLOWED_PROXY_IP", async () => {
+    process.env.ALLOWED_PROXY_IP = "10.0.0.5";
+    const req = new NextRequest("https://foqb.example.com/dashboard", {
+      headers: { "x-forwarded-for": "10.0.0.5" },
+    });
+    const res = await proxy(req);
+    expect(res.status).toBe(200);
   });
 
-  it("takes the first hop when x-forwarded-for has multiple comma-separated IPs", async () => {
-    process.env.ALLOWED_PROXY_IP = "216.144.227.186";
-    const { proxy } = await import("@/proxy");
+  it("rejects when rightmost hop does not match ALLOWED_PROXY_IP", async () => {
+    process.env.ALLOWED_PROXY_IP = "10.0.0.5";
+    // Client attempts to spoof by putting ALLOWED_PROXY_IP leftmost, but connecting peer is 198.51.100.2
+    const req = new NextRequest("https://foqb.example.com/dashboard", {
+      headers: { "x-forwarded-for": "10.0.0.5, 198.51.100.2" },
+    });
+    const res = await proxy(req);
+    expect(res.status).toBe(403);
+  });
 
-    await proxy(makeRequest("216.144.227.186, 10.0.0.1"));
-    expect(updateSessionMock).toHaveBeenCalledTimes(1);
+  it("allows when rightmost hop matches ALLOWED_PROXY_IP", async () => {
+    process.env.ALLOWED_PROXY_IP = "10.0.0.5";
+    const req = new NextRequest("https://foqb.example.com/dashboard", {
+      headers: { "x-forwarded-for": "198.51.100.2, 10.0.0.5" },
+    });
+    const res = await proxy(req);
+    expect(res.status).toBe(200);
   });
 });

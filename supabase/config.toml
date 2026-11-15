@@ -53,7 +53,7 @@ default_pool_size = 20
 max_client_conn = 100
 
 # [db.vault]
-# secret_key = "env(SECRET_VALUE)"
+# Encryption keys for vault should be supplied via environment variables in production.
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.

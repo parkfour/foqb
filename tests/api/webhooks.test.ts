@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { createHmac } from "node:crypto";
+import { isIP } from "node:net";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSupabaseMock, ok } from "./supabase-mock";
 import { decryptToken, encryptToken } from "@/lib/crypto/token-encryption";
@@ -20,6 +21,18 @@ const { bookPlugins } = vi.hoisted(() => ({ bookPlugins: { value: ["webhooks"] }
 vi.mock("@/lib/plugins/settings", () => ({ getOrgEnabledPluginIds: async () => bookPlugins.value }));
 vi.mock("next/server", () => ({ after: afterMock }));
 vi.mock("node:https", () => ({ request: httpsRequestMock }));
+vi.mock("@/lib/net/public-address", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/net/public-address")>();
+  return {
+    ...actual,
+    resolvePublicAddress: vi.fn(async (host: string) => {
+      if (host === "localhost" || (isIP(host) && !actual.isPublicAddress(host))) {
+        throw new Error(`${host} is a private or local address`);
+      }
+      return "93.184.216.34";
+    }),
+  };
+});
 
 import { deliverWebhook, enqueueWebhookEvent, postWebhook, signWebhook } from "@/plugins/webhooks/delivery";
 import { createWebhook } from "@/plugins/webhooks/actions";
@@ -214,15 +227,15 @@ describe("createWebhook", () => {
 
   it("is owner-only", async () => {
     getCurrentUserRoleMock.mockResolvedValue("accountant");
-    expect(await createWebhook(null, form({ url: "https://8.8.8.8/hook" }))).toEqual({
+    expect(await createWebhook(null, form({ url: "https://example.com/hook" }))).toEqual({
       error: "Only an owner can add webhooks.",
     });
   });
 
   it("refuses http, credentials in the URL, unknown events and private hosts", async () => {
-    expect(await createWebhook(null, form({ url: "http://8.8.8.8/hook" }))).toHaveProperty("error");
-    expect(await createWebhook(null, form({ url: "https://u:p@8.8.8.8/hook" }))).toHaveProperty("error");
-    expect(await createWebhook(null, form({ url: "https://8.8.8.8/hook", events: ["journal:posted"] }))).toHaveProperty("error");
+    expect(await createWebhook(null, form({ url: "http://example.com/hook" }))).toHaveProperty("error");
+    expect(await createWebhook(null, form({ url: "https://u:p@example.com/hook" }))).toHaveProperty("error");
+    expect(await createWebhook(null, form({ url: "https://example.com/hook", events: ["journal:posted"] }))).toHaveProperty("error");
     expect(await createWebhook(null, form({ url: "https://169.254.169.254/latest" }))).toEqual({
       error: expect.stringContaining("private or local"),
     });
@@ -235,12 +248,12 @@ describe("createWebhook", () => {
     });
     serverClientMock.mockResolvedValue(client);
 
-    const result = await createWebhook(null, form({ url: "https://8.8.8.8/hook" }));
+    const result = await createWebhook(null, form({ url: "https://example.com/hook" }));
     if (!("secret" in result)) throw new Error(JSON.stringify(result));
     expect(result.secret).toMatch(/^whsec_/);
 
     const row = tables.organization_webhooks.insert.mock.calls[0][0] as Record<string, unknown>;
-    expect(row).toMatchObject({ organization_id: "org-1", url: "https://8.8.8.8/hook", events: ["invoice:created"] });
+    expect(row).toMatchObject({ organization_id: "org-1", url: "https://example.com/hook", events: ["invoice:created"] });
     expect(decryptToken(row.secret_encrypted as string)).toBe(result.secret);
   });
 });

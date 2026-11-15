@@ -107,7 +107,7 @@ jobs:
       # There's one Supabase project (production) behind this app, not one
       # per branch, so migrations only run on main — a preview deploy runs
       # against the same already-migrated database.
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         if: github.ref == 'refs/heads/main'
         with:
           # Pinned: CLI 3.0.0 made `db push` target the local database
