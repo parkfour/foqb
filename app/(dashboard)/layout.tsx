@@ -64,7 +64,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                     You can still{" "}
                     <DownloadButton
                       href="/api/export/organization"
-                      label="download a full backup"
+                      label="download a backup"
                       className="underline"
                     />{" "}
                     of your data.

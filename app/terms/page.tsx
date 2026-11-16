@@ -50,7 +50,7 @@ export default function TermsOfServicePage() {
               keeping your login credentials secure. If you create an organization, you&rsquo;re
               its Owner and are responsible for the accounts you create for other members and for
               how you distribute their credentials. You&rsquo;re responsible for your
-              organization&rsquo;s data and for backing it up (Settings → Download full backup).
+              organization&rsquo;s data and for backing it up (Settings → Download backup).
             </p>
           </section>
 
@@ -81,7 +81,7 @@ export default function TermsOfServicePage() {
               We may suspend or delete an organization&rsquo;s access to the Service for violation
               of these Terms, for abuse, or as otherwise reasonably necessary to operate the
               Service. Where practical, a suspended organization&rsquo;s Owner retains enough
-              access to download a full backup of their data. You may also delete your own
+              access to download a backup of their data. You may also delete your own
               organization at any time.
             </p>
           </section>

@@ -50,7 +50,8 @@ export function RestoreOrgForm() {
       <h2 className="text-sm font-semibold text-slate-900">...or restore from a backup</h2>
       <p className="mt-1 text-sm text-slate-500">
         Upload a backup file downloaded from Settings. This creates a new organization from it —
-        it never modifies an existing one.
+        it never modifies an existing one. Attached files aren&apos;t in backups, so they don&apos;t
+        come back.
       </p>
       <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2">
         <input

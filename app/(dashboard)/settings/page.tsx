@@ -508,12 +508,14 @@ export default async function SettingsPage({
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900">Backup</h2>
           <p className="mt-1 text-xs text-slate-500">
-            A full export of everything in this organization — accounts, journal entries,
-            invoices, bills, customers, vendors, and more — as one JSON file.
+            An export of the books — accounts, journal entries, invoices, bills, customers,
+            vendors, and more — as one JSON file. Attached files (receipts, statements) aren&apos;t
+            in it: download any you need to keep from their entries. A database backup (see the
+            self-hosting guide) keeps them too.
           </p>
           <DownloadButton
             href="/api/export/organization"
-            label="Download full backup"
+            label="Download backup"
             className="mt-3 inline-block rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           />
         </div>

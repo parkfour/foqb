@@ -43,7 +43,7 @@ investment lots and prices, and don't need a web app or several users.
 | Property values | by hand, or a Zillow estimate (plugin) | entered by hand | ? | ✅ automatic home value (Zillow) | as a tracking account | ? |
 | Business or rentals | ✅ full business books; per-rental Schedule E | Business & Personal plan: Schedule C/E, invoices, rentals | ❌ | ❌ | ❌ | ❌ |
 | Household members | ✅ any number, with roles | one data file | ? | shared household | up to 6 people | one person per subscription |
-| Your data | in your own database; full backup and restore | local file | vendor's cloud | vendor's cloud | vendor's cloud | vendor's cloud |
+| Your data | in your own database; backup and restore of the books (attached files only in database backups) | local file | vendor's cloud | vendor's cloud | vendor's cloud | vendor's cloud |
 | Price (Oct 2026, renewal) | $0 self-hosted | roughly $60–130/year, by plan | roughly $70–85/year | about $100/year | about $109/year | about $95/year |
 
 **Where FOQB fits:** against Quicken Classic, FOQB gives you a real
