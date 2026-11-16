@@ -1,10 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { convertEstimateToInvoice } from "@/app/(dashboard)/customers/estimates/actions";
+import { ClassSelect, type ClassOption } from "@/components/classes/class-select";
 
-export function ConvertEstimateForm({ id, defaultNumber, today }: { id: string; defaultNumber: string; today: string }) {
+export function ConvertEstimateForm({
+  id,
+  defaultNumber,
+  today,
+  classes,
+}: {
+  id: string;
+  defaultNumber: string;
+  today: string;
+  classes: ClassOption[];
+}) {
   const [state, action, pending] = useActionState(convertEstimateToInvoice, { error: null });
+  const [classId, setClassId] = useState("");
 
   return (
     <form action={action} className="flex flex-wrap items-end gap-2">
@@ -21,6 +33,8 @@ export function ConvertEstimateForm({ id, defaultNumber, today }: { id: string; 
         Due date
         <input type="date" name="dueDate" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
       </label>
+      <input type="hidden" name="classId" value={classId} />
+      <ClassSelect classes={classes} value={classId} onChange={setClassId} />
       <button
         type="submit"
         disabled={pending}

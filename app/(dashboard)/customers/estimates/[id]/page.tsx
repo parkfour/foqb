@@ -7,6 +7,7 @@ import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current
 import { bookToday } from "@/lib/org/book-clock";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
+import { fetchActiveClasses } from "@/lib/org/classes";
 import { applyTaxes, type SalesTaxRate } from "@/lib/sales-tax";
 import { ESTIMATE_STATUS_STYLES, estimateSubtotal } from "@/lib/ar/estimates";
 import { setEstimateStatus } from "../actions";
@@ -31,7 +32,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
   if (!orgId) redirect("/");
 
   const supabase = await createClient();
-  const [{ data }, role, today, currency] = await Promise.all([
+  const [{ data }, role, today, currency, classes] = await Promise.all([
     supabase
       .from("estimates")
       .select(
@@ -43,6 +44,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
     getCurrentUserRole(orgId),
     bookToday(orgId),
     getBookCurrency(orgId),
+    fetchActiveClasses(supabase, orgId),
   ]);
   if (!data) notFound();
   const e = data as unknown as RawEstimate;
@@ -160,7 +162,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
             {e.status !== "declined" && statusButton("declined", "Mark declined")}
             {e.status !== "open" && statusButton("open", "Reopen")}
           </div>
-          <ConvertEstimateForm id={e.id} defaultNumber={e.estimate_number} today={today} />
+          <ConvertEstimateForm id={e.id} defaultNumber={e.estimate_number} today={today} classes={classes} />
         </div>
       )}
     </div>

@@ -45,7 +45,7 @@ interface EstimateRow {
 }
 
 // Turns an estimate into an invoice dated today (the book's today, given
-// by the form): same lines, same named tax rates. The estimate is marked
+// by the form): same lines, same named tax rates, and the class picked. The estimate is marked
 // invoiced first, so pressing twice can't make two invoices; it goes back
 // if the invoice fails.
 export async function convertEstimateToInvoice(
@@ -56,6 +56,7 @@ export async function convertEstimateToInvoice(
   const invoiceNumber = (formData.get("invoiceNumber") as string)?.trim();
   const invoiceDate = formData.get("invoiceDate") as string;
   const dueDate = (formData.get("dueDate") as string) || null;
+  const classId = (formData.get("classId") as string) || null;
   const orgId = await getCurrentOrgId();
   if (!id || !orgId) return { error: "No estimate" };
   if (!invoiceNumber || !invoiceDate) return { error: "Invoice number and date are required" };
@@ -92,6 +93,7 @@ export async function convertEstimateToInvoice(
       invoice_number: invoiceNumber,
       invoice_date: invoiceDate,
       due_date: dueDate,
+      class_id: classId,
       tax_rate: Number(estimate.tax_rate),
       ...(estimate.tax_rate_ids.length > 0 ? { tax_rate_ids: estimate.tax_rate_ids } : {}),
       lines: estimate.estimate_lines.map((l) => ({ ...l, description: l.description ?? "" })),
