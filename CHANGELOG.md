@@ -3,14 +3,43 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
-## 0.9.0 (beta) — unreleased
+## 0.8.4 (pre-beta 1) — 2026-11-16
 
-<!-- Intro paragraph goes here at release time; it heads the GitHub release. -->
+The first pre-release of the 0.9 beta. 0.9 is a cleanup release: no new
+areas, just loose ends tied off across the books, from credit memos and
+inventory costs to bank feeds on accounts kept in another currency. This
+build is up for a few days of testing; whatever turns up gets fixed before
+it's called 0.9.0.
 
 - **Unapplied credit memos show where they count.** A credit memo not yet
   applied to an invoice already lowered Accounts Receivable, but it was
   missing from AR Aging, customer statements and the customer's current
   balance. It now appears in all three as a credit, aged from its date.
+- **Bank feeds on accounts in another currency.** Bank feeds and statement
+  imports now work on an account kept in another currency than the book's.
+  Each row is booked at a rate (the exchange-rates plugin's quote, or one
+  you set on Bank Transactions) and shown in both currencies; the Register
+  shows it in the account's currency.
+- **Statements by email come with a PDF.** Email statement now attaches the
+  statement as a PDF, and long invoices and statements make multi-page PDFs
+  instead of running off the first page.
+- **Classes in more places.** Posting a bank transaction and turning an
+  estimate into an invoice can set a class, and changing a bank
+  transaction's category no longer drops its class.
+- **Voiding a bill puts back the average cost** of the items bought on it.
+- **Time that can't be invoiced says why.** Billable hours with no service
+  item or rate are marked as such, instead of adding an unexplained $0.00.
+- **Creating or restoring another book switches to it.**
+- **The old Inventory page is gone;** track stock on Items. Anything entered
+  on it is kept in the database and in backups.
+- **Backups say what they leave out.** A book backup doesn't include
+  attached files (receipts, statements); Settings now says so, and the
+  database backup is what keeps them.
+- **Smaller fixes.** `/customers/payments` and similar addresses show "not
+  found" instead of an error page; the payroll employee table works with
+  screen readers.
+- **Upgrading** applies migrations 099 and 100. GitHub releases are now
+  made from this changelog.
 
 ## 0.8.3 (alpha) — 2026-11-04
 
