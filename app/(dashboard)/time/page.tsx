@@ -60,11 +60,14 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
   const userCanWrite = canWrite(role);
 
   // Unbilled billable hours by customer, whatever month they're in.
-  const byCustomer = new Map<string, { name: string; hours: number; amount: number }>();
+  // Hours with no service item, or no rate, can't be priced (unpriced).
+  const byCustomer = new Map<string, { name: string; hours: number; amount: number; unpriced: number }>();
   for (const e of ((unbilledData as unknown as EntryRow[] | null) ?? []).filter(isUnbilled)) {
-    const row = byCustomer.get(e.customer_id as string) ?? { name: e.customers?.name ?? "—", hours: 0, amount: 0 };
+    const row = byCustomer.get(e.customer_id as string) ?? { name: e.customers?.name ?? "—", hours: 0, amount: 0, unpriced: 0 };
+    const { lines } = timeInvoiceLines([e]);
     row.hours += Number(e.hours);
-    row.amount += timeInvoiceLines([e]).lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
+    row.amount += lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
+    if (lines.length === 0) row.unpriced += Number(e.hours);
     byCustomer.set(e.customer_id as string, row);
   }
 
@@ -88,7 +91,14 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
                 <tr key={customerId} className="border-b border-slate-100 last:border-0">
                   <td className="px-5 py-3 text-slate-900">{row.name}</td>
                   <td className="px-5 py-3 text-right text-slate-600">{row.hours} h</td>
-                  <td className="px-5 py-3 text-right text-slate-900">{formatCurrency(row.amount)}</td>
+                  <td className="px-5 py-3 text-right text-slate-900">
+                    {formatCurrency(row.amount)}
+                    {row.unpriced > 0 && (
+                      <span className="block text-xs text-slate-500">
+                        {row.unpriced} h not included: no service item or rate
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3">{userCanWrite && <InvoiceTimeForm customerId={customerId} today={today} />}</td>
                 </tr>
               ))}
@@ -135,6 +145,9 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
                     <td className="px-5 py-3 text-slate-900">
                       {[e.items?.name, e.description].filter(Boolean).join(": ") || "—"}
                       {!e.billable && <span className="ml-2 text-xs text-slate-500">not billable</span>}
+                      {e.billable && e.customer_id && isUnbilled(e) && timeInvoiceLines([e]).lines.length === 0 && (
+                        <span className="ml-2 text-xs text-amber-700">no service item or rate, so it can&apos;t be invoiced</span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right text-slate-900">{Number(e.hours)}</td>
                     <td className="px-5 py-3 text-right">
