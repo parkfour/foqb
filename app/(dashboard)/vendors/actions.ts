@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { revertAverageCosts } from "@/lib/ar/stock";
 import { emitHook } from "@/lib/plugins/hooks";
 import { ensureServerPluginsLoaded } from "@/lib/plugins/server-loader";
 import type { ActionState } from "@/app/(dashboard)/actions";
@@ -94,7 +95,8 @@ export async function deleteVendor(formData: FormData): Promise<void> {
 }
 
 // Voids it, with any payments on it: void_bill reverses their entries
-// and sends their bank transactions back to the feed.
+// and sends their bank transactions back to the feed. Items bought on it
+// get their average cost back.
 export async function voidBill(_prev: { error: string | null }, formData: FormData): Promise<{ error: string | null }> {
   const id = formData.get("id") as string;
   if (!id) return { error: null };
@@ -103,7 +105,8 @@ export async function voidBill(_prev: { error: string | null }, formData: FormDa
   const { error } = await supabase.rpc("void_bill", { p_bill_id: id });
   if (error) return { error: error.message };
 
-  const { data: voided } = await supabase.from("bills").select("bill_number, organization_id").eq("id", id).maybeSingle();
+  const { data: voided } = await supabase.from("bills").select("bill_number, organization_id, journal_entry_id").eq("id", id).maybeSingle();
+  const costError = voided?.journal_entry_id ? await revertAverageCosts(supabase, voided.journal_entry_id as string) : null;
   if (voided) {
     ensureServerPluginsLoaded();
     await emitHook("bill:voided", { billId: id, billNumber: voided.bill_number as string, orgId: voided.organization_id as string });
@@ -111,5 +114,5 @@ export async function voidBill(_prev: { error: string | null }, formData: FormDa
 
   revalidatePath("/vendors/bills");
   revalidatePath("/transactions");
-  return { error: null };
+  return { error: costError && `The bill was voided, but its items' average cost wasn't put back: ${costError}` };
 }

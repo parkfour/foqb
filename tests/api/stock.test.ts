@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { averageCost, saleCostLines, type StockItem } from "@/lib/ar/stock";
+import { averageCost, averageCostWithout, saleCostLines, type StockItem } from "@/lib/ar/stock";
 
 const widget: StockItem = { id: "w", inventory_account_id: "inv", cogs_account_id: "cogs", unit_cost: 2.5 };
 
@@ -35,5 +35,17 @@ describe("averageCost", () => {
   it("starts from the price when nothing (or less than nothing) is on hand", () => {
     expect(averageCost(0, 9, 5, 4)).toBe(4);
     expect(averageCost(-3, 9, 5, 4)).toBe(4);
+  });
+});
+
+describe("averageCostWithout", () => {
+  it("undoes averageCost when nothing moved in between", () => {
+    const after = averageCost(10, 2, 10, 4); // 3
+    expect(averageCostWithout(10, after, 10, 40)).toBe(2);
+  });
+
+  it("keeps the cost when nothing would be left, or the result would be negative", () => {
+    expect(averageCostWithout(0, 3, 10, 40)).toBe(3);
+    expect(averageCostWithout(1, 1, 10, 100)).toBe(1);
   });
 });

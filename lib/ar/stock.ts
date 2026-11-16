@@ -75,8 +75,7 @@ export async function recordMoves(
 }
 
 // After a purchase is booked: each bought item's average cost, from what
-// was on hand before it. ponytail: voiding the bill later doesn't undo the
-// cost change; the count comes back but the average stays.
+// was on hand before it. Voiding the bill undoes it (revertAverageCosts).
 export async function updateAverageCosts(supabase: SupabaseClient, stock: Map<string, StockItem>, bought: StockMove[]): Promise<void> {
   for (const move of bought) {
     const item = stock.get(move.item_id);
@@ -87,4 +86,42 @@ export async function updateAverageCosts(supabase: SupabaseClient, stock: Map<st
     item.unit_cost = cost;
     await supabase.from("items").update({ unit_cost: cost }).eq("id", item.id);
   }
+}
+
+// Voiding a purchase: the average cost without quantity bought at value
+// (quantity × price), when onHand is what's left without it. Nothing left,
+// or a negative result (the stock moved at other costs since), keeps the
+// cost as it is.
+export function averageCostWithout(onHand: number, cost: number, quantity: number, value: number): number {
+  if (onHand <= 0) return cost;
+  const without = ((onHand + quantity) * cost - value) / onHand;
+  return without < 0 ? cost : Math.round(without * 10000) / 10000;
+}
+
+// After a bill is voided (its entry no longer posted, so item_stock already
+// leaves its moves out): takes its purchases back out of each item's
+// average cost.
+export async function revertAverageCosts(supabase: SupabaseClient, journalEntryId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("inventory_moves")
+    .select("item_id, quantity, unit_cost, items(unit_cost)")
+    .eq("journal_entry_id", journalEntryId)
+    .gt("quantity", 0);
+  if (error) return error.message;
+  const bought = new Map<string, { quantity: number; value: number; cost: number }>();
+  for (const m of (data ?? []) as unknown as { item_id: string; quantity: number; unit_cost: number; items: { unit_cost: number } | null }[]) {
+    const sum = bought.get(m.item_id) ?? { quantity: 0, value: 0, cost: Number(m.items?.unit_cost ?? 0) };
+    sum.quantity += Number(m.quantity);
+    sum.value += Number(m.quantity) * Number(m.unit_cost);
+    bought.set(m.item_id, sum);
+  }
+  for (const [itemId, b] of bought) {
+    const { data: stock } = await supabase.from("item_stock").select("on_hand").eq("item_id", itemId).maybeSingle();
+    const onHand = Number((stock as { on_hand: number } | null)?.on_hand ?? 0);
+    const cost = averageCostWithout(onHand, b.cost, b.quantity, b.value);
+    if (cost === b.cost) continue;
+    const { error: updateError } = await supabase.from("items").update({ unit_cost: cost }).eq("id", itemId);
+    if (updateError) return updateError.message;
+  }
+  return null;
 }
