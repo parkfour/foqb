@@ -3,7 +3,8 @@
 
 // EU member states' standard VAT rates, percent, as of late 2025 (Finland
 // 25.5% from September 2024, Slovakia 23% from 2025, Estonia 24% from July
-// 2025, Romania 21% from August 2025). Rates change: check the European
+// 2025, Romania 21% from August 2025); checked 2026-11-16: no standard
+// rate changed in 2026 (only reduced rates, which aren't kept here). Rates change: check the European
 // Commission's TEDB (taxation-customs.ec.europa.eu) before relying on one.
 // Reduced rates vary by product, so they're added by hand.
 export const EU_STANDARD_RATES: Record<string, { name: string; rate: number }> = {

@@ -7,7 +7,8 @@ const RATES: { from: string; rate: number }[] = [
   { from: "2025-01-01", rate: 0.7 },
   // IR-2025-128.
   { from: "2026-01-01", rate: 0.725 },
-  // Mid-year rise for fuel prices (Internal Revenue Bulletin 2026-29).
+  // Mid-year rise for fuel prices (Announcement 2026-11, Internal Revenue
+  // Bulletin 2026-29; checked 2026-11-16).
   { from: "2026-07-01", rate: 0.76 },
 ];
 
