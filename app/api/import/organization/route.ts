@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { validateOrganizationSnapshot } from "@/lib/org/restore-snapshot";
+import { setCurrentOrgCookie } from "@/lib/org/current";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -40,5 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // The restored book becomes the current one.
+  await setCurrentOrgCookie(data as string);
   return NextResponse.json({ success: true, organizationId: data as string });
 }

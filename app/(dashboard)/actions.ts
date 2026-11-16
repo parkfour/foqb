@@ -2,10 +2,9 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { CURRENT_ORG_COOKIE } from "@/lib/org/current";
+import { setCurrentOrgCookie } from "@/lib/org/current";
 import { safeNextPath } from "@/lib/http/proxy-headers";
 import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/org/default-accounts";
 import { isValidTimezone } from "@/lib/time/book-time";
@@ -114,8 +113,11 @@ export async function createOrganization(
     console.error("Failed to turn on the new book's default plugins", pluginError);
   }
 
-  revalidatePath("/");
-  return { error: null };
+  // The new book becomes the current one, so the dashboard and the
+  // switcher show it.
+  await setCurrentOrgCookie(orgId);
+  revalidatePath("/", "layout");
+  redirect("/");
 }
 
 export async function switchOrganization(formData: FormData): Promise<void> {
@@ -140,12 +142,7 @@ export async function switchOrganization(formData: FormData): Promise<void> {
 
   if (!membership) return;
 
-  (await cookies()).set(CURRENT_ORG_COOKIE, organizationId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  await setCurrentOrgCookie(organizationId);
 
   // Where to land in the book switched to: its dashboard, or a page on this
   // site the form names (a drill-down into another book).

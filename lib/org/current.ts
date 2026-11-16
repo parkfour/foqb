@@ -5,6 +5,16 @@ import { getAuthUser } from "@/lib/auth/current-user";
 
 export const CURRENT_ORG_COOKIE = "current_org_id";
 
+// Makes orgId the user's current book (callers check membership first).
+export async function setCurrentOrgCookie(orgId: string): Promise<void> {
+  (await cookies()).set(CURRENT_ORG_COOKIE, orgId, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
+
 export interface UserOrganization {
   id: string;
   name: string;

@@ -3,15 +3,17 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { RestoreOrgForm } from "@/components/onboarding/restore-org-form";
 
-const { useRouterMock, refreshMock } = vi.hoisted(() => {
+const { useRouterMock, refreshMock, pushMock } = vi.hoisted(() => {
   const refreshMock = vi.fn();
-  return { useRouterMock: vi.fn(() => ({ refresh: refreshMock })), refreshMock };
+  const pushMock = vi.fn();
+  return { useRouterMock: vi.fn(() => ({ refresh: refreshMock, push: pushMock })), refreshMock, pushMock };
 });
 
 vi.mock("next/navigation", () => ({ useRouter: useRouterMock }));
 
 beforeEach(() => {
   refreshMock.mockClear();
+  pushMock.mockClear();
   vi.unstubAllGlobals();
 });
 
@@ -26,7 +28,7 @@ function makeBackupFile(): File {
 }
 
 describe("RestoreOrgForm", () => {
-  it("uploads the file and refreshes on success", async () => {
+  it("uploads the file and opens the restored book's dashboard on success", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, organizationId: "org-1" }),
@@ -41,6 +43,7 @@ describe("RestoreOrgForm", () => {
 
     await waitFor(() => {
       expect(refreshMock).toHaveBeenCalledTimes(1);
+      expect(pushMock).toHaveBeenCalledWith("/");
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -70,5 +73,6 @@ describe("RestoreOrgForm", () => {
     });
 
     expect(refreshMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });

@@ -34,8 +34,9 @@ export function RestoreOrgForm() {
         throw new Error(data.error ?? "Restore failed");
       }
 
-      // The route handler doesn't auto-revalidate the server-rendered
-      // dashboard, same reason ConnectBankButton calls this too.
+      // The restored book is now the current one: open its dashboard. The
+      // route handler doesn't revalidate server-rendered pages, so refresh.
+      router.push("/");
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Restore failed");
