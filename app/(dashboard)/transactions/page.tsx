@@ -14,6 +14,7 @@ import { pairTransfers } from "@/lib/bank/transfers";
 import {
   bookTransfer,
   categorizeBankTransaction,
+  setBankTransactionRate,
   deleteBankTransaction,
   dismissBankChange,
   ignoreBankTransaction,
@@ -48,7 +49,9 @@ interface BankTransactionRow {
   name: string | null;
   amount: number;
   status: "unreconciled" | "matched" | "ignored";
-  accounts: { name: string } | null;
+  // The rate it's booked at, on an account in another currency.
+  exchange_rate: number | null;
+  accounts: { name: string; currency: string | null } | null;
   // What the bank now reports for a matched transaction, held for review.
   bank_change: { amount: number; date: string } | null;
   // Why the change can't be applied automatically, or null if it can.
@@ -94,7 +97,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   let feedQuery = supabase
     .from("bank_transactions")
     .select(
-      "id, account_id, date, name, amount, status, bank_change, reopen_blocker, recategorize_blocker, accounts(name), journal_entries(journal_lines(account_id))",
+      "id, account_id, date, name, amount, status, exchange_rate, bank_change, reopen_blocker, recategorize_blocker, accounts(name, currency), journal_entries(journal_lines(account_id))",
       { count: "exact" },
     )
     .eq("organization_id", orgId);
@@ -259,7 +262,11 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                   </td>
                 </tr>
               ) : (
-                transactions.map((tx) => (
+                transactions.map((tx) => {
+                  // A row on an account in another currency: its amount is in that currency.
+                  const fc = tx.accounts?.currency && tx.accounts.currency !== currency ? tx.accounts.currency : null;
+                  const txMoney = (n: number) => (fc ? formatMoney(n, fc) : formatCurrency(n));
+                  return (
                   <tr key={tx.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-5 py-3 text-slate-600">{tx.date}</td>
                     <td className="px-5 py-3 text-slate-600">{tx.accounts?.name ?? "—"}</td>
@@ -267,12 +274,41 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                       {tx.name ?? "—"}
                       {tx.bank_change && (
                         <p className="mt-1 text-xs text-amber-700">
-                          Bank changed this: {formatCurrency(tx.amount)} on {tx.date} →{" "}
-                          {formatCurrency(tx.bank_change.amount)} on {tx.bank_change.date}
+                          Bank changed this: {txMoney(tx.amount)} on {tx.date} →{" "}
+                          {txMoney(tx.bank_change.amount)} on {tx.bank_change.date}
                         </p>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-slate-900">{formatCurrency(tx.amount)}</td>
+                    <td className="px-5 py-3 text-slate-900">
+                      {txMoney(tx.amount)}
+                      {fc && tx.exchange_rate && (
+                        <p className="text-xs text-slate-500">
+                          {formatCurrency(Math.round(tx.amount * tx.exchange_rate * 100) / 100)} at {Number(tx.exchange_rate)}
+                        </p>
+                      )}
+                      {fc && userCanWrite && tx.status === "unreconciled" && (
+                        <form action={setBankTransactionRate} className="mt-1 flex items-center gap-1">
+                          <input type="hidden" name="id" value={tx.id} />
+                          <input
+                            name="rate"
+                            type="number"
+                            step="any"
+                            min="0"
+                            required
+                            defaultValue={tx.exchange_rate ?? ""}
+                            aria-label={`${currency} per ${fc} for ${tx.name ?? tx.date}`}
+                            placeholder={`${currency} per ${fc}`}
+                            className="w-24 rounded-md border border-slate-300 px-1.5 py-0.5 text-xs"
+                          />
+                          <button type="submit" className="text-xs text-slate-500 underline hover:text-slate-900">
+                            {tx.exchange_rate ? "Change rate" : "Set rate"}
+                          </button>
+                        </form>
+                      )}
+                      {fc && !tx.exchange_rate && tx.status === "unreconciled" && (
+                        <p className="text-xs text-amber-700">Needs a rate before it can be booked</p>
+                      )}
+                    </td>
                     <td className="px-5 py-3">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -400,6 +436,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                               name="targetAccountId"
                               required
                               defaultValue=""
+                              aria-label={`Category for ${tx.name ?? tx.date}`}
                               className="rounded-md border border-slate-300 px-2 py-1 text-xs"
                             >
                               <option value="" disabled>
@@ -411,6 +448,21 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                                 </option>
                               ))}
                             </select>
+                            {classes.length > 0 && (
+                              <select
+                                name="classId"
+                                defaultValue=""
+                                aria-label={`Class for ${tx.name ?? tx.date}`}
+                                className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                              >
+                                <option value="">No class</option>
+                                {classes.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                             <button
                               type="submit"
                               className="rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white hover:bg-slate-800"
@@ -432,7 +484,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

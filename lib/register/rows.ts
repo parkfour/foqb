@@ -22,7 +22,7 @@ export interface RawTx {
   journal_entry_id?: string | null;
   reopen_blocker?: string | null;
   recategorize_blocker?: string | null;
-  accounts?: { name: string } | null;
+  accounts?: { name: string; currency?: string | null } | null;
   journal_entries?: {
     status: string;
     journal_lines?: RawJournalLine[];
@@ -32,7 +32,8 @@ export interface RawTx {
 // The register's rows from bank transactions as read with their entries:
 // each one's category (or Split, Uncategorized, Ignored), whether a
 // reconciliation covers it, and the other side of a transfer it looks like.
-export function registerRows(raw: RawTx[]): RegisterTransaction[] {
+// A row on an account in another currency than the book's carries it.
+export function registerRows(raw: RawTx[], bookCurrency?: string): RegisterTransaction[] {
   const transactions: RegisterTransaction[] = raw.map((t) => {
     const journalLines: RawJournalLine[] = t.journal_entries?.journal_lines ?? [];
     const nonBankLines = journalLines.filter((l) => l.account_id !== t.account_id);
@@ -61,6 +62,7 @@ export function registerRows(raw: RawTx[]): RegisterTransaction[] {
       date: t.date,
       account_id: t.account_id || "",
       account_name: t.accounts?.name || "Primary Account",
+      currency: t.accounts?.currency && t.accounts.currency !== bookCurrency ? t.accounts.currency : null,
       name: t.name,
       amount: Number(t.amount),
       category_id: categoryId,

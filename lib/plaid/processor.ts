@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PlaidTransaction } from "@/lib/plaid/client";
 import { enabledCategorizers, runningPluginIds } from "@/lib/plugins/server-loader";
+import { importExchangeRate } from "@/lib/bank/foreign-rate";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -203,6 +204,8 @@ export async function processBankTransactions(
   transactions: PlaidTransaction[],
 ): Promise<void> {
   const supabase = createAdminClient();
+  // An account in another currency: the rate its new rows are booked at.
+  const rate = transactions.length > 0 ? await importExchangeRate(supabase, bankAccountId) : null;
 
   for (const tx of transactions) {
     // Normalize to this app's internal convention (negative = expense,
@@ -233,6 +236,7 @@ export async function processBankTransactions(
           amount,
           status: amount === 0 ? "ignored" : "unreconciled",
           journal_entry_id: null,
+          ...(rate ? { exchange_rate: rate } : {}),
         },
         { onConflict: "external_transaction_id", ignoreDuplicates: true },
       )

@@ -1,13 +1,14 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current";
+import { getBookCurrency } from "@/lib/org/book-currency";
 import { TransactionRegister, type RegisterAccount } from "@/components/transactions/transaction-register";
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { registerRows, type RawTx } from "@/lib/register/rows";
 import { PAGE_SIZE, readAllRows } from "@/lib/supabase/read-all";
 
 const TXN_COLUMNS =
-  "id, date, name, amount, status, cleared, account_id, journal_entry_id, accounts(name), journal_entries(status, journal_lines(id, account_id, description, debit, credit, reconciliation_id, accounts(name)))";
+  "id, date, name, amount, status, cleared, account_id, journal_entry_id, accounts(name, currency), journal_entries(status, journal_lines(id, account_id, description, debit, credit, reconciliation_id, accounts(name)))";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -98,6 +99,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
       reopen_blocker: blockers.get(t.id)?.reopen_blocker ?? null,
       recategorize_blocker: blockers.get(t.id)?.recategorize_blocker ?? null,
     })),
+    await getBookCurrency(orgId),
   );
 
   const listedDates = transactions.map((t) => t.date).sort();

@@ -48,9 +48,29 @@ export async function deleteBankTransaction(formData: FormData): Promise<void> {
   revalidatePath("/register");
 }
 
+// The rate an uncategorized row on an account in another currency is
+// booked at (the book's currency per unit of the account's; migration 100).
+export async function setBankTransactionRate(formData: FormData): Promise<void> {
+  const id = formData.get("id") as string;
+  const rate = Number(formData.get("rate"));
+  if (!id || !Number.isFinite(rate) || rate <= 0) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bank_transactions")
+    .update({ exchange_rate: rate })
+    .eq("id", id)
+    .eq("status", "unreconciled");
+  if (error) console.error(`Failed to set the exchange rate of ${id}`, error);
+
+  revalidatePath("/transactions");
+  revalidatePath("/register");
+}
+
 export async function categorizeBankTransaction(formData: FormData): Promise<void> {
   const bankTransactionId = formData.get("bankTransactionId") as string;
   const targetAccountId = formData.get("targetAccountId") as string;
+  const classId = (formData.get("classId") as string) || null;
   if (!bankTransactionId || !targetAccountId) return;
 
   const supabase = await createClient();
@@ -65,15 +85,16 @@ export async function categorizeBankTransaction(formData: FormData): Promise<voi
 
   const amount = Number(tx.amount);
   const absAmount = Math.abs(amount);
+  // The class, if one is picked, goes on the category line.
   const lines =
     amount < 0
       ? [
-          { account_id: targetAccountId, debit: absAmount, credit: 0 },
+          { account_id: targetAccountId, debit: absAmount, credit: 0, class_id: classId },
           { account_id: tx.account_id, debit: 0, credit: absAmount },
         ]
       : [
           { account_id: tx.account_id, debit: absAmount, credit: 0 },
-          { account_id: targetAccountId, debit: 0, credit: absAmount },
+          { account_id: targetAccountId, debit: 0, credit: absAmount, class_id: classId },
         ];
 
   // One transaction: the entry, its lines, posting, and claiming the bank

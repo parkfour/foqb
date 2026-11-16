@@ -19,8 +19,15 @@ each such account's balance in its own currency and what the books carry it
 at, and books a revaluation to a rate you give (or the exchange-rates
 plugin's quote) against an exchange gain or loss account.
 
-Bank feeds bring in amounts as the book's currency, so a feed on a
-foreign-currency account is left for you to book by journal entry.
+A bank feed or statement import on such an account brings its rows in in
+the account's own currency, each with the rate it will be booked at (the
+book's currency per unit of the account's): the exchange-rates plugin's
+quote when it has one. On **Bank Transactions** each such row shows its
+amount in both currencies, and its rate can be set (when there was no
+quote) or changed until it's booked. Categorizing, splitting, rules and
+transfers then book it like any other row: the bank line keeps its amount
+in the account's currency, and every amount is converted at the row's rate.
+A row with no rate can't be booked until it has one.
 
 ## Between books
 

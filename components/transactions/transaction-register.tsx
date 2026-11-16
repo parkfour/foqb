@@ -18,12 +18,15 @@ import {
 } from "@/app/(dashboard)/transactions/actions";
 import { createAccountQuickAction } from "@/app/(dashboard)/accounts/actions";
 import { useMoney } from "@/components/providers/book-currency-provider";
+import { formatMoney } from "@/lib/money";
 
 export interface RegisterTransaction {
   id: string;
   date: string;
   account_id: string;
   account_name: string;
+  // The account's currency when it isn't the book's; amounts are in it.
+  currency?: string | null;
   name: string | null;
   amount: number;
   category_id?: string | null;
@@ -702,13 +705,17 @@ export function TransactionRegister({
                       </button>
                     </td>
                     <td className="px-3 py-2 text-right font-mono text-[11px] text-slate-800 whitespace-nowrap">
-                      {tx.outflow > 0 ? formatCurrency(tx.outflow) : "—"}
+                      {tx.outflow > 0 ? (tx.currency ? formatMoney(tx.outflow, tx.currency) : formatCurrency(tx.outflow)) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right font-mono text-[11px] text-emerald-700 font-medium whitespace-nowrap">
-                      {tx.inflow > 0 ? formatCurrency(tx.inflow) : "—"}
+                      {tx.inflow > 0 ? (tx.currency ? formatMoney(tx.inflow, tx.currency) : formatCurrency(tx.inflow)) : "—"}
                     </td>
                     <td className="py-2 pl-3 pr-4 text-right font-mono text-[11px] font-semibold text-slate-900 whitespace-nowrap">
-                      {accountFilter === "all" ? "—" : formatCurrency(tx.running_balance)}
+                      {accountFilter === "all"
+                        ? "—"
+                        : tx.currency
+                          ? formatMoney(tx.running_balance, tx.currency)
+                          : formatCurrency(tx.running_balance)}
                     </td>
                     <td className="py-2 pl-2 pr-3 text-center">
                       {canWrite && !tx.categorized && (

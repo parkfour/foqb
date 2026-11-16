@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { categorizeByRules } from "@/lib/plaid/processor";
 import { bookPendingTransfers } from "@/lib/bank/transfers";
+import { importExchangeRate } from "@/lib/bank/foreign-rate";
 import {
   dayBefore,
   equityAccountId,
@@ -192,6 +193,7 @@ export async function importStatement(
   // connection made later adopts these rows rather than duplicating them
   // (adoptRelinkedRow).
   const seen = new Map<string, number>();
+  const rate = toAdd.length > 0 ? await importExchangeRate(supabase, accountId) : null;
   const inserts = toAdd.map((row) => {
     const key = `${row.date}:${Math.round(row.amount * 100)}`;
     const n = (seen.get(key) ?? 0) + 1;
@@ -206,6 +208,7 @@ export async function importStatement(
       amount: row.amount,
       // Nothing to book on a $0 row, so it can't be categorized.
       status: row.amount === 0 ? "ignored" : "unreconciled",
+      ...(rate ? { exchange_rate: rate } : {}),
     };
   });
   const added: { id: string; date: string; name: string; amount: number; status: string }[] = [];

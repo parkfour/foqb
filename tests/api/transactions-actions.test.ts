@@ -99,7 +99,7 @@ describe("transaction actions", () => {
       p_entry_date: "2026-03-01",
       p_memo: "Office supplies",
       p_lines: [
-        { account_id: "supplies", debit: 30, credit: 0 },
+        { account_id: "supplies", debit: 30, credit: 0, class_id: null },
         { account_id: "bank-1", debit: 0, credit: 30 },
       ],
       p_bank_transaction_id: "bt-1",

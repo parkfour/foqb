@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaidTransaction } from "@/lib/plaid/client";
 import { createSupabaseMock, fail, ok } from "./supabase-mock";
 
-const { createAdminClientMock } = vi.hoisted(() => ({ createAdminClientMock: vi.fn() }));
+const { createAdminClientMock, importExchangeRateMock } = vi.hoisted(() => ({
+  createAdminClientMock: vi.fn(),
+  importExchangeRateMock: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: createAdminClientMock,
 }));
+// An account in the book's own currency unless a test says otherwise.
+vi.mock("@/lib/bank/foreign-rate", () => ({ importExchangeRate: importExchangeRateMock }));
 
 import { processBankTransactions, processRemovedTransactions } from "@/lib/plaid/processor";
 
@@ -25,6 +30,7 @@ function tx(overrides: Partial<PlaidTransaction> = {}): PlaidTransaction {
 describe("processBankTransactions", () => {
   beforeEach(() => {
     createAdminClientMock.mockReset();
+    importExchangeRateMock.mockReset().mockResolvedValue(null);
   });
 
   function existingRow(row: { status: string; amount: number; date: string }) {
@@ -160,6 +166,23 @@ describe("processBankTransactions", () => {
       { onConflict: "external_transaction_id", ignoreDuplicates: true },
     );
     expect(client.rpc).not.toHaveBeenCalledWith("post_journal_entry", expect.anything());
+  });
+
+  it("records the rate a row on an account in another currency is booked at", async () => {
+    importExchangeRateMock.mockResolvedValue(0.00072);
+    const { client, tables } = createSupabaseMock({
+      tables: { bank_transactions: { upsert: ok([{ id: "bt-1" }]) } },
+      rpcs: { match_bank_transaction: ok(null) },
+    });
+    createAdminClientMock.mockReturnValue(client);
+
+    await processBankTransactions("org-1", "bank-account-1", [tx({ amount: 42000 })]);
+
+    expect(importExchangeRateMock).toHaveBeenCalledWith(client, "bank-account-1");
+    expect(tables.bank_transactions.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: -42000, exchange_rate: 0.00072 }),
+      { onConflict: "external_transaction_id", ignoreDuplicates: true },
+    );
   });
 
   it("posts a matched expense atomically (debit target, credit bank) and claims the bank transaction", async () => {
