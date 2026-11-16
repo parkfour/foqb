@@ -12,7 +12,6 @@ import {
   BarChart3,
   ListFilter,
   NotebookPen,
-  Package,
   Tag,
   Settings,
   Users,
@@ -118,13 +117,6 @@ const HOUSEHOLD_NAV_ENTRIES: NavEntry[] = [
   { type: "link", href: "/audit-log", label: "Audit Log", icon: History },
 ];
 
-const INVENTORY_NAV_ITEM: NavLeaf = {
-  type: "link",
-  href: "/inventory",
-  label: "Inventory",
-  icon: Package,
-};
-
 const SETTINGS_NAV_ITEM: NavLeaf = { type: "link", href: "/settings", label: "Settings", icon: Settings };
 
 const SITE_ADMIN_NAV_ITEM: NavLeaf = {
@@ -137,7 +129,6 @@ const SITE_ADMIN_NAV_ITEM: NavLeaf = {
 const NAV_GROUPS = BASE_NAV_ENTRIES.filter((entry): entry is NavGroup => entry.type === "group");
 
 export function Sidebar({
-  showInventory = false,
   showSiteAdmin = false,
   workspaceType = "business",
   orgName,
@@ -145,7 +136,6 @@ export function Sidebar({
   sourceCodeUrl,
   pluginPages = [],
 }: {
-  showInventory?: boolean;
   showSiteAdmin?: boolean;
   workspaceType?: "business" | "household";
   orgName?: string;
@@ -171,7 +161,6 @@ export function Sidebar({
       ]
     : [
         ...BASE_NAV_ENTRIES,
-        ...(showInventory ? [INVENTORY_NAV_ITEM] : []),
         ...pluginEntries,
         SETTINGS_NAV_ITEM,
         ...(showSiteAdmin ? [SITE_ADMIN_NAV_ITEM] : []),

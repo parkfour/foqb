@@ -595,16 +595,6 @@ export default async function SettingsPage({
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              name="inventoryEnabled"
-              defaultChecked={organization?.inventory_enabled ?? false}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            Enable inventory tracking
-          </label>
-
           <div className="flex flex-col gap-1">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <input

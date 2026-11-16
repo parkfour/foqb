@@ -48,16 +48,6 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "Bank Transactions" })).toHaveAttribute("href", "/transactions");
   });
 
-  it("hides the Inventory link by default and shows it when enabled", () => {
-    render(<Sidebar />);
-    expect(screen.queryByRole("link", { name: "Inventory" })).not.toBeInTheDocument();
-
-    cleanup();
-
-    render(<Sidebar showInventory />);
-    expect(screen.getByRole("link", { name: "Inventory" })).toHaveAttribute("href", "/inventory");
-  });
-
   it("starts groups collapsed and expands Customers on click to reveal its sub-links", () => {
     render(<Sidebar />);
 

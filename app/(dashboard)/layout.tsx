@@ -32,16 +32,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     getBookCurrency(currentOrgId),
   ]);
 
-  let inventoryEnabled = false;
   let orgPluginIds = ungatedPluginIds();
   if (currentOrgId) {
     const supabase = await createClient();
-    const [orgData, pluginIds] = await Promise.all([
-      supabase.from("organizations").select("inventory_enabled").eq("id", currentOrgId).maybeSingle(),
-      getOrgEnabledPluginIds(supabase, currentOrgId).catch(() => ungatedPluginIds()),
-    ]);
-    inventoryEnabled = (orgData.data as { inventory_enabled: boolean } | null)?.inventory_enabled ?? false;
-    orgPluginIds = pluginIds;
+    orgPluginIds = await getOrgEnabledPluginIds(supabase, currentOrgId).catch(() => ungatedPluginIds());
   }
 
   const currentOrg = organizations.find((org) => org.id === currentOrgId) ?? null;
@@ -49,7 +43,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar
-        showInventory={inventoryEnabled}
         showSiteAdmin={siteAdmin}
         workspaceType={currentOrg?.workspace_type ?? "business"}
         orgName={currentOrg?.name}

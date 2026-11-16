@@ -33,7 +33,7 @@ export default async function ItemsPage() {
   }
 
   const supabase = await createClient();
-  const [{ data }, { data: stockData }, { data: orgData }, role, showAccountCodes] = await Promise.all([
+  const [{ data }, { data: stockData }, role, showAccountCodes] = await Promise.all([
     supabase
       .from("items")
       .select(
@@ -42,14 +42,12 @@ export default async function ItemsPage() {
       .eq("organization_id", orgId)
       .order("name"),
     supabase.from("item_stock").select("item_id, on_hand").eq("organization_id", orgId),
-    supabase.from("organizations").select("inventory_enabled").eq("id", orgId).maybeSingle(),
     getCurrentUserRole(orgId),
     getUseAccountCodes(orgId),
   ]);
 
   const items = (data as unknown as ItemRow[] | null) ?? [];
   const onHand = new Map(((stockData ?? []) as { item_id: string; on_hand: number }[]).map((r) => [r.item_id, Number(r.on_hand)]));
-  const inventoryEnabled = (orgData as { inventory_enabled: boolean } | null)?.inventory_enabled ?? false;
   const userCanWrite = canWrite(role);
 
   return (
@@ -68,16 +66,6 @@ export default async function ItemsPage() {
           )}
         </div>
       </div>
-
-      {inventoryEnabled && (
-        <p className="text-sm text-slate-500">
-          For warehouse quantity and cost tracking, see{" "}
-          <a href="/inventory" className="underline hover:text-slate-900">
-            Inventory
-          </a>
-          . Items here are for what you invoice customers.
-        </p>
-      )}
 
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">

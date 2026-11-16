@@ -328,7 +328,6 @@ export async function updateOrganizationSettings(formData: FormData): Promise<vo
   if (!organizationId) return;
 
   const periodLockDate = (formData.get("periodLockDate") as string) || null;
-  const inventoryEnabled = formData.get("inventoryEnabled") === "on";
   const useAccountCodes = formData.get("useAccountCodes") === "on";
   const taxForm = (formData.get("taxForm") as string) || "none";
   const arAccountId = (formData.get("arAccountId") as string) || null;
@@ -342,7 +341,6 @@ export async function updateOrganizationSettings(formData: FormData): Promise<vo
     .from("organizations")
     .update({
       period_lock_date: periodLockDate,
-      inventory_enabled: inventoryEnabled,
       use_account_codes: useAccountCodes,
       tax_form: taxForm,
       ar_account_id: arAccountId,
