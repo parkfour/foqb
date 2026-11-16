@@ -67,6 +67,12 @@ import { sendEstimateEmail, sendStatementEmail } from "@/plugins/email-invoices/
 import { encryptToken } from "@/lib/crypto/token-encryption";
 
 const env = { ...process.env };
+// A tiny stand-in for the statement PDF the browser renders.
+const pdfForm = (bytes = "%PDF-1.4 statement") => {
+  const form = new FormData();
+  form.set("pdf", new File([bytes], "s.pdf", { type: "application/pdf" }));
+  return form;
+};
 let sink: Awaited<ReturnType<typeof startSmtpSink>>;
 
 beforeAll(async () => {
@@ -150,7 +156,7 @@ describe("sendMail", () => {
 
 describe("emailing statements and estimates through the book's mailer", () => {
   it("sends a statement with its figures, through the book's own server and login", async () => {
-    const result = await sendStatementEmail("cust-1", "2026-10-01", "2026-10-31", "ann@example.test", "Hello Ann,");
+    const result = await sendStatementEmail("cust-1", "2026-10-01", "2026-10-31", "ann@example.test", "Hello Ann,", pdfForm());
 
     expect(result).toEqual({ ok: true, message: "Sent to ann@example.test." });
     const [mail] = sink.received;
@@ -159,6 +165,7 @@ describe("emailing statements and estimates through the book's mailer", () => {
     expect(mail.raw).toMatch(/^From: "?Test Shop LLC"? <books@shop\.example>/m);
     expect(mail.text).toContain("Hello Ann,");
     expect(mail.text).toContain("Credit memo CM-1, invoice INV-2");
+    expect(mail.raw).toMatch(/filename="?Statement-2026-10-01-to-2026-10-31\.pdf/);
     expect(mail.text).toContain("Amount due: $55.00");
   });
 
@@ -171,12 +178,18 @@ describe("emailing statements and estimates through the book's mailer", () => {
     expect(mail.text).toContain("Before tax: $20.00");
   });
 
+  it("refuses a statement whose attachment isn't a PDF", async () => {
+    expect(await sendStatementEmail("cust-1", "2026-10-01", "2026-10-31", "ann@example.test", "", pdfForm("not a pdf"))).toEqual({
+      error: "The attachment isn't a PDF.",
+    });
+  });
+
   it("sends nothing for a viewer, a book without the plugin, a bad address, or no mail server", async () => {
     state.role = "viewer";
-    expect(await sendStatementEmail("cust-1", "2026-10-01", "2026-10-31", "ann@example.test", "")).toEqual({ error: "You can't send mail from this book." });
+    expect(await sendStatementEmail("cust-1", "2026-10-01", "2026-10-31", "ann@example.test", "", pdfForm())).toEqual({ error: "You can't send mail from this book." });
 
     state.role = "owner";
-    expect(await sendStatementEmail("cust-1", "2026-10-01", "2026-10-31", "not an address", "")).toMatchObject({ error: expect.stringMatching(/address/) });
+    expect(await sendStatementEmail("cust-1", "2026-10-01", "2026-10-31", "not an address", "", pdfForm())).toMatchObject({ error: expect.stringMatching(/address/) });
 
     state.enabledIds = [];
     expect(await sendEstimateEmail("est-1", "ann@example.test", "")).toEqual({ error: "Email invoices isn't on in this book." });

@@ -14,11 +14,14 @@ import { estimateSubtotal } from "@/lib/ar/estimates";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
 import { isEmailAddress } from "./mailer";
+import type { BookMail } from "@/lib/plugins/types";
 
-// Estimates and statements by email, as plain text, through the book's
-// mailer (sendBookMail): this plugin's mail server.
+// Estimates and statements by email, as plain text (a statement with its
+// PDF too), through the book's mailer (sendBookMail): this plugin's mail
+// server.
 
 const SEND_LIMIT = 50;
+const MAX_PDF_BYTES = 3.5 * 1024 * 1024;
 type Result = { ok: true; message: string } | { error: string };
 
 export interface DocumentMailStatus {
@@ -48,9 +51,9 @@ async function sender(to: string, message: string): Promise<{ orgId: string } | 
   return { orgId };
 }
 
-async function send(orgId: string, to: string, subject: string, text: string): Promise<Result> {
+async function send(orgId: string, to: string, subject: string, text: string, attachment?: BookMail["attachment"]): Promise<Result> {
   try {
-    const sent = await sendBookMail(createAdminClient(), orgId, { to, subject, text });
+    const sent = await sendBookMail(createAdminClient(), orgId, { to, subject, text, attachment });
     return sent.sent ? { ok: true, message: `Sent to ${to}.` } : { error: sent.reason };
   } catch (err) {
     return { error: `Couldn't send: ${err instanceof Error ? err.message : String(err)}` };
@@ -86,7 +89,19 @@ export async function sendEstimateEmail(estimateId: string, to: string, message:
   return send(who.orgId, to, `Estimate ${e.estimate_number}`, text);
 }
 
-export async function sendStatementEmail(customerId: string, start: string, end: string, to: string, message: string): Promise<Result> {
+// The PDF is the statement as the browser shows it (form field "pdf").
+export async function sendStatementEmail(
+  customerId: string,
+  start: string,
+  end: string,
+  to: string,
+  message: string,
+  pdfForm: FormData,
+): Promise<Result> {
+  const pdf = pdfForm.get("pdf");
+  if (!(pdf instanceof File) || pdf.size === 0 || pdf.size > MAX_PDF_BYTES) return { error: "The statement PDF is missing or too large." };
+  const content = Buffer.from(await pdf.arrayBuffer());
+  if (content.subarray(0, 5).toString("latin1") !== "%PDF-") return { error: "The attachment isn't a PDF." };
   const who = await sender(to, message);
   if ("error" in who) return who;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return { error: "Choose the statement's dates." };
@@ -106,5 +121,9 @@ export async function sendStatementEmail(customerId: string, start: string, end:
     ...statement.lines.map((l) => `  ${l.date}  ${l.label}  ${money(l.amount)}  (balance ${money(l.balance)})`),
     `Amount due: ${money(statement.closing)}`,
   ].join("\n");
-  return send(who.orgId, to, `Statement, ${start} to ${end}`, text);
+  return send(who.orgId, to, `Statement, ${start} to ${end}`, text, {
+    filename: `Statement-${start}-to-${end}.pdf`,
+    content,
+    contentType: "application/pdf",
+  });
 }

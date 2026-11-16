@@ -247,7 +247,7 @@ payroll's draft forms are reports this way.
 
 Plugin id `email-invoices`. Adds an **Email invoice** button to each
 invoice, which sends the customer the invoice PDF, **Email estimate** and
-**Email statement** buttons (the figures as text, below your message), and
+**Email statement** buttons (the figures as text, below your message; a statement also attaches its PDF), and
 an **Email** section to its card in Settings → Plugins. Its mail server is
 also the book's `mailer`, for FOQB and other plugins.
 

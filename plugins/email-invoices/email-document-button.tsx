@@ -10,18 +10,21 @@ import { getDocumentMailStatus, sendEstimateEmail, sendStatementEmail, type Docu
 
 type Sent = { ok: true; message: string } | { error: string };
 
-// A button and a dialog (to, message) that sends one document as text.
+// A button and a dialog (to, message) that sends one document as text
+// (and, where note says so, its PDF).
 function EmailDocumentButton({
   label,
   title,
   defaultTo,
   defaultMessage,
+  note = "The figures are added below your message, as text.",
   send,
 }: {
   label: string;
   title: string;
   defaultTo: string;
   defaultMessage: string;
+  note?: string;
   send: (to: string, message: string) => Promise<Sent>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -81,7 +84,7 @@ function EmailDocumentButton({
               className="rounded-md border border-slate-300 px-3 py-2"
             />
           </label>
-          <p className="text-xs text-slate-500">The figures are added below your message, as text.</p>
+          <p className="text-xs text-slate-500">{note}</p>
           {result?.error && <p className="rounded-md bg-red-50 p-2 text-xs text-red-700">{result.error}</p>}
           {result?.message && <p className="rounded-md bg-emerald-50 p-2 text-xs text-emerald-800">{result.message}</p>}
           <div className="flex justify-end gap-2">
@@ -123,7 +126,12 @@ export const EmailStatementButton: SlotComponent<"statement.actions"> = ({ conte
       title={`Email ${context.customer.name}'s statement`}
       defaultTo={context.customer.email ?? ""}
       defaultMessage={`Hello ${context.customer.name},\n\nHere is your statement: ${formatCurrency(context.amountDue)} due.\n\nThank you.`}
-      send={(to, message) => sendStatementEmail(context.customerId, context.start, context.end, to, message)}
+      note="The statement is attached as a PDF, and its figures are added below your message as text."
+      send={async (to, message) => {
+        const pdf = new FormData();
+        pdf.set("pdf", await context.buildPdf());
+        return sendStatementEmail(context.customerId, context.start, context.end, to, message, pdf);
+      }}
     />
   );
 };

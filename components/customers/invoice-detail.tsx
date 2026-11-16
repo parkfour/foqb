@@ -1,11 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-// The "-pro" fork, not the original html2canvas: the original can't parse
-// the oklch()/lab() color functions Tailwind CSS v4 generates by default,
-// and throws on every capture as a result.
-import html2canvas from "html2canvas-pro";
-import { jsPDF } from "jspdf";
+import { buildPagePdf } from "@/lib/pdf/page-pdf";
 import { shareOrDownloadFile } from "@/lib/pwa/share-or-download";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
 import { useMoney } from "@/components/providers/book-currency-provider";
@@ -44,25 +40,6 @@ interface InvoiceDetailProps {
   notes?: string[];
 }
 
-// Renders the invoice to an off-DOM canvas (html2canvas) and embeds that as
-// a single page in a jsPDF document — chosen over a text-drawn PDF because
-// it reuses the exact same styled markup below instead of hand-positioning
-// text/tables a second time.
-async function buildInvoicePdf(node: HTMLElement, filename: string): Promise<File> {
-  const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff" });
-  // JPEG, not PNG: a lossless page image made a ~3MB PDF, too big to email
-  // comfortably; at this quality the text stays crisp at a few percent of the size.
-  const imageData = canvas.toDataURL("image/jpeg", 0.92);
-
-  const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = (canvas.height * pageWidth) / canvas.width;
-  pdf.addImage(imageData, "JPEG", 0, 0, pageWidth, pageHeight);
-
-  const blob = pdf.output("blob");
-  return new File([blob], filename, { type: "application/pdf" });
-}
-
 // The printable area is `max-w-2xl` (42rem) minus `p-8` padding on each
 // side, so ~608px wide — a quarter of that is roughly this many px. Below
 // that native pixel width, forcing the logo up to 25% would upscale it
@@ -96,7 +73,7 @@ export function InvoiceDetail({
 
   async function buildPdf(): Promise<File> {
     if (!printableRef.current) throw new Error("The invoice isn't on screen yet");
-    return buildInvoicePdf(printableRef.current, `Invoice-${invoiceNumber}.pdf`);
+    return buildPagePdf(printableRef.current, `Invoice-${invoiceNumber}.pdf`);
   }
 
   async function handleShareOrDownload() {

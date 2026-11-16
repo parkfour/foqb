@@ -8,8 +8,9 @@ const { html2canvasMock, jsPDFMock } = vi.hoisted(() => {
     html2canvasMock: vi.fn(async () => fakeCanvas),
     jsPDFMock: vi.fn().mockImplementation(function jsPDFCtor() {
       return {
-        internal: { pageSize: { getWidth: () => 612 } },
+        internal: { pageSize: { getWidth: () => 612, getHeight: () => 792 } },
         addImage: addImageMock,
+        addPage: vi.fn(),
         output: (type: string) =>
           type === "blob" ? new Blob(["pdf"], { type: "application/pdf" }) : "",
       };

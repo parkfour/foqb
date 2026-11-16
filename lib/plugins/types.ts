@@ -199,6 +199,8 @@ export interface SlotContextMap {
     start: string;
     end: string;
     amountDue: number;
+    // A PDF of the statement as shown.
+    buildPdf: () => Promise<File>;
   };
   // Above the Enter Bill form; prefill fills in whatever it's given.
   "bill.header": {

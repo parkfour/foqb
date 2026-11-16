@@ -7,8 +7,7 @@ import { addDays } from "@/lib/time/book-time";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
 import { buildStatement, fetchStatementInvoices, fetchUnappliedCredits } from "@/lib/ar/statement";
-import { PluginSlot } from "@/components/plugins/plugin-slot";
-import { PrintButton } from "@/components/ui/print-button";
+import { StatementDocument } from "@/components/customers/statement-document";
 
 export default async function CustomerStatementPage({
   params,
@@ -45,40 +44,36 @@ export default async function CustomerStatementPage({
   const o = org as { name: string; logo_data_url: string | null } | null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <form className="flex flex-wrap items-end gap-2">
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            From
-            <input type="date" name="start" defaultValue={start} className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            To
-            <input type="date" name="end" defaultValue={end} className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          </label>
-          <button type="submit" className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">
-            Show
-          </button>
-        </form>
-        <div className="flex items-center gap-4">
+    <StatementDocument
+      fileName={`Statement-${start}-to-${end}.pdf`}
+      context={{
+        customerId: id,
+        customer: { name: customer.name as string, email: (customer.email as string | null) ?? null },
+        start,
+        end,
+        amountDue: statement.closing,
+      }}
+      toolbar={
+        <div className="flex flex-wrap items-end gap-4">
+          <form className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              From
+              <input type="date" name="start" defaultValue={start} className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              To
+              <input type="date" name="end" defaultValue={end} className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+            </label>
+            <button type="submit" className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">
+              Show
+            </button>
+          </form>
           <Link href={`/customers/${id}`} className="text-sm text-slate-600 underline hover:text-slate-900">
             ← {customer.name}
           </Link>
-          <PluginSlot
-            name="statement.actions"
-            context={{
-              customerId: id,
-              customer: { name: customer.name as string, email: (customer.email as string | null) ?? null },
-              start,
-              end,
-              amountDue: statement.closing,
-            }}
-          />
-          <PrintButton label="Print or save as PDF" />
         </div>
-      </div>
-
-      <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm print:border-0 print:p-0 print:shadow-none">
+      }
+    >
         <div className="flex items-start justify-between">
           <div>
             {o?.logo_data_url && (
@@ -150,7 +145,6 @@ export default async function CustomerStatementPage({
             </ul>
           </div>
         )}
-      </div>
-    </div>
+    </StatementDocument>
   );
 }
