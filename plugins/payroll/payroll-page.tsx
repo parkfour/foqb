@@ -24,6 +24,16 @@ import {
 const input = "rounded-md border border-slate-300 px-2 py-1 text-sm";
 const card = "rounded-lg border border-slate-200 bg-white p-5 shadow-sm";
 
+// Screen-reader names for the employee table's W-4 and tax-rate inputs.
+const EMPLOYEE_FIELD_LABELS = {
+  step3Credits: "W-4 step 3 credits per year",
+  step4aOtherIncome: "W-4 step 4a other income per year",
+  step4bDeductions: "W-4 step 4b deductions per year",
+  step4cExtra: "W-4 step 4c extra withholding per check",
+  stateRate: "state withholding percent",
+  localRate: "local withholding percent",
+} as const;
+
 const newEmployee = (): Employee => ({
   id: crypto.randomUUID(),
   name: "",
@@ -132,10 +142,10 @@ export function PayrollPage({ context }: { context: PluginPageContext }) {
               {setup.employees.map((e) => (
                 <tr key={e.id}>
                   <td className="p-1">
-                    <input value={e.name} onChange={(ev) => updateEmployee(e.id, { name: ev.target.value })} className={`${input} w-32`} />
+                    <input aria-label="Employee name" value={e.name} onChange={(ev) => updateEmployee(e.id, { name: ev.target.value })} className={`${input} w-32`} />
                   </td>
                   <td className="p-1">
-                    <select value={e.payFrequency} onChange={(ev) => updateEmployee(e.id, { payFrequency: ev.target.value as Employee["payFrequency"] })} className={input}>
+                    <select aria-label={`${e.name || "Employee"}: how often paid`} value={e.payFrequency} onChange={(ev) => updateEmployee(e.id, { payFrequency: ev.target.value as Employee["payFrequency"] })} className={input}>
                       <option value="weekly">weekly</option>
                       <option value="biweekly">every 2 weeks</option>
                       <option value="semimonthly">twice a month</option>
@@ -143,29 +153,29 @@ export function PayrollPage({ context }: { context: PluginPageContext }) {
                     </select>
                   </td>
                   <td className="p-1 whitespace-nowrap">
-                    <select value={e.payType} onChange={(ev) => updateEmployee(e.id, { payType: ev.target.value as Employee["payType"] })} className={input}>
+                    <select aria-label={`${e.name || "Employee"}: pay type`} value={e.payType} onChange={(ev) => updateEmployee(e.id, { payType: ev.target.value as Employee["payType"] })} className={input}>
                       <option value="salary">per check</option>
                       <option value="hourly">per hour</option>
                     </select>
-                    <input type="number" min="0" step="0.01" value={e.payRate} onChange={(ev) => updateEmployee(e.id, { payRate: num(ev.target.value) })} className={`${input} ml-1 w-24`} />
+                    <input aria-label={`${e.name || "Employee"}: pay rate`} type="number" min="0" step="0.01" value={e.payRate} onChange={(ev) => updateEmployee(e.id, { payRate: num(ev.target.value) })} className={`${input} ml-1 w-24`} />
                   </td>
                   <td className="p-1">
-                    <select value={e.filingStatus} onChange={(ev) => updateEmployee(e.id, { filingStatus: ev.target.value as Employee["filingStatus"] })} className={input}>
+                    <select aria-label={`${e.name || "Employee"}: filing status`} value={e.filingStatus} onChange={(ev) => updateEmployee(e.id, { filingStatus: ev.target.value as Employee["filingStatus"] })} className={input}>
                       <option value="single">single / separately</option>
                       <option value="married">married jointly</option>
                       <option value="head">head of household</option>
                     </select>
                   </td>
                   <td className="p-1 text-center">
-                    <input type="checkbox" checked={e.step2Checked} onChange={(ev) => updateEmployee(e.id, { step2Checked: ev.target.checked })} />
+                    <input aria-label={`${e.name || "Employee"}: W-4 step 2 checked`} type="checkbox" checked={e.step2Checked} onChange={(ev) => updateEmployee(e.id, { step2Checked: ev.target.checked })} />
                   </td>
                   {(["step3Credits", "step4aOtherIncome", "step4bDeductions", "step4cExtra", "stateRate", "localRate"] as const).map((k) => (
                     <td key={k} className="p-1">
-                      <input type="number" min="0" step="0.01" value={e[k]} onChange={(ev) => updateEmployee(e.id, { [k]: num(ev.target.value) })} className={`${input} w-20`} />
+                      <input aria-label={`${e.name || "Employee"}: ${EMPLOYEE_FIELD_LABELS[k]}`} type="number" min="0" step="0.01" value={e[k]} onChange={(ev) => updateEmployee(e.id, { [k]: num(ev.target.value) })} className={`${input} w-20`} />
                     </td>
                   ))}
                   <td className="p-1 text-center">
-                    <input type="checkbox" checked={e.active} onChange={(ev) => updateEmployee(e.id, { active: ev.target.checked })} />
+                    <input aria-label={`${e.name || "Employee"}: active`} type="checkbox" checked={e.active} onChange={(ev) => updateEmployee(e.id, { active: ev.target.checked })} />
                   </td>
                 </tr>
               ))}
@@ -229,6 +239,7 @@ export function PayrollPage({ context }: { context: PluginPageContext }) {
                     <td className="pr-3 text-xs text-slate-500">{e.payType === "hourly" ? `hours at ${money(e.payRate)}` : "gross pay"}</td>
                     <td>
                       <input
+                        aria-label={`${e.name}: ${e.payType === "hourly" ? "hours" : "gross pay"}`}
                         type="number"
                         min="0"
                         step="0.01"
