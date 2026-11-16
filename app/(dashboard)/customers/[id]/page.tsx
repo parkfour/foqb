@@ -35,6 +35,8 @@ interface CustomerRow {
 
 export default async function CustomerStatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Not an id (e.g. /customers/payments): a 404, not a failed query.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) notFound();
   const orgId = await getCurrentOrgId();
   const currency = await getBookCurrency(orgId);
   const formatCurrency = (value: number) => formatMoney(value, currency);
