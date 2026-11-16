@@ -9,7 +9,7 @@ import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current
 import { checkRateLimit } from "@/lib/auth/rate-limit";
 import { bookCanSendMail, sendBookMail } from "@/lib/plugins/server-loader";
 import { getOrgEnabledPluginIds } from "@/lib/plugins/settings";
-import { buildStatement, fetchStatementInvoices } from "@/lib/ar/statement";
+import { buildStatement, fetchStatementInvoices, fetchUnappliedCredits } from "@/lib/ar/statement";
 import { estimateSubtotal } from "@/lib/ar/estimates";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
@@ -91,7 +91,11 @@ export async function sendStatementEmail(customerId: string, start: string, end:
   if ("error" in who) return who;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return { error: "Choose the statement's dates." };
   const supabase = await createClient();
-  const statement = buildStatement(await fetchStatementInvoices(supabase, who.orgId, customerId), start, end);
+  const [invoices, credits] = await Promise.all([
+    fetchStatementInvoices(supabase, who.orgId, customerId),
+    fetchUnappliedCredits(supabase, who.orgId, customerId),
+  ]);
+  const statement = buildStatement(invoices, start, end, credits);
   const currency = await getBookCurrency(who.orgId);
   const money = (n: number) => formatMoney(n, currency);
   const text = [

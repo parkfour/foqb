@@ -44,7 +44,7 @@ export async function ArAgingReport({ orgId, asOf }: { orgId: string; asOf: stri
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-5 py-3 font-medium">Invoice</th>
+                <th className="px-5 py-3 font-medium">Document</th>
                 <th className="px-5 py-3 font-medium">Customer</th>
                 <th className="px-5 py-3 font-medium">Due Date</th>
                 <th className="px-5 py-3 font-medium">Days Overdue</th>
@@ -56,16 +56,22 @@ export async function ArAgingReport({ orgId, asOf }: { orgId: string; asOf: stri
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
-                    No outstanding invoices.
+                    No outstanding invoices or unapplied credits.
                   </td>
                 </tr>
               ) : (
                 rows.map((row) => (
                   <tr key={row.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-5 py-3 text-slate-900">
-                      <Link href={`/customers/invoices/${row.id}`} className="hover:underline">
-                        {row.number}
-                      </Link>
+                      {row.isCredit ? (
+                        <Link href="/customers/credit-memos" className="hover:underline">
+                          Credit memo {row.number}
+                        </Link>
+                      ) : (
+                        <Link href={`/customers/invoices/${row.id}`} className="hover:underline">
+                          {row.number}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-slate-600">
                       {row.partyId ? (

@@ -3,6 +3,15 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.9.0 (beta) — unreleased
+
+<!-- Intro paragraph goes here at release time; it heads the GitHub release. -->
+
+- **Unapplied credit memos show where they count.** A credit memo not yet
+  applied to an invoice already lowered Accounts Receivable, but it was
+  missing from AR Aging, customer statements and the customer's current
+  balance. It now appears in all three as a credit, aged from its date.
+
 ## 0.8.3 (alpha) — 2026-11-04
 
 - **Dependency security updates.** follow-redirects 1.16.2 (used by the

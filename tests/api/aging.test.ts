@@ -17,6 +17,7 @@ describe("fetchArAging", () => {
   it("buckets outstanding invoices by days overdue and excludes fully paid ones", async () => {
     const { client } = createSupabaseMock({
       tables: {
+        credit_memos: { select: ok([]) },
         invoices: {
           select: ok([
             {
@@ -68,6 +69,7 @@ describe("fetchArAging", () => {
   it("includes tax_amount in the outstanding total", async () => {
     const { client } = createSupabaseMock({
       tables: {
+        credit_memos: { select: ok([]) },
         invoices: {
           select: ok([
             {
@@ -88,6 +90,30 @@ describe("fetchArAging", () => {
 
     const rows = await fetchArAging("org-1", ASOF);
     expect(rows[0].remaining).toBe(70); // (100 + 20) - 50
+  });
+
+  it("adds unapplied credit memos as negative rows, aged from the memo date", async () => {
+    const { client } = createSupabaseMock({
+      tables: {
+        invoices: {
+          select: ok([
+            { id: "inv-1", number: "INV-1", date: "2026-05-20", due_date: "2026-06-10", party: { name: "Acme" }, lines: [{ amount: 100 }], payments: [] },
+          ]),
+        },
+        credit_memos: {
+          select: ok([
+            { id: "cm-open", memo_number: "CM-1", memo_date: "2026-04-17", total: 40, party: { id: "c-1", name: "Acme" }, invoice_payments: [] },
+            { id: "cm-applied", memo_number: "CM-2", memo_date: "2026-05-01", total: 25, party: { id: "c-1", name: "Acme" }, invoice_payments: [{ id: "p-1" }] },
+          ]),
+        },
+      },
+    });
+    serverClientMock.mockResolvedValue(client);
+
+    const rows = await fetchArAging("org-1", ASOF);
+    expect(rows.map((r) => r.id)).toEqual(["cm-open", "inv-1"]);
+    expect(rows[0]).toMatchObject({ remaining: -40, isCredit: true, bucket: "31-60", daysOverdue: 45 });
+    expect(rows.reduce((s, r) => s + r.remaining, 0)).toBe(60);
   });
 });
 

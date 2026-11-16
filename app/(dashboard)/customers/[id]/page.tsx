@@ -7,6 +7,7 @@ import { AGING_BUCKETS, fetchCustomerInvoices } from "@/lib/reports/aging";
 import { bookToday } from "@/lib/org/book-clock";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
+import { fetchUnappliedCredits } from "@/lib/ar/statement";
 
 const BUCKET_LABELS: Record<string, string> = {
   current: "Current",
@@ -43,7 +44,7 @@ export default async function CustomerStatusPage({ params }: { params: Promise<{
   }
 
   const supabase = await createClient();
-  const [{ data: customerData }, invoices] = await Promise.all([
+  const [{ data: customerData }, invoices, credits] = await Promise.all([
     supabase
       .from("customers")
       .select("id, name, email, phone, billing_address, is_active")
@@ -51,6 +52,7 @@ export default async function CustomerStatusPage({ params }: { params: Promise<{
       .eq("organization_id", orgId)
       .maybeSingle(),
     fetchCustomerInvoices(orgId, id, await bookToday(orgId)),
+    fetchUnappliedCredits(supabase, orgId, id),
   ]);
 
   const customer = customerData as CustomerRow | null;
@@ -58,7 +60,8 @@ export default async function CustomerStatusPage({ params }: { params: Promise<{
     notFound();
   }
 
-  const currentBalance = invoices.reduce((sum, inv) => sum + inv.remaining, 0);
+  const unappliedCredit = Math.round(credits.reduce((sum, c) => sum + c.total, 0) * 100) / 100;
+  const currentBalance = invoices.reduce((sum, inv) => sum + inv.remaining, 0) - unappliedCredit;
   const outstanding = invoices.filter((inv) => inv.remaining > 0);
 
   return (
@@ -92,6 +95,15 @@ export default async function CustomerStatusPage({ params }: { params: Promise<{
           <h2 className="text-sm font-semibold text-slate-900">Current Balance</h2>
           <p className="text-lg font-semibold text-slate-900">{formatCurrency(currentBalance)}</p>
         </div>
+        {unappliedCredit > 0 && (
+          <p className="border-b border-slate-200 px-5 py-3 text-sm text-slate-600">
+            Includes {formatCurrency(unappliedCredit)} of{" "}
+            <Link href="/customers/credit-memos" className="underline hover:text-slate-900">
+              credit not yet applied
+            </Link>{" "}
+            to an invoice.
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-px bg-slate-100 sm:grid-cols-5">
           {AGING_BUCKETS.map((bucket) => (
             <div key={bucket} className="bg-white px-5 py-4">

@@ -6,7 +6,7 @@ import { bookToday } from "@/lib/org/book-clock";
 import { addDays } from "@/lib/time/book-time";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
-import { buildStatement, fetchStatementInvoices } from "@/lib/ar/statement";
+import { buildStatement, fetchStatementInvoices, fetchUnappliedCredits } from "@/lib/ar/statement";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
 import { PrintButton } from "@/components/ui/print-button";
 
@@ -28,16 +28,17 @@ export default async function CustomerStatementPage({
   const start = valid(sp.start) ?? addDays(end, -89);
 
   const supabase = await createClient();
-  const [{ data: customer }, { data: org }, invoices, currency] = await Promise.all([
+  const [{ data: customer }, { data: org }, invoices, credits, currency] = await Promise.all([
     supabase.from("customers").select("id, name, email, billing_address").eq("id", id).eq("organization_id", orgId).maybeSingle(),
     supabase.from("organizations").select("name, logo_data_url").eq("id", orgId).maybeSingle(),
     fetchStatementInvoices(supabase, orgId, id),
+    fetchUnappliedCredits(supabase, orgId, id),
     getBookCurrency(orgId),
   ]);
   if (!customer) notFound();
   const formatCurrency = (value: number) => formatMoney(value, currency);
 
-  const statement = buildStatement(invoices, start, end);
+  const statement = buildStatement(invoices, start, end, credits);
   const overdue = invoices
     .map((i) => ({ ...i, owed: Math.round((i.total - i.payments.filter((p) => p.payment_date <= end).reduce((s, p) => s + p.amount, 0)) * 100) / 100 }))
     .filter((i) => i.owed > 0 && i.due_date && i.due_date < end && i.invoice_date <= end);
@@ -118,7 +119,7 @@ export default async function CustomerStatementPage({
               <tr key={i} className="border-b border-slate-100">
                 <td className="py-2 text-slate-600">{l.date}</td>
                 <td className="py-2 text-slate-900">
-                  <Link href={`/customers/invoices/${l.invoiceId}`} className="hover:underline">
+                  <Link href={l.href} className="hover:underline">
                     {l.label}
                   </Link>
                 </td>

@@ -49,6 +49,7 @@ vi.mock("@/lib/supabase/server", () => ({
             },
           ]),
         },
+        credit_memos: { select: ok([]) },
         estimates: {
           select: ok({
             estimate_number: "EST-1",

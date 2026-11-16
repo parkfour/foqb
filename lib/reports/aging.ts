@@ -11,6 +11,8 @@ export interface AgingRow {
   remaining: number;
   daysOverdue: number;
   bucket: AgingBucket;
+  // An unapplied credit memo: remaining is negative (it lowers what's owed).
+  isCredit?: boolean;
 }
 
 export const AGING_BUCKETS: AgingBucket[] = ["current", "1-30", "31-60", "61-90", "90+"];
@@ -76,7 +78,47 @@ export async function fetchArAging(orgId: string, asOf: string): Promise<AgingRo
     .lte("invoice_date", asOf);
 
   if (error) throw error;
-  return toAgingRows((data as unknown as RawDocument[]) ?? [], asOf);
+  const credits = await fetchUnappliedCreditRows(orgId, asOf);
+  return [...toAgingRows((data as unknown as RawDocument[]) ?? [], asOf), ...credits].sort(
+    (a, b) => b.daysOverdue - a.daysOverdue,
+  );
+}
+
+// Credit memos not yet applied to an invoice already lower Accounts
+// Receivable, so they're in the aging too, as negative rows aged from the
+// memo's date. (An applied memo is a payment on its invoice.)
+async function fetchUnappliedCreditRows(orgId: string, asOf: string): Promise<AgingRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("credit_memos")
+    .select("id, memo_number, memo_date, total, party:customers(id, name), invoice_payments(id)")
+    .eq("organization_id", orgId)
+    .lte("memo_date", asOf);
+  if (error) throw error;
+  const memos = (data ?? []) as unknown as {
+    id: string;
+    memo_number: string;
+    memo_date: string;
+    total: number;
+    party: { id: string; name: string } | null;
+    invoice_payments: { id: string }[];
+  }[];
+  return memos
+    .filter((m) => m.invoice_payments.length === 0 && Number(m.total) > 0)
+    .map((m) => {
+      const daysOverdue = daysBetween(asOf, m.memo_date);
+      return {
+        id: m.id,
+        number: m.memo_number,
+        partyId: m.party?.id ?? null,
+        partyName: m.party?.name ?? "—",
+        dueDate: m.memo_date,
+        remaining: -Math.round(Number(m.total) * 100) / 100,
+        daysOverdue,
+        bucket: bucketFor(daysOverdue),
+        isCredit: true,
+      };
+    });
 }
 
 export async function fetchApAging(orgId: string, asOf: string): Promise<AgingRow[]> {

@@ -19,4 +19,23 @@ describe("buildStatement", () => {
     ]);
     expect(s.closing).toBe(250);
   });
+
+  it("lists an unapplied credit memo as a credit on its date, and carries in earlier ones", () => {
+    const s = buildStatement(
+      [{ id: "a", invoice_number: "1", invoice_date: "2026-09-02", due_date: null, total: 100, payments: [] }],
+      "2026-09-01",
+      "2026-09-30",
+      [
+        { memo_number: "CM-1", memo_date: "2026-08-15", total: 10 },
+        { memo_number: "CM-2", memo_date: "2026-09-02", total: 30 },
+        { memo_number: "CM-3", memo_date: "2026-10-01", total: 99 },
+      ],
+    );
+    expect(s.opening).toBe(-10);
+    expect(s.lines.map((l) => [l.label, l.amount, l.balance])).toEqual([
+      ["Invoice 1", 100, 90],
+      ["Credit memo CM-2, not yet applied", -30, 60],
+    ]);
+    expect(s.closing).toBe(60);
+  });
 });
