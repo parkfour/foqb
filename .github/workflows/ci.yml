@@ -250,3 +250,27 @@ jobs:
             docker push "$image:$version"
             docker push "$image:latest"
           done
+
+  # On the public GitHub repository only, once the images are up: each
+  # version tag gets a GitHub release whose notes are that version's
+  # CHANGELOG.md section (an intro paragraph, then the changes since the
+  # last release). Tagging a version with no CHANGELOG section fails here.
+  release-notes:
+    needs: release-images
+    if: startsWith(github.ref, 'refs/tags/v') && github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          title=$(grep -m1 "^## $version " CHANGELOG.md | sed 's/^## /FOQB /')
+          [ -n "$title" ] || { echo "CHANGELOG.md has no '## $version' section"; exit 1; }
+          awk -v v="$version" '/^## / { on = index($0, "## " v " ") == 1; next } on' CHANGELOG.md >notes.md
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$title" --notes-file notes.md \
+            $(case "$version" in 0.*) echo --prerelease ;; esac)
