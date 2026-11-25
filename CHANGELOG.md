@@ -3,6 +3,20 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.8.5 (pre-beta 2) — 2026-11-25
+
+The second pre-release of the 0.9 beta: three loose ends from the first
+one, in net worth history and split transactions.
+
+- **Net worth history counts investment gains.** The chart counted
+  holdings entered as trades at what they cost, while today's figure used
+  their market value. Each point now values them at the latest price on or
+  before its date, so the chart and today's figure agree.
+- **Split lines can take a class,** in the Register and on Bank
+  Transactions, when the book has classes.
+- **Splits on an account in another currency** show their amounts and
+  totals in that account's currency, not the book's.
+
 ## 0.8.4 (pre-beta 1) — 2026-11-16
 
 The first pre-release of the 0.9 beta. 0.9 is a cleanup release: no new
