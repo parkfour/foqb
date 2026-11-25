@@ -6,6 +6,7 @@ import { TransactionRegister, type RegisterAccount } from "@/components/transact
 import { TimezoneChangeNotice } from "@/components/ui/timezone-change-notice";
 import { registerRows, type RawTx } from "@/lib/register/rows";
 import { PAGE_SIZE, readAllRows } from "@/lib/supabase/read-all";
+import { fetchActiveClasses } from "@/lib/org/classes";
 
 const TXN_COLUMNS =
   "id, date, name, amount, status, cleared, account_id, journal_entry_id, accounts(name, currency), journal_entries(status, journal_lines(id, account_id, description, debit, credit, reconciliation_id, accounts(name)))";
@@ -39,12 +40,15 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   const supabase = await createClient();
   const role = await getCurrentUserRole(orgId);
 
-  const { data: rawAccounts } = await supabase
-    .from("accounts")
-    .select("id, account_number, name, type, has_bank_feed")
-    .eq("organization_id", orgId)
-    .eq("is_active", true)
-    .order("account_number");
+  const [{ data: rawAccounts }, classes] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("id, account_number, name, type, has_bank_feed")
+      .eq("organization_id", orgId)
+      .eq("is_active", true)
+      .order("account_number"),
+    fetchActiveClasses(supabase, orgId),
+  ]);
   // An account no bank feeds, like an income or expense category: the
   // transactions categorized to it, splits included, rather than none.
   const byCategory = Boolean(account) && rawAccounts?.find((a) => a.id === account)?.has_bank_feed === false;
@@ -115,6 +119,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
         key={`${account ?? "all"}-${pageCount}-${focusId ?? ""}`}
         transactions={transactions}
         accounts={accounts}
+        classes={classes}
         canWrite={canWrite(role)}
         account={account}
         olderHref={hasOlder ? `/register?pages=${pageCount + 1}` : null}

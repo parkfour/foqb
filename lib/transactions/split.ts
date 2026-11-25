@@ -4,6 +4,7 @@ export interface SplitLineInput {
   account_id: string;
   amount: number;
   memo?: string | null;
+  class_id?: string | null;
 }
 
 export interface SplitValidationResult {
@@ -38,21 +39,25 @@ export function validateSplitTransaction(
   };
 }
 
+type SplitJournalLine = { account_id: string; debit: number; credit: number; description: string; class_id?: string | null };
+
+// The class, if one is picked, goes on its category line.
 export function buildSplitJournalLines(
   bankAccountId: string,
   parentAmount: number,
   parentMemo: string | null,
   splitLines: SplitLineInput[],
-): { account_id: string; debit: number; credit: number; description: string }[] {
+): SplitJournalLine[] {
   const absParent = Math.round(Math.abs(parentAmount) * 100) / 100;
 
   if (parentAmount < 0) {
     // Money leaving bank (outflow/expense): bank account is credited, split category lines are debited
-    const lines = splitLines.map((line) => ({
+    const lines: SplitJournalLine[] = splitLines.map((line) => ({
       account_id: line.account_id,
       debit: Math.round(Number(line.amount) * 100) / 100,
       credit: 0,
       description: line.memo?.trim() || parentMemo || "Split transaction",
+      class_id: line.class_id || null,
     }));
 
     lines.push({
@@ -65,7 +70,7 @@ export function buildSplitJournalLines(
     return lines;
   } else {
     // Money entering bank (inflow/deposit): bank account is debited, split category lines are credited
-    const lines: { account_id: string; debit: number; credit: number; description: string }[] = [
+    const lines: SplitJournalLine[] = [
       {
         account_id: bankAccountId,
         debit: absParent,
@@ -80,6 +85,7 @@ export function buildSplitJournalLines(
         debit: 0,
         credit: Math.round(Number(line.amount) * 100) / 100,
         description: line.memo?.trim() || parentMemo || "Split transaction",
+        class_id: line.class_id || null,
       });
     }
 

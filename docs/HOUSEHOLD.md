@@ -109,7 +109,9 @@ for the rest; search, filters and running balances cover every row loaded.
 One bank charge booked to several accounts, such as a store run that was part
 groceries and part household supplies. Every line needs an account and an
 amount above zero, and the lines must add up to the transaction exactly. It
-posts one balanced journal entry through `post_journal_entry`.
+posts one balanced journal entry through `post_journal_entry`. When the
+book has classes, each line can take one. On an account kept in another
+currency, the amounts and totals are in that currency.
 
 ![Splitting a store charge between groceries and household supplies](screenshots/household-split.jpg)
 

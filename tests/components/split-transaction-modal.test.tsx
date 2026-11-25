@@ -141,3 +141,48 @@ describe("SplitTransactionModal", () => {
     ]);
   });
 });
+
+describe("SplitTransactionModal classes and currency", () => {
+  it("puts the class picked on its line", async () => {
+    const onSave = vi.fn();
+    render(
+      <SplitTransactionModal
+        isOpen={true}
+        onClose={vi.fn()}
+        transaction={mockTx}
+        accounts={accounts}
+        classes={[{ id: "cls-west", name: "West" }]}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Category for line 1"), { target: { value: "acc-groceries" } });
+    fireEvent.change(screen.getByLabelText("Class for line 1"), { target: { value: "cls-west" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Split" }));
+
+    await vi.waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith([
+        { account_id: "acc-groceries", amount: 150, memo: "Costco Wholesale", class_id: "cls-west" },
+      ]),
+    );
+  });
+
+  it("has no class column when the book has no classes", () => {
+    render(<SplitTransactionModal isOpen={true} onClose={vi.fn()} transaction={mockTx} accounts={accounts} />);
+    expect(screen.queryByLabelText("Class for line 1")).not.toBeInTheDocument();
+  });
+
+  it("shows totals in the account's currency", () => {
+    render(
+      <SplitTransactionModal
+        isOpen={true}
+        onClose={vi.fn()}
+        transaction={{ ...mockTx, amount: -150000, currency: "KRW" }}
+        accounts={accounts}
+      />,
+    );
+    expect(screen.getAllByText(/₩150,000/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Amount (KRW)")).toBeInTheDocument();
+    expect(screen.queryByText(/\$150,000/)).not.toBeInTheDocument();
+  });
+});

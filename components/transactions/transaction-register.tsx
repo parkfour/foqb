@@ -18,6 +18,7 @@ import {
 } from "@/app/(dashboard)/transactions/actions";
 import { createAccountQuickAction } from "@/app/(dashboard)/accounts/actions";
 import { useMoney } from "@/components/providers/book-currency-provider";
+import type { ClassOption } from "@/components/classes/class-select";
 import { formatMoney } from "@/lib/money";
 
 export interface RegisterTransaction {
@@ -70,6 +71,8 @@ export interface RegisterAccount {
 export interface TransactionRegisterProps {
   transactions: RegisterTransaction[];
   accounts: RegisterAccount[];
+  // The book's classes, for the split modal's lines.
+  classes?: ClassOption[];
   canWrite?: boolean;
   // The account the page loaded in full; "all" when it loaded every account.
   account?: string;
@@ -123,6 +126,7 @@ interface PayeePrompt {
 export function TransactionRegister({
   transactions: initialTransactions,
   accounts: initialAccounts,
+  classes = [],
   canWrite = true,
   account = "all",
   olderHref = null,
@@ -871,6 +875,7 @@ export function TransactionRegister({
         onClose={() => setActiveSplitTx(null)}
         transaction={activeSplitTx}
         accounts={accounts}
+        classes={classes}
         onSave={handleSaveSplit}
       />
     </div>

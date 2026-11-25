@@ -131,3 +131,17 @@ describe("Split Transactions", () => {
     });
   });
 });
+
+describe("buildSplitJournalLines classes", () => {
+  it("puts each line's class on its category line, not the bank's", () => {
+    const lines = buildSplitJournalLines("bank", -100, "Store", [
+      { account_id: "a", amount: 60, class_id: "west" },
+      { account_id: "b", amount: 40 },
+    ]);
+    expect(lines.map((l) => [l.account_id, l.class_id ?? null])).toEqual([
+      ["a", "west"],
+      ["b", null],
+      ["bank", null],
+    ]);
+  });
+});

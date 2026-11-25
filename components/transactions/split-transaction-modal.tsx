@@ -7,6 +7,8 @@ import {
   type SplitLineInput,
 } from "@/lib/transactions/split";
 import { useMoney } from "@/components/providers/book-currency-provider";
+import { formatMoney } from "@/lib/money";
+import { ClassSelect, type ClassOption } from "@/components/classes/class-select";
 
 export interface SplitTransactionModalProps {
   isOpen: boolean;
@@ -17,6 +19,8 @@ export interface SplitTransactionModalProps {
     name: string | null;
     amount: number;
     account_id?: string | null;
+    // The account's currency when it isn't the book's; amounts are in it.
+    currency?: string | null;
   } | null;
   accounts: {
     id: string;
@@ -24,6 +28,8 @@ export interface SplitTransactionModalProps {
     name: string;
     type?: string;
   }[];
+  // The book's classes; a line can take one when there are any.
+  classes?: ClassOption[];
   onSave?: (splits: SplitLineInput[]) => Promise<void> | void;
 }
 
@@ -32,6 +38,7 @@ interface ModalLine {
   account_id: string;
   amount: string;
   memo: string;
+  class_id: string;
 }
 
 export function SplitTransactionModal({
@@ -39,9 +46,12 @@ export function SplitTransactionModal({
   onClose,
   transaction,
   accounts,
+  classes = [],
   onSave,
 }: SplitTransactionModalProps) {
-  const formatCurrency = useMoney();
+  const bookMoney = useMoney();
+  const currency = transaction?.currency;
+  const formatCurrency = currency ? (value: number) => formatMoney(value, currency) : bookMoney;
   const baseId = useId();
   const [lines, setLines] = useState<ModalLine[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +70,7 @@ export function SplitTransactionModal({
           account_id: "",
           amount: absAmount.toFixed(2),
           memo: transaction.name || "",
+          class_id: "",
         },
       ]);
       setError(null);
@@ -75,6 +86,7 @@ export function SplitTransactionModal({
     account_id: l.account_id,
     amount: parseFloat(l.amount) || 0,
     memo: l.memo,
+    ...(l.class_id ? { class_id: l.class_id } : {}),
   }));
 
   const validation = validateSplitTransaction(parentAmount, currentSplits);
@@ -89,6 +101,7 @@ export function SplitTransactionModal({
         account_id: "",
         amount: remaining > 0 ? remaining.toFixed(2) : "0.00",
         memo: "",
+        class_id: "",
       },
     ]);
   }
@@ -161,8 +174,9 @@ export function SplitTransactionModal({
               <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
                 <tr>
                   <th className="py-2 pl-2 pr-3">Category / Account</th>
+                  {classes.length > 0 && <th className="px-3 py-2">Class</th>}
                   <th className="px-3 py-2">Memo / Description</th>
-                  <th className="px-3 py-2 text-right">Amount ($)</th>
+                  <th className="px-3 py-2 text-right">Amount{currency ? ` (${currency})` : ""}</th>
                   <th className="py-2 pl-2 pr-2 text-center w-10"></th>
                 </tr>
               </thead>
@@ -186,6 +200,17 @@ export function SplitTransactionModal({
                         ))}
                       </select>
                     </td>
+                    {classes.length > 0 && (
+                      <td className="px-3 py-2">
+                        <ClassSelect
+                          classes={classes}
+                          value={line.class_id}
+                          onChange={(value) => updateLine(idx, "class_id", value)}
+                          label={`Class for line ${idx + 1}`}
+                          className="w-full rounded-md border border-slate-300 py-1.5 pl-2 pr-6 text-xs text-slate-800 focus:border-slate-500 focus:outline-none"
+                        />
+                      </td>
+                    )}
                     <td className="px-3 py-2">
                       <input
                         type="text"

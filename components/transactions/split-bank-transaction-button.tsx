@@ -8,7 +8,8 @@ import { splitBankTransactionAction } from "@/app/(dashboard)/transactions/actio
 export function SplitBankTransactionButton({
   transaction,
   accounts,
-}: Pick<SplitTransactionModalProps, "accounts"> & {
+  classes,
+}: Pick<SplitTransactionModalProps, "accounts" | "classes"> & {
   transaction: NonNullable<SplitTransactionModalProps["transaction"]>;
 }) {
   const [open, setOpen] = useState(false);
@@ -27,6 +28,7 @@ export function SplitBankTransactionButton({
         onClose={() => setOpen(false)}
         transaction={transaction}
         accounts={accounts}
+        classes={classes}
         onSave={async (splits) => {
           const result = await splitBankTransactionAction(transaction.id, splits);
           if (!result.success) throw new Error(result.error ?? "Couldn't save the split");

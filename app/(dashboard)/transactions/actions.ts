@@ -155,7 +155,7 @@ export async function voidJournalEntry(formData: FormData): Promise<void> {
 
 export async function splitBankTransactionAction(
   bankTransactionId: string,
-  splits: { account_id: string; amount: number; memo?: string | null }[],
+  splits: { account_id: string; amount: number; memo?: string | null; class_id?: string | null }[],
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
   const result = await submitSplitTransaction(supabase, bankTransactionId, splits);

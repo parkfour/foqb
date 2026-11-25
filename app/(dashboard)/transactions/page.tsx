@@ -470,7 +470,11 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                               Post
                             </button>
                           </form>
-                          <SplitBankTransactionButton transaction={tx} accounts={accounts} />
+                          <SplitBankTransactionButton
+                            transaction={{ ...tx, currency: tx.accounts?.currency && tx.accounts.currency !== currency ? tx.accounts.currency : null }}
+                            accounts={accounts}
+                            classes={classes}
+                          />
                           <form action={ignoreBankTransaction}>
                             <input type="hidden" name="id" value={tx.id} />
                             <button
