@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { addDays } from "@/lib/time/book-time";
-import { fetchHoldings, unrealizedByAccount } from "@/lib/investments/value";
+import { fetchHoldings, fetchInvestmentData, unrealizedByAccount, valueHoldings } from "@/lib/investments/value";
 
 export interface NetWorthBreakdown {
   cash: number;
@@ -189,8 +189,9 @@ interface PropertyValue {
 // Net worth over time, worked out from the ledger (get_net_worth_series)
 // rather than from snapshots saved on visits. Properties count at today's
 // estimated value from their purchase date on; there's no history of
-// estimates. Investment accounts move only where statements are booked, so
-// their daily points step at statement ends.
+// estimates. Accounts with holdings add their unrealized gain as of each
+// date, at the latest price then; without trades, investment accounts move
+// only where statements are booked, so they step at statement ends.
 export async function fetchNetWorthHistory(
   orgId: string,
   today: string,
@@ -198,7 +199,7 @@ export async function fetchNetWorthHistory(
 ): Promise<{ date: string; net_worth: number; total_assets: number; total_liabilities: number }[]> {
   const supabase = supabaseClient ?? (await createClient());
 
-  const [{ data: first }, { data: properties }] = await Promise.all([
+  const [{ data: first }, { data: properties }, investments] = await Promise.all([
     supabase
       .from("journal_entries")
       .select("entry_date")
@@ -208,6 +209,7 @@ export async function fetchNetWorthHistory(
       .limit(1)
       .maybeSingle(),
     supabase.from("properties").select("estimated_value, purchase_price, purchase_date").eq("organization_id", orgId),
+    fetchInvestmentData(supabase, orgId, today),
   ]);
   if (!first) return [];
 
@@ -223,7 +225,11 @@ export async function fetchNetWorthHistory(
       const propertyValue = props
         .filter((p) => !p.purchase_date || p.purchase_date <= row.as_of)
         .reduce((sum, p) => sum + Number(p.estimated_value ?? p.purchase_price ?? 0), 0);
-      const totalAssets = round(Number(row.total_assets) + propertyValue);
+      let gains = 0;
+      if (investments.trades.length) {
+        for (const gain of unrealizedByAccount(valueHoldings(investments, row.as_of)).values()) gains += gain;
+      }
+      const totalAssets = round(Number(row.total_assets) + propertyValue + gains);
       const totalLiabilities = round(Number(row.total_liabilities));
       return {
         date: row.as_of,

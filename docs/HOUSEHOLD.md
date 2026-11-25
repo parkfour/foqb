@@ -65,9 +65,11 @@ menu just leaves them out.
   books (`get_net_worth_series`): a point for every day of the last six
   months (1M, 6M) and for each month-end back to the first entry (1Y,
   All-time). Properties count at today's estimated value from their
-  purchase date on, and an investment account moves only where a statement
-  is booked, so daily points step at statement ends. Household figures
-  only, without business equity.
+  purchase date on. Holdings entered as trades count at the latest price
+  on or before each date, as today's figure does; an investment account
+  without trades moves only where a statement is booked, so its daily
+  points step at statement ends. Household figures only, without business
+  equity.
 
 ![Assets and debts by kind, and the equity of a business the household owns](screenshots/household-net-worth-breakdown.jpg)
 

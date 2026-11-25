@@ -170,7 +170,45 @@ describe("historyDates", () => {
   });
 });
 
+const noInvestments = {
+  investment_trades: { select: ok([]) },
+  securities: { select: ok([]) },
+  security_prices: { select: ok([]) },
+};
+
 describe("fetchNetWorthHistory", () => {
+  it("adds holdings' unrealized gain at each date's latest price", async () => {
+    const { client } = createSupabaseMock({
+      rpcs: {
+        get_net_worth_series: ok([
+          { as_of: "2026-07-31", total_assets: "0", total_liabilities: "0" },
+          { as_of: "2026-08-31", total_assets: "2005", total_liabilities: "0" },
+          { as_of: "2026-09-30", total_assets: "2005", total_liabilities: "0" },
+          { as_of: "2026-10-22", total_assets: "2005", total_liabilities: "0" },
+        ]),
+      },
+      tables: {
+        journal_entries: { select: ok({ entry_date: "2026-07-02" }) },
+        properties: { select: ok([]) },
+        investment_trades: {
+          select: ok([{ account_id: "a", security_id: "vti", trade_date: "2026-08-10", kind: "buy", quantity: 10, price: 200, fees: 5 }]),
+        },
+        securities: { select: ok([{ id: "vti", symbol: "VTI", name: null }]) },
+        security_prices: {
+          select: ok([
+            { security_id: "vti", price_date: "2026-10-01", price: 250 },
+            { security_id: "vti", price_date: "2026-09-15", price: 220 },
+          ]),
+        },
+      },
+    });
+
+    const points = await fetchNetWorthHistory("org-1", "2026-10-22", client as never);
+
+    // Not held yet; held with no price (at cost); at 220; at 250.
+    expect(points.map((p) => p.total_assets)).toEqual([0, 2005, 2200, 2500]);
+  });
+
   it("adds a property's value from its purchase date on to what the ledger holds", async () => {
     const { client } = createSupabaseMock({
       rpcs: {
@@ -184,6 +222,7 @@ describe("fetchNetWorthHistory", () => {
         properties: {
           select: ok([{ estimated_value: 300000, purchase_price: 250000, purchase_date: "2026-09-15" }]),
         },
+        ...noInvestments,
       },
     });
 
@@ -195,7 +234,7 @@ describe("fetchNetWorthHistory", () => {
 
   it("has no history before anything's booked", async () => {
     const { client } = createSupabaseMock({
-      tables: { journal_entries: { select: ok(null) }, properties: { select: ok([]) } },
+      tables: { journal_entries: { select: ok(null) }, properties: { select: ok([]) }, ...noInvestments },
     });
 
     expect(await fetchNetWorthHistory("org-1", "2026-10-22", client as never)).toEqual([]);
