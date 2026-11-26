@@ -71,7 +71,7 @@ export async function ingestBankFeed(
     await bookPendingTransfers(admin, organizationId);
     await bookOpeningBalances(admin, organizationId);
   } catch (error) {
-    console.error(`Failed to book transfers or opening balances for ${pluginId}'s feed in ${organizationId}`, error);
+    console.error("Failed to book transfers or opening balances for %s's feed in %s", pluginId, organizationId, error);
   }
   return accounts.length;
 }

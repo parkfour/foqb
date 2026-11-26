@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
   // (and billed) without an enrollment that syncs it.
   async function fail(message: string) {
     await removeItem(accessToken).catch((error) =>
-      console.error(`Failed to remove Plaid Item ${itemId} after a failed enrollment`, error),
+      console.error("Failed to remove Plaid Item %s after a failed enrollment", itemId, error),
     );
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -78,7 +78,7 @@ export async function syncItem(itemId: string): Promise<void> {
   try {
     await saveBankBalances(supabase, enrollment.organization_id as string, await getAccounts(accessToken));
   } catch (error) {
-    console.error(`Failed to update bank balances for Plaid Item ${itemId}`, error);
+    console.error("Failed to update bank balances for Plaid Item %s", itemId, error);
   }
 
   // Also best-effort, for the same reason: the feed is saved either way.
@@ -86,7 +86,7 @@ export async function syncItem(itemId: string): Promise<void> {
     await bookPendingTransfers(supabase, enrollment.organization_id as string);
     await bookOpeningBalances(supabase, enrollment.organization_id as string);
   } catch (error) {
-    console.error(`Failed to book transfers or opening balances for Plaid Item ${itemId}`, error);
+    console.error("Failed to book transfers or opening balances for Plaid Item %s", itemId, error);
   }
 }
 

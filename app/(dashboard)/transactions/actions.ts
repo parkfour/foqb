@@ -42,7 +42,7 @@ export async function deleteBankTransaction(formData: FormData): Promise<void> {
 
   const supabase = await createClient();
   const { error } = await supabase.from("bank_transactions").delete().eq("id", id).eq("status", "ignored");
-  if (error) console.error(`Failed to delete bank transaction ${id}`, error);
+  if (error) console.error("Failed to delete bank transaction %s", id, error);
 
   revalidatePath("/transactions");
   revalidatePath("/register");
@@ -61,7 +61,7 @@ export async function setBankTransactionRate(formData: FormData): Promise<void> 
     .update({ exchange_rate: rate })
     .eq("id", id)
     .eq("status", "unreconciled");
-  if (error) console.error(`Failed to set the exchange rate of ${id}`, error);
+  if (error) console.error("Failed to set the exchange rate of %s", id, error);
 
   revalidatePath("/transactions");
   revalidatePath("/register");
@@ -121,7 +121,7 @@ export async function reopenBankTransaction(formData: FormData): Promise<void> {
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("reopen_bank_transaction", { p_bank_transaction_id: id });
-  if (error) console.error(`Failed to re-open bank transaction ${id}`, error);
+  if (error) console.error("Failed to re-open bank transaction %s", id, error);
 
   revalidatePath("/transactions");
   revalidatePath("/register");

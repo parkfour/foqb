@@ -106,7 +106,7 @@ export async function setOpeningBalance(
       .eq("id", live.journal_entries.id)
       .eq("status", "posted");
     if (error) {
-      console.error(`Failed to void the old opening balance for account ${account.id}`, error);
+      console.error("Failed to void the old opening balance for account %s", account.id, error);
       return;
     }
   }
@@ -120,7 +120,7 @@ export async function setOpeningBalance(
     p_memo: memo,
     p_lines: openingEntryLines(account.type, opening, account.id, equityId, memo),
   });
-  if (error) console.error(`Failed to book the opening balance for account ${account.id}`, error);
+  if (error) console.error("Failed to book the opening balance for account %s", account.id, error);
 }
 
 // For each linked account with a bank balance: what it held before its

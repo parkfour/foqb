@@ -44,7 +44,7 @@ describe("a plugin's bank feed job", () => {
       ["gc", "on-1", [account]],
       ["gc", "on-2", [account]],
     ]);
-    expect(errors).toHaveBeenCalledWith("GoCardless bank feed failed for book failing", expect.any(Error));
+    expect(errors).toHaveBeenCalledWith("%s bank feed failed for book %s", "GoCardless", "failing", expect.any(Error));
     errors.mockRestore();
   });
 });

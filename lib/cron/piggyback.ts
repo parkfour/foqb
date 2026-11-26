@@ -36,7 +36,7 @@ export async function maybeRunDueCronJobs(): Promise<void> {
       });
 
       if (error) {
-        console.error(`Failed to claim cron run for ${job.name}`, error);
+        console.error("Failed to claim cron run for %s", job.name, error);
         continue;
       }
 
@@ -44,7 +44,7 @@ export async function maybeRunDueCronJobs(): Promise<void> {
         await job.run();
       }
     } catch (error) {
-      console.error(`Piggyback cron job ${job.name} failed`, error);
+      console.error("Piggyback cron job %s failed", job.name, error);
     }
   }
 }

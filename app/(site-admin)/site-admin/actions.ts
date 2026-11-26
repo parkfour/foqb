@@ -67,7 +67,7 @@ export async function deleteOrganization(
     try {
       await removeItem(decryptToken(enrollment.access_token));
     } catch (removeError) {
-      console.error(`Failed to remove a Plaid Item for deleted organization ${id}`, removeError);
+      console.error("Failed to remove a Plaid Item for deleted organization %s", id, removeError);
     }
   }
 

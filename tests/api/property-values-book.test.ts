@@ -32,14 +32,15 @@ function admin(properties: unknown[], notes: unknown[]): SupabaseClient {
 
 // Census places every address in Chicago's division; FRED's index doubled;
 // RentCast says $650,000.
+const host = (url: unknown) => new URL(String(url)).hostname;
 const fetcher = vi.fn(async (url: string) =>
-  url.includes("census.gov")
+  host(url).endsWith("census.gov")
     ? Response.json({ result: { addressMatches: [{ geographies: { "Metropolitan Divisions": [{ METDIV: "16984", NAME: "Chicago div" }], States: [{ STUSAB: "IL" }] } }] } })
-    : url.includes("rentcast.io")
+    : host(url).endsWith("rentcast.io")
       ? Response.json({ price: 650000, priceRangeLow: 600000, priceRangeHigh: 700000 })
       : Response.json({ observations: [{ date: "2019-07-01", value: "100" }, { date: "2026-04-01", value: "200" }] }),
 ) as unknown as typeof fetch;
-const rentcastCalls = () => vi.mocked(fetcher).mock.calls.filter(([u]) => String(u).includes("rentcast.io")).length;
+const rentcastCalls = () => vi.mocked(fetcher).mock.calls.filter(([u]) => host(u).endsWith("rentcast.io")).length;
 
 const home = { id: "p1", address_street: "1 Main St", address_city: "Chicago", address_state: "IL", address_zip: "60606", purchase_price: "300000", purchase_date: "2019-08-01" };
 const note = { id: "n1", property_address: "9 Elm St, Chicago, IL 60606", origination_date: "2019-07-15" };
@@ -74,7 +75,7 @@ describe("valuing a book", () => {
     expect(updates[0]).toMatchObject({ values: { estimated_value: 600000 }, id: "p1" });
     vi.mocked(fetcher).mockClear();
     await valueBook(admin([home], []), "org", newRun(fetcher));
-    expect(vi.mocked(fetcher).mock.calls.map(([u]) => String(u)).some((u) => u.includes("census.gov"))).toBe(false);
+    expect(vi.mocked(fetcher).mock.calls.some(([u]) => host(u).endsWith("census.gov"))).toBe(false);
   });
 
   it("counts a property it can't value, and leaves its value alone", async () => {

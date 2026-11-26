@@ -83,7 +83,7 @@ async function applyBankEdit(supabase: AdminClient, tx: PlaidTransaction, amount
   // anything else stays held for review (apply_bank_change).
   if (update.bank_change) {
     const { error: applyError } = await supabase.rpc("apply_bank_change", { p_bank_transaction_id: existing.id });
-    if (applyError) console.error(`Couldn't apply the bank's change to ${tx.id}`, applyError);
+    if (applyError) console.error("Couldn't apply the bank's change to %s", tx.id, applyError);
   }
 }
 
@@ -159,7 +159,7 @@ export async function categorizeByRules(
     try {
       if (await categorize(supabase, organizationId, bankAccountId, row)) return;
     } catch (err) {
-      console.error(`A plugin's categorizer failed on ${row.id}; left to the rules`, err);
+      console.error("A plugin's categorizer failed on %s; left to the rules", row.id, err);
     }
   }
 
@@ -171,7 +171,7 @@ export async function categorizeByRules(
   });
 
   if (matchError) {
-    console.error(`match_bank_transaction failed for ${row.id}`, matchError);
+    console.error("match_bank_transaction failed for %s", row.id, matchError);
     return;
   }
   if (!matchedAccountId) return;
@@ -185,7 +185,7 @@ export async function categorizeByRules(
   });
 
   if (postError) {
-    console.error(`Failed to post matched transaction ${row.id}; left unreconciled`, postError);
+    console.error("Failed to post matched transaction %s; left unreconciled", row.id, postError);
   }
 }
 

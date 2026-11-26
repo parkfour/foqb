@@ -37,7 +37,7 @@ export async function emitHook<K extends HookEvent>(event: K, payload: HookEvent
           }),
         ]);
       } catch (err) {
-        console.error(`[plugins] "${event}" handler failed:`, err);
+        console.error('[plugins] "%s" handler failed:', event, err);
       } finally {
         clearTimeout(timer);
       }
@@ -83,7 +83,7 @@ export function registerPlugin(plugin: FOQBPlugin): void {
 
   Promise.resolve()
     .then(() => plugin.init?.())
-    .catch((err) => console.error(`[plugins] "${id}" failed to initialize:`, err));
+    .catch((err) => console.error('[plugins] "%s" failed to initialize:', id, err));
 }
 
 export function getPlugins(): FOQBPlugin[] {

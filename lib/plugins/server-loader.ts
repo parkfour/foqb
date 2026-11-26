@@ -104,7 +104,7 @@ export async function bookPluginParts(
     return ids.filter((id) => parts[id]).map((id) => [id, parts[id]]);
   } catch (err) {
     // Unreadable: no plugin is asked, as if none were on.
-    console.error(`[plugins] Couldn't read which plugins book ${organizationId} has on`, err);
+    console.error("[plugins] Couldn't read which plugins book %s has on", organizationId, err);
     return [];
   }
 }
@@ -129,7 +129,7 @@ async function runBankFeed(
       if (await ingestBankFeed(admin, pluginId, id, await feed.fetch(id))) books++;
     } catch (err) {
       failed++;
-      console.error(`${feed.name} bank feed failed for book ${id}`, err);
+      console.error("%s bank feed failed for book %s", feed.name, id, err);
     }
   }
   return { books, failed };
@@ -147,7 +147,7 @@ export async function invoiceNotes(
     try {
       notes.push(...(await p.invoiceNotes(admin, invoice)).filter((n) => n.trim()));
     } catch (err) {
-      console.error(`[plugins] "${id}" invoice notes failed:`, err);
+      console.error('[plugins] "%s" invoice notes failed:', id, err);
     }
   }
   return notes;
@@ -172,7 +172,7 @@ export async function checkInvoice(
         const refusal = await check(admin, input);
         if (refusal) return refusal;
       } catch (err) {
-        console.error(`[plugins] "${id}" invoice check failed:`, err);
+        console.error('[plugins] "%s" invoice check failed:', id, err);
       }
     }
   }

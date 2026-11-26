@@ -84,7 +84,7 @@ async function handleItemStatus(itemId: string, status: string, reason: string |
     .neq("status", "disconnected");
 
   if (error) {
-    console.error(`Failed to set enrollment for Item ${itemId} to ${status}`, error);
+    console.error("Failed to set enrollment for Item %s to %s", itemId, status, error);
   }
 }
 
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
   // saved after every page is processed), so the next webhook retries it.
   after(() =>
     processEvent(event).catch((error) => {
-      console.error(`Plaid webhook ${event.webhook_type}/${event.webhook_code} failed`, error);
+      console.error("Plaid webhook %s/%s failed", event.webhook_type, event.webhook_code, error);
     }),
   );
 

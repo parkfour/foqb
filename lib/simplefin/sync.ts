@@ -99,7 +99,7 @@ export async function syncSimplefinEnrollment(enrollmentId: string): Promise<voi
     await bookPendingTransfers(supabase, orgId);
     await bookOpeningBalances(supabase, orgId);
   } catch (error) {
-    console.error(`Failed to book transfers or opening balances for SimpleFIN enrollment ${enrollmentId}`, error);
+    console.error("Failed to book transfers or opening balances for SimpleFIN enrollment %s", enrollmentId, error);
   }
 }
 
@@ -111,7 +111,7 @@ export async function syncAllSimplefin(): Promise<void> {
     try {
       await syncSimplefinEnrollment(id);
     } catch (error) {
-      console.error(`SimpleFIN sync failed for enrollment ${id}`, error);
+      console.error("SimpleFIN sync failed for enrollment %s", id, error);
     }
   }
 }
