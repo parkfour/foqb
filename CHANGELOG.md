@@ -3,6 +3,28 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## 0.8.6 (pre-beta 3) — 2026-11-27
+
+The third pre-release of the 0.9 beta: a nudge to keep reconciling, two
+fixes found while closing out a book, and security tidying from GitHub's
+code scanning.
+
+- **A reminder to reconcile.** An account whose last reconciled statement
+  is more than 40 days old is tinted in Bank Balances and the Chart of
+  Accounts; hover the row to see how many days it's been. Each book sets
+  its own age (Settings → Organization Settings), and anyone can turn the
+  reminder off for themselves under Settings → Reminders.
+- **Journal Entries in a business book's menu.** Only household books
+  listed it, so a business book's entries could only be found by typing
+  `/journal`.
+- **Between Your Books shows what it will post.** After a reload or going
+  Back, the browser put the last entries back into the form while the form
+  itself started blank, so the page could show one entry (even both kinds
+  ticked) and post another. The form now always starts clean.
+- **Code-scanning fixes.** The CI workflow runs with read-only repository
+  access by default, logged values are passed as arguments rather than
+  built into the message, and tests match mock URLs on exact host names.
+
 ## 0.8.5 (pre-beta 2) — 2026-11-25
 
 The second pre-release of the 0.9 beta: three loose ends from the first

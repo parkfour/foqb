@@ -109,6 +109,15 @@ account, enter the statement date and ending balance, tick what cleared,
 and finish once the difference is zero. Reconciled entries can't be
 re-opened.
 
+A reminder keeps reconciling from slipping: an account whose last
+completed reconciliation is for a statement more than 40 days old is tinted
+in Bank Balances and in the Chart of Accounts, and hovering the row says how
+many days it's been. Only accounts reconciled at least once are flagged. The
+age is a per-book setting (Settings → Organization Settings →
+"Reconciliation reminder (days)", `organizations.reconcile_nag_days`), and
+each person can turn the reminder off for themselves under Settings →
+Reminders (kept in their own login, so it covers every book they use).
+
 Above it, **Bank Balances** lists each linked account's balance as the bank
 last reported it, next to the books' balance today. A difference usually
 means something pending at the bank, or a transaction that's missing or
