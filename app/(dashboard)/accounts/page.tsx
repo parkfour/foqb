@@ -10,6 +10,7 @@ import { CsvImportForm } from "@/components/csv/import-form";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 import { toggleAccountActive } from "./actions";
+import { fetchStaleReconciliations, reconcileNagText } from "@/lib/reconcile/nag";
 import { FORM_NAMES, PER_PROPERTY_FORM, TAX_FORM_LINES } from "@/lib/tax/forms";
 
 interface AccountRow {
@@ -43,7 +44,7 @@ export default async function AccountsPage() {
   }
 
   const supabase = await createClient();
-  const [{ data }, role, showAccountCodes, { data: orgData }] = await Promise.all([
+  const [{ data }, role, showAccountCodes, { data: orgData }, stale] = await Promise.all([
     supabase
       .from("accounts")
       .select("id, account_number, name, type, is_active, tax_line_id, property_id, description")
@@ -52,6 +53,7 @@ export default async function AccountsPage() {
     getCurrentUserRole(orgId),
     getUseAccountCodes(orgId),
     supabase.from("organizations").select("tax_form").eq("id", orgId).maybeSingle(),
+    fetchStaleReconciliations(orgId),
   ]);
 
   const accounts = (data as AccountRow[] | null) ?? [];
@@ -136,8 +138,14 @@ export default async function AccountsPage() {
                 </td>
               </tr>
             ) : (
-              accounts.map((account) => (
-                <tr key={account.id} className="border-b border-slate-100 last:border-0">
+              accounts.map((account) => {
+                const nag = account.is_active ? stale.get(account.id) : undefined;
+                return (
+                <tr
+                  key={account.id}
+                  title={nag ? reconcileNagText(nag) : undefined}
+                  className={`border-b border-slate-100 last:border-0 ${nag ? "bg-amber-50/60" : ""}`}
+                >
                   {showAccountCodes && (
                     <td className="px-5 py-3 text-slate-600">{account.account_number}</td>
                   )}
@@ -204,7 +212,8 @@ export default async function AccountsPage() {
                     </td>
                   )}
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

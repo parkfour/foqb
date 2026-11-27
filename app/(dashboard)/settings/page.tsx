@@ -11,6 +11,8 @@ import { CreateMemberForm } from "@/components/settings/create-member-form";
 import { RegeneratePasswordButton } from "@/components/settings/regenerate-password-button";
 import { MfaSettings } from "@/components/settings/mfa-settings";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
+import { ReconcileNagSetting } from "@/components/settings/reconcile-nag-setting";
+import { RECONCILE_NAG_OFF_KEY } from "@/lib/reconcile/nag";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes } from "@/lib/org/current";
 import { formatAccountLabel } from "@/lib/accounts/format";
@@ -52,6 +54,7 @@ interface OrganizationRow {
   period_lock_date: string | null;
   inventory_enabled: boolean;
   use_account_codes: boolean;
+  reconcile_nag_days: number;
   bank_linking_enabled: boolean;
   tax_form: "none" | "schedule_c" | "corporate" | "individual";
   ar_account_id: string | null;
@@ -91,6 +94,7 @@ export default async function SettingsPage({
   } = await supabase.auth.getUser();
   const { data: factorsData } = await supabase.auth.mfa.listFactors();
   const mfaFactor = factorsData?.totp.find((f) => f.status === "verified") ?? null;
+  const reconcileNagOff = user?.user_metadata?.[RECONCILE_NAG_OFF_KEY] === true;
 
   if (!orgId) {
     return (
@@ -102,6 +106,7 @@ export default async function SettingsPage({
         {pageError && <p className="text-sm text-red-600">{pageError}</p>}
         <ChangePasswordForm />
         <MfaSettings factor={mfaFactor} />
+        <ReconcileNagSetting nagOff={reconcileNagOff} />
         <p className="text-sm text-slate-500">Create an organization first.</p>
       </div>
     );
@@ -128,7 +133,7 @@ export default async function SettingsPage({
     supabase
       .from("organizations")
       .select(
-        "name, currency, period_lock_date, inventory_enabled, use_account_codes, bank_linking_enabled, tax_form, ar_account_id, ap_account_id, tax_payable_account_id, default_tax_rate, logo_data_url",
+        "name, currency, period_lock_date, inventory_enabled, use_account_codes, reconcile_nag_days, bank_linking_enabled, tax_form, ar_account_id, ap_account_id, tax_payable_account_id, default_tax_rate, logo_data_url",
       )
       .eq("id", orgId)
       .single(),
@@ -222,6 +227,8 @@ export default async function SettingsPage({
       <ChangePasswordForm />
 
       <MfaSettings factor={mfaFactor} />
+
+      <ReconcileNagSetting nagOff={reconcileNagOff} />
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Bank Connections</h2>
@@ -612,6 +619,27 @@ export default async function SettingsPage({
               (Chart of Accounts, reports, dropdowns) — new accounts still get one automatically
               behind the scenes.
             </p>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="reconcileNagDays" className="text-sm font-medium text-slate-700">
+              Reconciliation reminder (days)
+            </label>
+            <p className="text-xs text-slate-500">
+              An account whose last reconciled statement is older than this is tinted on Bank
+              Balances and the Chart of Accounts. Each person can turn the reminder off under
+              Reminders.
+            </p>
+            <input
+              type="number"
+              id="reconcileNagDays"
+              name="reconcileNagDays"
+              min={1}
+              max={366}
+              step={1}
+              defaultValue={organization?.reconcile_nag_days ?? 40}
+              className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
           </div>
 
           <div className="flex flex-col gap-1">

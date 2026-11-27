@@ -10,6 +10,7 @@ import { formatTimestamp, formatTimestampDate } from "@/lib/time/book-time";
 import { bookToday, getBookClock } from "@/lib/org/book-clock";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
+import { fetchStaleReconciliations, reconcileNagText } from "@/lib/reconcile/nag";
 
 interface AccountOption {
   id: string;
@@ -45,7 +46,7 @@ export default async function ReconcilePage() {
   }
 
   const supabase = await createClient();
-  const [{ data: accountData }, { data: reconciliationData }, role, showAccountCodes, { data: bookData }] = await Promise.all([
+  const [{ data: accountData }, { data: reconciliationData }, role, showAccountCodes, { data: bookData }, stale] = await Promise.all([
     supabase
       .from("accounts")
       .select("id, account_number, name, type, bank_balance, bank_balance_at")
@@ -61,6 +62,7 @@ export default async function ReconcilePage() {
     getCurrentUserRole(orgId),
     getUseAccountCodes(orgId),
     supabase.rpc("get_balance_sheet", { p_org_id: orgId, p_as_of_date: await bookToday(orgId) }),
+    fetchStaleReconciliations(orgId),
   ]);
 
   const accounts = (accountData as AccountOption[] | null) ?? [];
@@ -142,8 +144,13 @@ export default async function ReconcilePage() {
                 const bank = Number(a.bank_balance);
                 const books = bookBalance.get(a.id) ?? 0;
                 const difference = Math.round((bank - books) * 100) / 100;
+                const nag = stale.get(a.id);
                 return (
-                  <tr key={a.id} className="border-b border-slate-100 last:border-0">
+                  <tr
+                    key={a.id}
+                    title={nag ? reconcileNagText(nag) : undefined}
+                    className={`border-b border-slate-100 last:border-0 ${nag ? "bg-amber-50/60" : ""}`}
+                  >
                     <td className="py-2 pr-3 text-slate-900">
                       {formatAccountLabel(a, showAccountCodes)}
                       {a.bank_balance_at && (

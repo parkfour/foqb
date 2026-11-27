@@ -16,6 +16,7 @@ import { isValidCurrency } from "@/lib/money";
 import { setOrgPluginConfig, getPluginSettingDefinitions } from "@/lib/plugins/settings";
 import { availablePlugins } from "@/plugins";
 import type { PluginSettingValue } from "@/lib/plugins/types";
+import { DEFAULT_RECONCILE_NAG_DAYS, MAX_RECONCILE_NAG_DAYS, RECONCILE_NAG_OFF_KEY } from "@/lib/reconcile/nag";
 
 const MEMBER_CREATE_LIMIT = 20;
 
@@ -335,6 +336,11 @@ export async function updateOrganizationSettings(formData: FormData): Promise<vo
   const taxPayableAccountId = (formData.get("taxPayableAccountId") as string) || null;
   const defaultTaxRateRaw = formData.get("defaultTaxRate") as string;
   const defaultTaxRate = defaultTaxRateRaw ? Number(defaultTaxRateRaw) : null;
+  const nagDaysRaw = formData.get("reconcileNagDays") as string | null;
+  const reconcileNagDays = nagDaysRaw ? Number(nagDaysRaw) : DEFAULT_RECONCILE_NAG_DAYS;
+  if (!Number.isInteger(reconcileNagDays) || reconcileNagDays < 1 || reconcileNagDays > MAX_RECONCILE_NAG_DAYS) {
+    redirect(`/settings?error=${encodeURIComponent(`The reconciliation reminder needs a whole number of days from 1 to ${MAX_RECONCILE_NAG_DAYS}`)}`);
+  }
 
   const supabase = await createClient();
   await supabase
@@ -347,6 +353,7 @@ export async function updateOrganizationSettings(formData: FormData): Promise<vo
       ap_account_id: apAccountId,
       tax_payable_account_id: taxPayableAccountId,
       default_tax_rate: defaultTaxRate,
+      reconcile_nag_days: reconcileNagDays,
     })
     .eq("id", organizationId);
 
@@ -496,5 +503,15 @@ export async function acknowledgePluginForBook(formData: FormData): Promise<void
   });
   if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/settings");
+  revalidatePath("/", "layout");
+}
+
+// The signed-in user's own reconciliation reminder opt-out (user metadata).
+export async function setReconcileNag(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    data: { [RECONCILE_NAG_OFF_KEY]: formData.get("nagOff") === "on" },
+  });
+  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/", "layout");
 }
