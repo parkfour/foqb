@@ -3,7 +3,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { JournalEntryForm } from "@/components/transactions/journal-entry-form";
 import { db } from "@/lib/db/offline";
 
-const { useOnlineStatusMock } = vi.hoisted(() => ({ useOnlineStatusMock: vi.fn() }));
+const { useOnlineStatusMock, refreshMock } = vi.hoisted(() => ({ useOnlineStatusMock: vi.fn(), refreshMock: vi.fn() }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: refreshMock }) }));
 
 vi.mock("@/components/providers/online-status-provider", () => ({
   useOnlineStatus: useOnlineStatusMock,
@@ -75,6 +77,8 @@ describe("JournalEntryForm", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The Journal Entries list on the same page picks up the new entry.
+    expect(refreshMock).toHaveBeenCalled();
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/journal-entries");
     expect(options.method).toBe("POST");

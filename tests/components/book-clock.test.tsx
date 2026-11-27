@@ -6,6 +6,7 @@ import { JournalEntryForm } from "@/components/transactions/journal-entry-form";
 import type { TimezoneChange } from "@/lib/time/book-time";
 
 vi.mock("@/components/providers/online-status-provider", () => ({ useOnlineStatus: () => true }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const change: TimezoneChange = {
   changedAt: "2026-10-18T01:30:00Z",

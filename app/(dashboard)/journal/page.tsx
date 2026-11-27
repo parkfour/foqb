@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { createClient } from "@/lib/supabase/server";
-import { canWrite, getCurrentOrgId, getCurrentUserRole } from "@/lib/org/current";
+import { canWrite, getCurrentOrgId, getCurrentUserRole, getUseAccountCodes, getWorkspaceType } from "@/lib/org/current";
+import { fetchActiveClasses } from "@/lib/org/classes";
+import { JournalEntryForm } from "@/components/transactions/journal-entry-form";
 import { voidJournalEntry } from "../transactions/actions";
 import { formatMoney } from "@/lib/money";
 import { getBookCurrency } from "@/lib/org/book-currency";
@@ -22,7 +24,8 @@ interface EntryRow {
 }
 
 // Every journal entry, newest first, to find one the register doesn't show
-// (an opening balance, a manual entry) and void it.
+// (an opening balance, a manual entry) and void it. A household also makes
+// its manual entries here; a business book makes them on Bank Transactions.
 export default async function JournalPage({ searchParams }: JournalPageProps) {
   const params = await searchParams;
   const q = (params.q ?? "").trim().slice(0, 100);
@@ -42,6 +45,23 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
 
   const supabase = await createClient();
   const userCanWrite = canWrite(await getCurrentUserRole(orgId));
+  const showEntryForm = userCanWrite && (await getWorkspaceType(orgId)) === "household";
+  const [{ data: accountsData }, showAccountCodes, classes] = showEntryForm
+    ? await Promise.all([
+        supabase
+          .from("accounts")
+          .select("id, account_number, name, currency")
+          .eq("organization_id", orgId)
+          .eq("is_active", true)
+          .order("account_number"),
+        getUseAccountCodes(orgId),
+        fetchActiveClasses(supabase, orgId),
+      ])
+    : [{ data: null }, true, []];
+  // Only another currency than the book's counts as foreign.
+  const formAccounts = ((accountsData as { id: string; account_number: string; name: string; currency: string | null }[] | null) ?? []).map(
+    (a) => ({ ...a, currency: a.currency && a.currency !== currency ? a.currency : null }),
+  );
   let query = supabase
     .from("journal_entries")
     .select("id, entry_date, memo, status, journal_lines(debit, accounts(name)), bank_transactions(id)")
@@ -72,6 +92,10 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
           Search
         </button>
       </form>
+
+      {showEntryForm && (
+        <JournalEntryForm organizationId={orgId} accounts={formAccounts} showAccountCodes={showAccountCodes} classes={classes} />
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">

@@ -182,6 +182,9 @@ every entry, with a running balance. Journal Entries (`/journal`) lists
 every entry, newest first, 50 a page, with a memo search; one can be
 voided there, except an entry from the bank feed, which is re-opened in
 the register instead.
+It's also where a household makes a manual journal entry (a correction,
+a move between two accounts with no bank feed): pick the accounts and
+amounts, and debits must equal credits.
 
 ## Between your books (`/between-books`)
 

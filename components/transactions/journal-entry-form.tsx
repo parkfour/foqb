@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { useOnlineStatus } from "@/components/providers/online-status-provider";
 import { saveOfflineEntry } from "@/lib/db/offline";
 import { formatAccountLabel } from "@/lib/accounts/format";
@@ -45,6 +46,7 @@ export function JournalEntryForm({
   classes?: ClassOption[];
 }) {
   const isOnline = useOnlineStatus();
+  const router = useRouter();
   const formatCurrency = useMoney();
   const today = useBookToday();
   const [entryDate, setEntryDate] = useState(today);
@@ -129,6 +131,8 @@ export function JournalEntryForm({
         }
 
         setStatus({ type: "success", message: "Entry posted" });
+        // So a list of entries on the same page shows the new one.
+        router.refresh();
       } else {
         await saveOfflineEntry({
           organization_id: organizationId,

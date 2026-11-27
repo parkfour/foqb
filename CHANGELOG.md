@@ -3,6 +3,15 @@
 What changed in each release of FOQB, for the people using it. Upgrading a
 self-hosted instance is covered in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
+## Unreleased (next pre-beta)
+
+- **Household books can make a journal entry.** Since 0.7, Bank
+  Transactions has hidden the entry form in a household book, expecting
+  it on Journal Entries, where it never arrived, so there was no way to
+  post a correction by hand. It's now on Journal Entries for anyone who
+  can edit the book, and a new entry shows in the list as soon as it's
+  posted.
+
 ## 0.8.6 (pre-beta 3) — 2026-11-27
 
 The third pre-release of the 0.9 beta: a nudge to keep reconciling, two
