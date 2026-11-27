@@ -27,6 +27,7 @@ describe("Sidebar", () => {
       "href",
       "/accounts",
     );
+    expect(screen.getByRole("link", { name: "Journal Entries" })).toHaveAttribute("href", "/journal");
     expect(screen.getByRole("link", { name: "Items" })).toHaveAttribute("href", "/items");
     expect(screen.getByRole("link", { name: "Fixed Assets" })).toHaveAttribute(
       "href",
