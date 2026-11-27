@@ -139,12 +139,15 @@ export function BetweenBooksForm({ thisBookId, books, today, showAccountCodes }:
   }
 
   return (
-    <form action={action} className="flex max-w-3xl flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    // autoComplete off: otherwise a reload or Back makes the browser put the
+    // last values back into these controlled fields while React's state
+    // starts fresh, so the page shows one entry and posts another.
+    <form action={action} autoComplete="off" className="flex max-w-3xl flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <input type="hidden" name="kind" value={kind} />
       <div className="flex flex-col gap-2">
         {(Object.keys(KINDS) as BetweenBooksKind[]).map((k) => (
           <label key={k} className="flex items-start gap-2 text-sm text-slate-700">
-            <input type="radio" checked={kind === k} onChange={() => setKind(k)} className="mt-1" />
+            <input type="radio" name="kindChoice" checked={kind === k} onChange={() => setKind(k)} className="mt-1" />
             <span>
               <span className="font-medium text-slate-900">{KINDS[k].label}</span>
               <span className="block text-xs text-slate-500">{KINDS[k].hint}</span>
